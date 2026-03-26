@@ -11,7 +11,7 @@ const apiClient = axios.create({
   },
 });
 
-// REQUEST INTERCEPTOR: Her isteğe Token ekle
+// 1. REQUEST INTERCEPTOR: Her isteÄąe JWT Token'Äą otomatik ekle
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("beach_token");
@@ -23,31 +23,36 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// RESPONSE INTERCEPTOR: Hataları merkezi olarak yakala ve bildir
+// 2. RESPONSE INTERCEPTOR: HatalarÄą ve YanÄątlarÄą Merkezi YĂśnet
 apiClient.interceptors.response.use(
   (response) => {
-    const apiRes = response.data;
-    // ApiResponse<T> yapımızda 'success' false ise toast göster
-    if (apiRes && apiRes.success === false) {
-       toast.error(apiRes.message || "Bilinmeyen bir hata oluştu.");
-       return Promise.reject(apiRes);
+    // Sunucudan gelen ApiResponse<T> yapÄąsÄąnÄą kontrol et
+    const { success, message, data } = response.data;
+
+    if (success === false) {
+      toast.error(message || "Ä°Ĺąlem sÄąrasÄąnda bir hata oluĹątu.");
+      return Promise.reject(response.data);
     }
-    return response;
+
+    return response; // Başarılıysa doğrudan dön
   },
   (error) => {
-    const msg = error.response?.data?.message || "Sunucuyla bağlantı kurulamadı.";
-    
-    if (error.response?.status === 401) {
-      toast.error("Oturum süresi doldu, lütfen tekrar giriş yapın.");
+    const status = error.response?.status;
+    const apiRes = error.response?.data; // ApiResponse formatÄąnda hata
+
+    if (status === 401) {
+      toast.error("Oturum sĂźresi doldu. LĂźtfen tekrar giriĹą yapÄąn.");
       localStorage.removeItem("beach_token");
-      // Sadece login sayfasında değilsek yönlendir
       if (!window.location.pathname.includes("/login")) {
-         window.location.href = "/login";
+        window.location.href = "/login";
       }
+    } else if (status === 403) {
+      toast.error("Bu iĹąlemi yapmak iĂ§in yetkiniz bulunmuyor.");
     } else {
-      toast.error(msg);
+      const errorMsg = apiRes?.message || "Sunucuyla baÄąlantÄą kurulamadÄą.";
+      toast.error(errorMsg);
     }
-    
+
     return Promise.reject(error);
   }
 );

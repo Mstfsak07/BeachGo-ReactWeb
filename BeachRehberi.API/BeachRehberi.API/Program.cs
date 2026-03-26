@@ -1,82 +1,87 @@
-﻿using BeachRehberi.API.Data;
-using BeachRehberi.API.Services;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using BeachRehberi.API.Data;
+using BeachRehberi.API.Middlewares;
+using BeachRehberi.API.Mappings;
+using BeachRehberi.API.Services;
 
-namespace BeachRehberi.API;
+var builder = WebApplication.CreateBuilder(args);
 
-public class Program
+// ─── VeritabanÄą KonfigĂźrasyonu ─────────────────────
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+                    ?? "Data Source=beachrehberi.db";
+
+builder.Services.AddDbContext<BeachDbContext>(options =>
+    options.UseSqlite(connectionString)); // Docker environment ile connection string gelirse o kullanÄąlÄąr
+
+// ─── Standart Servisler ──────────────────────────
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+builder.Services.AddHttpClient();
+
+// ─── Custom Servisler ────────────────────────────
+builder.Services.AddScoped<IBeachService, BeachService>();
+builder.Services.AddScoped<IWeatherService, WeatherService>();
+
+// ─── AutoMapper ──────────────────────────────────
+builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+// ─── CORS PolitikasÄą ──────────────────────────────
+builder.Services.AddCors(options =>
 {
-    public static void Main(string[] args)
+    options.AddPolicy("BeachGoPolicy", policy =>
     {
-        var builder = WebApplication.CreateBuilder(args);
+        policy.WithOrigins("http://localhost:3000", "http://localhost") // Prod ve Dev iĂ§in
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
 
-        // ─── Veritabanı ───────────────────────────────────────────
-        builder.Services.AddDbContext<BeachDbContext>(options =>
-            options.UseSqlite("Data Source=beachrehberi.db"));  // ✅ )) ile kapandı
+// ─── JWT Authentication ──────────────────────────
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var secretKey = Encoding.ASCII.GetBytes(jwtSettings["SecretKey"] ?? "BeachRehberi_SuperSecret_Key_2026!");
 
-        // ─── Servisler ────────────────────────────────────────────
-        builder.Services.AddHttpClient();
-        builder.Services.AddScoped<IBeachService, BeachService>();
-        builder.Services.AddScoped<IWeatherService, WeatherService>();
-        builder.Services.AddScoped<IReservationService, ReservationService>();
-        builder.Services.AddScoped<INotificationService, NotificationService>();
-        builder.Services.AddScoped<IBusinessService, BusinessService>();
-        builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"] ?? "BeachRehberi.API",
+        ValidAudience = jwtSettings["Audience"] ?? "BeachRehberi.App",
+        IssuerSigningKey = new SymmetricSecurityKey(secretKey)
+    };
+});
 
-        // ─── JWT Auth ─────────────────────────────────────────────
-        builder.Services.AddAuthentication("Bearer")
-            .AddJwtBearer("Bearer", options =>
-            {
-                options.TokenValidationParameters = new()
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                    ValidAudience = builder.Configuration["Jwt:Audience"],
-                    IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-                        System.Text.Encoding.UTF8.GetBytes(
-                            builder.Configuration["Jwt:SecretKey"]!))
-                };
-            });
+var app = builder.Build();
 
-        builder.Services.AddAuthorization();
-
-        // ─── CORS ─────────────────────────────────────────────────
-        builder.Services.AddCors(options =>
-        {
-            options.AddPolicy("AllowAll", policy =>
-                policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
-        });
-
-        builder.Services.AddControllers();
-        builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen(c =>
-        {
-            c.SwaggerDoc("v1", new() { Title = "Beach Rehberi API", Version = "v1" });
-        });
-
-        var app = builder.Build();
-
-        // ─── Migration otomatik uygula ────────────────────────────
-        using (var scope = app.Services.CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<BeachDbContext>();
-            db.Database.Migrate();
-        }
-
-        if (app.Environment.IsDevelopment())
-        {
-            app.UseSwagger();
-            app.UseSwaggerUI();
-        }
-
-        //app.UseHttpsRedirection();
-        app.UseCors("AllowAll");
-        app.UseAuthentication();
-        app.UseAuthorization();
-        app.MapControllers();
-        app.Run("http://0.0.0.0:5143");
-    }
+// ─── Pipeline (Middleware) ──────────────────────────
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
+
+// Global Exception Middleware
+app.UseMiddleware<ExceptionMiddleware>();
+
+app.UseHttpsRedirection();
+app.UseCors("BeachGoPolicy");
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();

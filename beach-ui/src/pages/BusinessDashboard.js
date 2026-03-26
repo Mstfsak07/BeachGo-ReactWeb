@@ -1,394 +1,250 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  getDashboard,
-  updateOccupancy,
-  updateSpecial,
-  addEvent,
-  deleteEvent,
-  getBusinessReservations,
-} from "../services/api";
+import React, { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
+import { Users, Calendar, Settings, LogOut, TrendingUp, Bell, Plus, Trash2 } from 'lucide-react';
+import apiClient from '../api/client';
+import { useAuthStore } from '../store/useAuthStore';
 
-export default function BusinessDashboard() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("overview");
-  const navigate = useNavigate();
-
-  // Occupancy update
-  const [occupancyPercent, setOccupancyPercent] = useState(50);
-  const [occupancyMsg, setOccupancyMsg] = useState(null);
-
-  // Special update
-  const [specialMsg, setSpecialMsg] = useState("");
-  const [specialResult, setSpecialResult] = useState(null);
-
-  // Event form
-  const [eventForm, setEventForm] = useState({
-    title: "", description: "", category: "Müzik",
-    startDate: "", endDate: "", ticketPrice: 0,
-    capacity: 50, isAgeRestricted: false, minAge: 18,
-  });
-  const [eventMsg, setEventMsg] = useState(null);
-
-  // Reservations
+const BusinessDashboard = () => {
+  const { user, logout } = useAuthStore();
+  const [beach, setBeach] = useState(null);
+  const [events, setEvents] = useState([]);
   const [reservations, setReservations] = useState([]);
-  const [resDate, setResDate] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [newOccupancy, setNewOccupancy] = useState(0);
 
   useEffect(() => {
-    const token = localStorage.getItem("beach_token");
-    if (!token) { navigate("/login"); return; }
+    fetchDashboardData();
+  }, []);
 
-    getDashboard()
-      .then((res) => {
-        setData(res.data);
-        setOccupancyPercent(res.data.beach?.occupancyPercent || 0);
-        setSpecialMsg(res.data.beach?.todaySpecial || "");
-        setReservations(res.data.todayReservations || []);
-      })
-      .catch((err) => {
-        if (err.response?.status === 401) navigate("/login");
-        else setError("Dashboard yüklenemedi.");
-      })
-      .finally(() => setLoading(false));
-  }, [navigate]);
-
-  const handleUpdateOccupancy = () => {
-    updateOccupancy(occupancyPercent)
-      .then((res) => {
-        setOccupancyMsg(`✅ Doluluk güncellendi: %${res.data.percent} (${res.data.level})`);
-        setData((prev) => ({
-          ...prev,
-          stats: { ...prev.stats, occupancyPercent, occupancyLevel: res.data.level },
-          beach: { ...prev.beach, occupancyPercent },
-        }));
-      })
-      .catch(() => setOccupancyMsg("❌ Güncelleme başarısız."));
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      // Backend'de henĂźz bu toplu endpoint yoksa parĂ§alÄą Ă§ekiyoruz
+      const [beachRes, eventRes] = await Promise.all([
+        apiClient.get(`/beaches/${user.beachId}`),
+        apiClient.get(`/events/beach/${user.beachId}`)
+      ]);
+      
+      setBeach(beachRes.data.data);
+      setEvents(eventRes.data.data);
+      setNewOccupancy(beachRes.data.data.occupancyRate);
+      
+      // SimĂźle edilmiĹą son rezervasyonlar (Backend hazÄąr olunca API'den gelecek)
+      setReservations([
+        { id: 1, name: "Ahmet YÄąlmaz", pax: 4, code: "X92J", time: "10:30" },
+        { id: 2, name: "Mehmet Demir", pax: 2, code: "A12B", time: "11:15" },
+        { id: 3, name: "AyĹąe Kaya", pax: 3, code: "K001", time: "12:00" },
+      ]);
+    } catch (err) {
+      console.error("Dashboard fetch error", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdateSpecial = () => {
-    updateSpecial(specialMsg)
-      .then(() => setSpecialResult("✅ Günlük özel güncellendi!"))
-      .catch(() => setSpecialResult("❌ Hata oluştu."));
+  const updateOccupancy = async () => {
+    try {
+      await apiClient.put(`/business/occupancy`, { percent: newOccupancy });
+      toast.success("Doluluk oranÄą gĂźncellendi!");
+      setBeach({ ...beach, occupancyRate: newOccupancy });
+    } catch (err) {
+       // Hata interceptor tarafÄąndan gĂśsteriliyor
+    }
   };
 
-  const handleAddEvent = () => {
-    addEvent(eventForm)
-      .then(() => {
-        setEventMsg("✅ Etkinlik eklendi!");
-        setEventForm({ title: "", description: "", category: "Müzik", startDate: "", endDate: "", ticketPrice: 0, capacity: 50, isAgeRestricted: false, minAge: 18 });
-        getDashboard().then((r) => setData(r.data));
-      })
-      .catch(() => setEventMsg("❌ Etkinlik eklenemedi."));
-  };
-
-  const handleDeleteEvent = (eventId) => {
-    if (!window.confirm("Etkinliği silmek istiyor musunuz?")) return;
-    deleteEvent(eventId)
-      .then(() => setData((prev) => ({ ...prev, upcomingEvents: prev.upcomingEvents.filter((e) => e.id !== eventId) })))
-      .catch(console.error);
-  };
-
-  const handleFetchReservations = () => {
-    getBusinessReservations(resDate || undefined)
-      .then((res) => setReservations(res.data))
-      .catch(console.error);
-  };
-
-  if (loading) return <div className="loading"><div className="spinner" /></div>;
-  if (error) return <div className="page"><div className="error-box">{error}</div></div>;
-  if (!data) return null;
-
-  const { beach, stats } = data;
-
-  return (
-    <div className="page">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
-        <div>
-          <h1 className="page-title" style={{ marginBottom: 4 }}>
-            {beach.name}
-          </h1>
-          <p style={{ color: "var(--text-muted)" }}>İşletme Paneli</p>
-        </div>
-        <span
-          style={{
-            padding: "6px 16px",
-            borderRadius: 20,
-            background: beach.isOpen ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
-            color: beach.isOpen ? "#16a34a" : "#dc2626",
-            fontWeight: 600,
-            fontSize: "0.85rem",
-          }}
-        >
-          {beach.isOpen ? "✅ Açık" : "❌ Kapalı"}
-        </span>
-      </div>
-
-      {/* Stats Row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 32 }}>
-        {[
-          { label: "Bugün Rez.", value: stats.todayReservationCount, icon: "📅" },
-          { label: "Kişi", value: stats.todayPersonCount, icon: "👥" },
-          { label: "Doluluk", value: `%${stats.occupancyPercent}`, icon: "📊" },
-          { label: "Seviye", value: stats.occupancyLevel, icon: "🏖️" },
-        ].map((s) => (
-          <div key={s.label} className="card" style={{ padding: "20px", textAlign: "center" }}>
-            <p style={{ fontSize: "1.5rem", marginBottom: 4 }}>{s.icon}</p>
-            <p style={{ fontSize: "1.4rem", fontFamily: "Playfair Display, serif", color: "var(--ocean)", fontWeight: 700 }}>
-              {s.value}
-            </p>
-            <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              {s.label}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Tabs */}
-      <div className="tabs">
-        {["overview", "occupancy", "reservations", "events"].map((tab) => (
-          <button key={tab} className={`tab ${activeTab === tab ? "active" : ""}`} onClick={() => setActiveTab(tab)}>
-            {tab === "overview" && "📋 Genel"}
-            {tab === "occupancy" && "📊 Doluluk"}
-            {tab === "reservations" && "📅 Rezervasyonlar"}
-            {tab === "events" && "🎉 Etkinlikler"}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Overview ── */}
-      {activeTab === "overview" && (
-        <div className="grid-2">
-          {/* Doluluk Bar */}
-          <div className="card" style={{ padding: 24 }}>
-            <h3 style={{ color: "var(--ocean)", marginBottom: 16 }}>Anlık Doluluk</h3>
-            <div style={{ marginBottom: 8 }}>
-              <div className="occupancy-bar" style={{ height: 12 }}>
-                <div
-                  className="occupancy-fill"
-                  style={{
-                    width: `${beach.occupancyPercent}%`,
-                    background: beach.occupancyPercent > 70 ? "var(--coral)" : beach.occupancyPercent > 40 ? "#f59e0b" : "#22c55e",
-                  }}
-                />
-              </div>
-            </div>
-            <p style={{ textAlign: "right", fontWeight: 700, color: "var(--ocean)" }}>%{beach.occupancyPercent}</p>
-          </div>
-
-          {/* Today Special */}
-          <div className="card" style={{ padding: 24 }}>
-            <h3 style={{ color: "var(--ocean)", marginBottom: 16 }}>Günlük Özel</h3>
-            {beach.todaySpecial ? (
-              <div style={{ background: "var(--foam)", borderRadius: "var(--radius-sm)", padding: 12, fontSize: "0.9rem", color: "var(--text)" }}>
-                ✨ {beach.todaySpecial}
-              </div>
-            ) : (
-              <p style={{ color: "var(--text-muted)", fontSize: "0.88rem" }}>Bugün için özel mesaj girilmemiş.</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Occupancy ── */}
-      {activeTab === "occupancy" && (
-        <div style={{ display: "grid", gap: 24, maxWidth: 560 }}>
-          <div className="card" style={{ padding: 28 }}>
-            <h3 style={{ color: "var(--ocean)", marginBottom: 20 }}>Doluluk Güncelle</h3>
-
-            <div className="form-group">
-              <label className="form-label">Doluluk Yüzdesi: %{occupancyPercent}</label>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={occupancyPercent}
-                onChange={(e) => setOccupancyPercent(parseInt(e.target.value))}
-                style={{ width: "100%", accentColor: "var(--ocean)" }}
-              />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 4 }}>
-                <span>Boş</span><span>Orta</span><span>Dolu</span>
-              </div>
-            </div>
-
-            {occupancyMsg && (
-              <div className={occupancyMsg.startsWith("✅") ? "success-box" : "error-box"} style={{ marginBottom: 16 }}>
-                {occupancyMsg}
-              </div>
-            )}
-
-            <button className="btn btn-primary" onClick={handleUpdateOccupancy}>
-              Güncelle
-            </button>
-          </div>
-
-          <div className="card" style={{ padding: 28 }}>
-            <h3 style={{ color: "var(--ocean)", marginBottom: 20 }}>Günlük Özel Mesaj</h3>
-            <div className="form-group">
-              <label className="form-label">Mesaj (ör: Happy hour 17:00-19:00)</label>
-              <textarea
-                className="form-input"
-                rows={3}
-                value={specialMsg}
-                onChange={(e) => setSpecialMsg(e.target.value)}
-                placeholder="Bugün için özel mesajınızı girin..."
-              />
-            </div>
-            {specialResult && (
-              <div className={specialResult.startsWith("✅") ? "success-box" : "error-box"} style={{ marginBottom: 16 }}>
-                {specialResult}
-              </div>
-            )}
-            <button className="btn btn-primary" onClick={handleUpdateSpecial}>Kaydet</button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Reservations ── */}
-      {activeTab === "reservations" && (
-        <div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 20 }}>
-            <input
-              type="date"
-              className="form-input"
-              style={{ width: 200 }}
-              value={resDate}
-              onChange={(e) => setResDate(e.target.value)}
-            />
-            <button className="btn btn-outline btn-sm" onClick={handleFetchReservations}>
-              Getir
-            </button>
-          </div>
-
-          {reservations.length === 0 ? (
-            <p style={{ color: "var(--text-muted)" }}>Rezervasyon bulunamadı.</p>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem" }}>
-                <thead>
-                  <tr style={{ background: "var(--foam)" }}>
-                    {["Kod", "Ad", "Telefon", "Tarih", "Kişi", "Şezlong", "Tutar", "Durum"].map((h) => (
-                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-muted)", fontSize: "0.78rem", textTransform: "uppercase" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {reservations.map((r) => (
-                    <tr key={r.id} style={{ borderBottom: "1px solid rgba(10,61,98,0.06)" }}>
-                      <td style={{ padding: "12px", fontFamily: "monospace", color: "var(--coral)", fontWeight: 600 }}>{r.confirmationCode}</td>
-                      <td style={{ padding: "12px" }}>{r.userName}</td>
-                      <td style={{ padding: "12px" }}>{r.userPhone}</td>
-                      <td style={{ padding: "12px" }}>{new Date(r.reservationDate).toLocaleDateString("tr-TR")}</td>
-                      <td style={{ padding: "12px", textAlign: "center" }}>{r.personCount}</td>
-                      <td style={{ padding: "12px", textAlign: "center" }}>{r.sunbedCount}</td>
-                      <td style={{ padding: "12px" }}>{r.totalPrice > 0 ? `${r.totalPrice}₺` : "-"}</td>
-                      <td style={{ padding: "12px" }}>
-                        <span className={`badge ${r.status === "Confirmed" ? "badge-green" : r.status === "Cancelled" ? "badge-coral" : "badge-yellow"}`}>
-                          {r.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Events ── */}
-      {activeTab === "events" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-          {/* Add Event Form */}
-          <div className="card" style={{ padding: 24 }}>
-            <h3 style={{ color: "var(--ocean)", marginBottom: 20 }}>Etkinlik Ekle</h3>
-
-            {eventMsg && (
-              <div className={eventMsg.startsWith("✅") ? "success-box" : "error-box"} style={{ marginBottom: 16 }}>
-                {eventMsg}
-              </div>
-            )}
-
-            <div className="form-group">
-              <label className="form-label">Başlık</label>
-              <input className="form-input" value={eventForm.title} onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })} />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Açıklama</label>
-              <textarea className="form-input" rows={3} value={eventForm.description} onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })} />
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div className="form-group">
-                <label className="form-label">Kategori</label>
-                <select className="form-input" value={eventForm.category} onChange={(e) => setEventForm({ ...eventForm, category: e.target.value })}>
-                  {["Müzik", "Spor", "Eğlence", "Yemek", "Dans", "Çocuk"].map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Kapasite</label>
-                <input className="form-input" type="number" value={eventForm.capacity} onChange={(e) => setEventForm({ ...eventForm, capacity: parseInt(e.target.value) })} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Başlangıç</label>
-                <input className="form-input" type="datetime-local" value={eventForm.startDate} onChange={(e) => setEventForm({ ...eventForm, startDate: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Bitiş</label>
-                <input className="form-input" type="datetime-local" value={eventForm.endDate} onChange={(e) => setEventForm({ ...eventForm, endDate: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Bilet Fiyatı (₺)</label>
-                <input className="form-input" type="number" value={eventForm.ticketPrice} onChange={(e) => setEventForm({ ...eventForm, ticketPrice: parseFloat(e.target.value) })} />
-              </div>
-            </div>
-
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.88rem", cursor: "pointer", marginBottom: 16 }}>
-              <input
-                type="checkbox"
-                checked={eventForm.isAgeRestricted}
-                onChange={(e) => setEventForm({ ...eventForm, isAgeRestricted: e.target.checked })}
-              />
-              Yaş kısıtlaması var (18+)
-            </label>
-
-            <button className="btn btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={handleAddEvent}>
-              Etkinlik Ekle
-            </button>
-          </div>
-
-          {/* Upcoming Events */}
-          <div>
-            <h3 style={{ color: "var(--ocean)", marginBottom: 16 }}>Yaklaşan Etkinlikler</h3>
-            {(!data.upcomingEvents || data.upcomingEvents.length === 0) ? (
-              <p style={{ color: "var(--text-muted)" }}>Etkinlik yok.</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {data.upcomingEvents.map((ev) => (
-                  <div key={ev.id} className="card" style={{ padding: 16, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <p style={{ fontWeight: 600, color: "var(--ocean)", marginBottom: 4 }}>{ev.title}</p>
-                      <p style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>
-                        {new Date(ev.startDate).toLocaleDateString("tr-TR")} • {ev.category}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteEvent(ev.id)}
-                      style={{ background: "none", border: "none", color: "var(--coral)", cursor: "pointer", fontSize: "1rem" }}
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
     </div>
   );
-}
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Sidebar */}
+      <div className="w-64 bg-slate-900 text-white p-6 hidden md:flex flex-col">
+        <div className="flex items-center gap-3 mb-12">
+          <div className="bg-primary-500 p-2 rounded-lg">
+             <span className="text-white font-black text-xl tracking-tighter">B</span>
+          </div>
+          <span className="text-xl font-bold tracking-tighter">Beach<span className="text-primary-400">Panel</span></span>
+        </div>
+
+        <nav className="space-y-2 flex-grow">
+          <button className="flex items-center gap-3 w-full p-3 bg-primary-600 rounded-xl text-sm font-bold transition-all">
+            <TrendingUp size={18} /> Genel BakÄąĹą
+          </button>
+          <button className="flex items-center gap-3 w-full p-3 hover:bg-white/5 rounded-xl text-sm font-bold text-slate-400 hover:text-white transition-all">
+            <Calendar size={18} /> Etkinlik Yönetimi
+          </button>
+          <button className="flex items-center gap-3 w-full p-3 hover:bg-white/5 rounded-xl text-sm font-bold text-slate-400 hover:text-white transition-all">
+            <Users size={18} /> Rezervasyonlar
+          </button>
+          <button className="flex items-center gap-3 w-full p-3 hover:bg-white/5 rounded-xl text-sm font-bold text-slate-400 hover:text-white transition-all">
+            <Settings size={18} /> Ayarlar
+          </button>
+        </nav>
+
+        <button 
+          onClick={logout}
+          className="flex items-center gap-3 w-full p-3 text-red-400 hover:text-red-300 transition-all font-bold text-sm border-t border-white/10 pt-6"
+        >
+          <LogOut size={18} /> ĂÄąkÄąĹą Yap
+        </button>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-grow p-4 md:p-8 overflow-y-auto">
+        {/* Top Bar */}
+        <div className="flex justify-between items-center mb-10">
+          <div>
+            <h1 className="text-3xl font-black text-slate-800 tracking-tight">Yönetim Paneli</h1>
+            <p className="text-slate-500 font-medium">HoĹą geldin, <span className="text-primary-600 font-bold">{user.contactName}</span></p>
+          </div>
+          <div className="flex items-center gap-4">
+            <button className="relative p-2 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-500 hover:text-primary-500 transition-all">
+               <Bell size={20} />
+               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+            </button>
+            <div className="h-10 w-10 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 font-black">
+              {user.contactName[0]}
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+           <div className="card p-6 border-l-4 border-primary-500">
+              <div className="flex justify-between items-start">
+                <div>
+                   <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Doluluk OranÄą</p>
+                   <h3 className="text-3xl font-black text-slate-800">%{beach.occupancyRate}</h3>
+                </div>
+                <div className="bg-primary-50 p-3 rounded-2xl text-primary-500">
+                  <Users size={24} />
+                </div>
+              </div>
+           </div>
+           <div className="card p-6 border-l-4 border-amber-500">
+              <div className="flex justify-between items-start">
+                <div>
+                   <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">Bekleyen Rezervasyon</p>
+                   <h3 className="text-3xl font-black text-slate-800">12</h3>
+                </div>
+                <div className="bg-amber-50 p-3 rounded-2xl text-amber-500">
+                  <Calendar size={24} />
+                </div>
+              </div>
+           </div>
+           <div className="card p-6 border-l-4 border-green-500">
+              <div className="flex justify-between items-start">
+                <div>
+                   <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-1">BugĂźnkĂź Etkinlikler</p>
+                   <h3 className="text-3xl font-black text-slate-800">{events.length}</h3>
+                </div>
+                <div className="bg-green-50 p-3 rounded-2xl text-green-500">
+                  <TrendingUp size={24} />
+                </div>
+              </div>
+           </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          {/* Doluluk GĂźncelleme KartÄą */}
+          <div className="card p-8">
+             <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
+                <Users className="text-primary-500" /> Doluluk Durumunu GĂźncelle
+             </h3>
+             <p className="text-slate-500 text-sm mb-8">PlajÄąnÄązÄąn anlÄąk doluluk durumunu mĂźĹąterilerinize bildirin.</p>
+             
+             <div className="space-y-8">
+                <div className="relative pt-1">
+                  <div className="flex mb-2 items-center justify-between">
+                    <div>
+                      <span className="text-xs font-black inline-block py-1 px-2 uppercase rounded-full text-primary-600 bg-primary-100">
+                        SeĂ§ili Oran
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xl font-black inline-block text-primary-600">
+                        %{newOccupancy}
+                      </span>
+                    </div>
+                  </div>
+                  <input 
+                    type="range" min="0" max="100" step="5"
+                    className="w-full h-3 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-primary-500"
+                    value={newOccupancy} onChange={(e) => setNewOccupancy(parseInt(e.target.value))}
+                  />
+                </div>
+                <button 
+                  onClick={updateOccupancy}
+                  className="btn-primary w-full py-4 text-sm font-black tracking-widest uppercase"
+                >
+                  Durumu CanlÄą YayÄąnla
+                </button>
+             </div>
+          </div>
+
+          {/* Son Rezervasyonlar Listesi */}
+          <div className="card p-8">
+             <div className="flex justify-between items-center mb-8">
+                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                  <Calendar className="text-primary-500" /> Son Rezervasyonlar
+                </h3>
+                <button className="text-primary-500 font-bold text-xs hover:underline">TĂźmĂźnĂź GĂśr</button>
+             </div>
+             <div className="space-y-4">
+                {reservations.map(res => (
+                  <div key={res.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-primary-100 transition-all group">
+                     <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-primary-500 font-black border border-slate-50">
+                           {res.pax}
+                        </div>
+                        <div>
+                           <h4 className="text-sm font-black text-slate-800 group-hover:text-primary-600 transition-colors">{res.name}</h4>
+                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Saat: {res.time} â€˘ Kod: {res.code}</p>
+                        </div>
+                     </div>
+                     <span className="bg-green-50 text-green-600 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-tight">OnaylandÄą</span>
+                  </div>
+                ))}
+             </div>
+          </div>
+
+          {/* Etkinlik Listesi */}
+          <div className="card p-8 lg:col-span-2">
+             <div className="flex justify-between items-center mb-8">
+                <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                  <Bell className="text-primary-500" /> Aktif Etkinlikler
+                </h3>
+                <button className="btn-secondary py-2 px-4 text-xs font-black flex items-center gap-2">
+                   <Plus size={14} /> Yeni Etkinlik Ekle
+                </button>
+             </div>
+             
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {events.map(event => (
+                  <div key={event.id} className="p-4 bg-white border border-slate-100 rounded-2xl flex justify-between items-center shadow-sm">
+                     <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 bg-slate-50 rounded-xl overflow-hidden">
+                           <img src={event.imageUrl || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e"} className="w-full h-full object-cover" alt="" />
+                        </div>
+                        <div>
+                           <h4 className="text-sm font-black text-slate-800">{event.title}</h4>
+                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">BugĂźn 21:00'da</p>
+                        </div>
+                     </div>
+                     <button className="text-slate-300 hover:text-red-500 transition-colors p-2">
+                        <Trash2 size={18} />
+                     </button>
+                  </div>
+                ))}
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default BusinessDashboard;

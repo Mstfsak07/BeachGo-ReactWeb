@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # Database (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    container_name: beachgo-db
+    restart: always
+    environment:
+      POSTGRES_DB: beachgo_db
+      POSTGRES_USER: beach_admin
+      POSTGRES_PASSWORD: SecretPassword123!
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Backend (API)
+  api:
+    build: ./BeachRehberi.API/BeachRehberi.API
+    container_name: beachgo-api
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=db;Database=beachgo_db;Username=beach_admin;Password=SecretPassword123!
+    ports:
+      - "5143:80"
+
+  # Frontend (UI)
+  ui:
+    build: ./beach-ui
+    container_name: beachgo-ui
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+
+networks:
+  default:
+    name: beachgo-network
+
+volumes:
+  postgres_data:

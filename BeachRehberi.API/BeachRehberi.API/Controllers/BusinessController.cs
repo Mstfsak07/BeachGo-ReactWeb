@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
+using System.Security.Claims;
 
 namespace BeachRehberi.API.Controllers
 {
@@ -18,15 +19,36 @@ namespace BeachRehberi.API.Controllers
             _context = context;
         }
 
-        // Ĺletmenin kendi plajÄąndaki rezervasyonlarÄą listele
+        // ─── GET DASHBOARD STATS ──────────────────────────────────
+        [HttpGet("dashboard")]
+        public async Task<IActionResult> GetDashboardStats()
+        {
+            var beachId = GetUserBeachId();
+            if (beachId == -1) return Unauthorized(ApiResponse<string>.FailureResult("GeĂ§ersiz iĹąletme yetkisi."));
+
+            var beach = await _context.Beaches
+                .Include(b => b.Reservations)
+                .Include(b => b.Events)
+                .FirstOrDefaultAsync(b => b.Id == beachId);
+
+            if (beach == null) return NotFound(ApiResponse<string>.FailureResult("Plaj bulunamadÄą."));
+
+            return Ok(ApiResponse<object>.SuccessResult(new {
+                beach.Name,
+                beach.OccupancyRate,
+                TotalReservations = beach.Reservations.Count,
+                PendingReservations = beach.Reservations.Count(r => r.Status == ReservationStatus.Pending),
+                ActiveEvents = beach.Events.Count
+            }));
+        }
+
+        // ─── GET RESERVATIONS (SADECE KENDÄ° PLAJI) ───────────────
         [HttpGet("reservations")]
         public async Task<IActionResult> GetMyReservations()
         {
-            // Token'dan BeachId'yi al (Claim bazlÄą gĂźvenli okuma)
-            var beachIdClaim = User.FindFirst("BeachId")?.Value;
-            if (string.IsNullOrEmpty(beachIdClaim)) return BadRequest(ApiResponse<string>.FailureResult("Yetkisiz giriĹą."));
+            var beachId = GetUserBeachId();
+            if (beachId == -1) return Unauthorized(ApiResponse<string>.FailureResult("Yetkisiz iĹąletme ID."));
 
-            var beachId = int.Parse(beachIdClaim);
             var reservations = await _context.Reservations
                 .Where(r => r.BeachId == beachId)
                 .OrderByDescending(r => r.CreatedAt)
@@ -35,31 +57,40 @@ namespace BeachRehberi.API.Controllers
             return Ok(ApiResponse<List<Reservation>>.SuccessResult(reservations));
         }
 
-        // Rezervasyon Onayla
+        // ─── UPDATE OCCUPANCY (SADECE KENDÄ° PLAJI) ────────────────
+        [HttpPut("occupancy")]
+        public async Task<IActionResult> UpdateOccupancy([FromBody] int percent)
+        {
+            var beachId = GetUserBeachId();
+            var beach = await _context.Beaches.FindAsync(beachId);
+            if (beach == null) return NotFound();
+
+            beach.OccupancyRate = percent;
+            await _context.SaveChangesAsync();
+
+            return Ok(ApiResponse<string>.SuccessResult(null, "Doluluk oranÄą gĂźncellendi."));
+        }
+
+        // ─── APPROVE/REJECT RESERVATION (GĂźvenli Kontrol) ────────
         [HttpPut("reservations/{id}/approve")]
         public async Task<IActionResult> ApproveReservation(int id)
         {
-            var res = await _context.Reservations.FindAsync(id);
-            if (res == null) return NotFound(ApiResponse<string>.FailureResult("Rezervasyon bulunamadÄą."));
+            var beachId = GetUserBeachId();
+            var res = await _context.Reservations
+                .FirstOrDefaultAsync(r => r.Id == id && r.BeachId == beachId); // Kendi plajÄą mÄą?
+
+            if (res == null) return NotFound(ApiResponse<string>.FailureResult("Rezervasyon size ait deÄąil veya bulunamadÄą."));
 
             res.Status = ReservationStatus.Approved;
             await _context.SaveChangesAsync();
 
-            return Ok(ApiResponse<string>.SuccessResult(null, "Rezervasyon onaylandÄą."));
+            return Ok(ApiResponse<string>.SuccessResult(null, "OnaylandÄą."));
         }
 
-        // Rezervasyon Reddet
-        [HttpPut("reservations/{id}/reject")]
-        public async Task<IActionResult> RejectReservation(int id, [FromBody] string comment)
+        private int GetUserBeachId()
         {
-            var res = await _context.Reservations.FindAsync(id);
-            if (res == null) return NotFound(ApiResponse<string>.FailureResult("Rezervasyon bulunamadÄą."));
-
-            res.Status = ReservationStatus.Rejected;
-            res.BusinessComment = comment;
-            await _context.SaveChangesAsync();
-
-            return Ok(ApiResponse<string>.SuccessResult(null, "Rezervasyon reddedildi."));
+            var claim = User.FindFirst("BeachId")?.Value;
+            return int.TryParse(claim, out int beachId) ? beachId : -1;
         }
     }
 }

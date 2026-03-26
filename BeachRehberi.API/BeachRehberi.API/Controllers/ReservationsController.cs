@@ -1,83 +1,52 @@
-﻿using BeachRehberi.API.Models;
-using BeachRehberi.API.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using BeachRehberi.API.Data;
+using BeachRehberi.API.Models;
 
-namespace BeachRehberi.API.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public class ReservationsController : ControllerBase
+namespace BeachRehberi.API.Controllers
 {
-    private readonly IReservationService _reservationService;
-
-    public ReservationsController(IReservationService reservationService)
+    [ApiController]
+    [Route("api/[controller]")]
+    public class ReservationsController : ControllerBase
     {
-        _reservationService = reservationService;
-    }
+        private readonly BeachDbContext _context;
 
-    // POST api/reservations
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateReservationDto dto)
-    {
-        var reservation = new Reservation
+        public ReservationsController(BeachDbContext context)
         {
-            BeachId = dto.BeachId,
-            UserName = dto.UserName,
-            UserPhone = dto.UserPhone,
-            UserEmail = dto.UserEmail ?? "",
-            ReservationDate = dto.ReservationDate,
-            PersonCount = dto.PersonCount,
-            SunbedCount = dto.SunbedCount,
-            Notes = dto.Notes ?? "",
-            TotalPrice = dto.TotalPrice
-        };
+            _context = context;
+        }
 
-        var result = await _reservationService.CreateAsync(reservation);
-        return Ok(new
+        // ─── REZERVASYON Ä°PTALÄ° (GĂśvenli DoÄąrulama) ────────────
+        [HttpDelete("{code}")]
+        public async Task<IActionResult> CancelReservation(string code)
         {
-            result.Id,
-            result.ConfirmationCode,
-            result.Status,
-            Message = "Rezervasyon başarıyla oluşturuldu!"
-        });
-    }
+            // Sadece 'Pending' (Beklemede) olanlar iptal edilebilir (GĂźvenlik kuralÄą)
+            var res = await _context.Reservations.FirstOrDefaultAsync(r => r.Code == code);
+            
+            if (res == null) return NotFound(ApiResponse<string>.FailureResult("Rezervasyon kodu hatalÄą."));
 
-    // GET api/reservations/phone/05551234567
-    [HttpGet("phone/{phone}")]
-    public async Task<IActionResult> GetByPhone(string phone)
-    {
-        var reservations = await _reservationService.GetByPhoneAsync(phone);
-        return Ok(reservations);
-    }
+            if (res.Status == ReservationStatus.Approved)
+                return BadRequest(ApiResponse<string>.FailureResult("OnaylanmÄąĹą rezervasyonlar sadece iĹąletme tarafÄąndan iptal edilebilir."));
 
-    // GET api/reservations/code/BR-12345
-    [HttpGet("code/{code}")]
-    public async Task<IActionResult> GetByCode(string code)
-    {
-        var reservation = await _reservationService.GetByCodeAsync(code);
-        if (reservation == null) return NotFound();
-        return Ok(reservation);
-    }
+            _context.Reservations.Remove(res);
+            await _context.SaveChangesAsync();
 
-    // DELETE api/reservations/BR-12345
-    [HttpDelete("{code}")]
-    public async Task<IActionResult> Cancel(string code)
-    {
-        var result = await _reservationService.CancelAsync(code);
-        if (!result) return NotFound();
-        return Ok(new { Message = "Rezervasyon iptal edildi." });
-    }
-}
+            return Ok(ApiResponse<string>.SuccessResult(null, "Rezervasyon baĹąarÄąyla iptal edildi."));
+        }
 
-public class CreateReservationDto
-{
-    public int BeachId { get; set; }
-    public string UserName { get; set; } = string.Empty;
-    public string UserPhone { get; set; } = string.Empty;
-    public string? UserEmail { get; set; }
-    public DateTime ReservationDate { get; set; }
-    public int PersonCount { get; set; }
-    public int SunbedCount { get; set; }
-    public string? Notes { get; set; }
-    public decimal TotalPrice { get; set; }
+        // ─── YENÄ° REZERVASYON (GĂśvenli Kod Ăretimi) ─────────────
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] Reservation reservation)
+        {
+            // Benzersiz 6 Haneli Sorgu Kodu Ăret
+            reservation.Code = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
+            reservation.CreatedAt = DateTime.UtcNow;
+            reservation.Status = ReservationStatus.Pending;
+
+            _context.Reservations.Add(reservation);
+            await _context.SaveChangesAsync();
+
+            return Ok(ApiResponse<Reservation>.SuccessResult(reservation, "Rezervasyon talebiniz alÄąndÄą."));
+        }
+    }
 }

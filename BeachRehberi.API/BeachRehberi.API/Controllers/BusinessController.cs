@@ -19,35 +19,11 @@ namespace BeachRehberi.API.Controllers
             _context = context;
         }
 
-        // ─── GET DASHBOARD STATS ──────────────────────────────────
-        [HttpGet("dashboard")]
-        public async Task<IActionResult> GetDashboardStats()
-        {
-            var beachId = GetUserBeachId();
-            if (beachId == -1) return Unauthorized(ApiResponse<string>.FailureResult("GeĂ§ersiz iĹąletme yetkisi."));
-
-            var beach = await _context.Beaches
-                .Include(b => b.Reservations)
-                .Include(b => b.Events)
-                .FirstOrDefaultAsync(b => b.Id == beachId);
-
-            if (beach == null) return NotFound(ApiResponse<string>.FailureResult("Plaj bulunamadÄą."));
-
-            return Ok(ApiResponse<object>.SuccessResult(new {
-                beach.Name,
-                beach.OccupancyRate,
-                TotalReservations = beach.Reservations.Count,
-                PendingReservations = beach.Reservations.Count(r => r.Status == ReservationStatus.Pending),
-                ActiveEvents = beach.Events.Count
-            }));
-        }
-
-        // ─── GET RESERVATIONS (SADECE KENDÄ° PLAJI) ───────────────
         [HttpGet("reservations")]
         public async Task<IActionResult> GetMyReservations()
         {
             var beachId = GetUserBeachId();
-            if (beachId == -1) return Unauthorized(ApiResponse<string>.FailureResult("Yetkisiz iĹąletme ID."));
+            if (beachId == -1) return Unauthorized();
 
             var reservations = await _context.Reservations
                 .Where(r => r.BeachId == beachId)
@@ -57,34 +33,30 @@ namespace BeachRehberi.API.Controllers
             return Ok(ApiResponse<List<Reservation>>.SuccessResult(reservations));
         }
 
-        // ─── UPDATE OCCUPANCY (SADECE KENDÄ° PLAJI) ────────────────
-        [HttpPut("occupancy")]
-        public async Task<IActionResult> UpdateOccupancy([FromBody] int percent)
+        [HttpPut("reservations/{id}/approve")]
+        public async Task<IActionResult> Approve(int id)
         {
-            var beachId = GetUserBeachId();
-            var beach = await _context.Beaches.FindAsync(beachId);
-            if (beach == null) return NotFound();
-
-            beach.OccupancyRate = percent;
-            await _context.SaveChangesAsync();
-
-            return Ok(ApiResponse<string>.SuccessResult(null, "Doluluk oranÄą gĂźncellendi."));
+            return await UpdateReservationStatus(id, ReservationStatus.Approved);
         }
 
-        // ─── APPROVE/REJECT RESERVATION (GĂźvenli Kontrol) ────────
-        [HttpPut("reservations/{id}/approve")]
-        public async Task<IActionResult> ApproveReservation(int id)
+        [HttpPut("reservations/{id}/reject")]
+        public async Task<IActionResult> Reject(int id, [FromBody] string? comment)
+        {
+            return await UpdateReservationStatus(id, ReservationStatus.Rejected, comment);
+        }
+
+        private async Task<IActionResult> UpdateReservationStatus(int id, ReservationStatus status, string? comment = null)
         {
             var beachId = GetUserBeachId();
-            var res = await _context.Reservations
-                .FirstOrDefaultAsync(r => r.Id == id && r.BeachId == beachId); // Kendi plajÄą mÄą?
+            var res = await _context.Reservations.FirstOrDefaultAsync(r => r.Id == id && r.BeachId == beachId);
 
-            if (res == null) return NotFound(ApiResponse<string>.FailureResult("Rezervasyon size ait deÄąil veya bulunamadÄą."));
+            if (res == null) return NotFound(ApiResponse<string>.FailureResult("Rezervasyon bulunamadı."));
 
-            res.Status = ReservationStatus.Approved;
+            res.Status = status;
+            if (comment != null) res.BusinessComment = comment;
+            
             await _context.SaveChangesAsync();
-
-            return Ok(ApiResponse<string>.SuccessResult(null, "OnaylandÄą."));
+            return Ok(ApiResponse<string>.SuccessResult(null, $"Rezervasyon {status} durumuna getirildi."));
         }
 
         private int GetUserBeachId()

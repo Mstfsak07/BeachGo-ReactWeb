@@ -16,29 +16,36 @@ namespace BeachRehberi.API.Controllers
             _context = context;
         }
 
-        // ─── REZERVASYON Ä°PTALÄ° (GĂśvenli DoÄąrulama) ────────────
-        [HttpDelete("{code}")]
-        public async Task<IActionResult> CancelReservation(string code)
+        [HttpGet("phone/{phone}")]
+        public async Task<IActionResult> GetByPhone(string phone)
         {
-            // Sadece 'Pending' (Beklemede) olanlar iptal edilebilir (GĂźvenlik kuralÄą)
-            var res = await _context.Reservations.FirstOrDefaultAsync(r => r.Code == code);
-            
-            if (res == null) return NotFound(ApiResponse<string>.FailureResult("Rezervasyon kodu hatalÄą."));
+            var res = await _context.Reservations
+                .Where(r => r.Phone == phone)
+                .OrderByDescending(r => r.CreatedAt)
+                .ToListAsync();
+            return Ok(ApiResponse<List<Reservation>>.SuccessResult(res));
+        }
 
+        [HttpDelete("{code}")]
+        public async Task<IActionResult> Cancel(string code, [FromQuery] string phone)
+        {
+            var res = await _context.Reservations.FirstOrDefaultAsync(r => r.Code == code && r.Phone == phone);
+            
+            if (res == null) return NotFound(ApiResponse<string>.FailureResult("Rezervasyon veya telefon numarası hatalı."));
+            
             if (res.Status == ReservationStatus.Approved)
-                return BadRequest(ApiResponse<string>.FailureResult("OnaylanmÄąĹą rezervasyonlar sadece iĹąletme tarafÄąndan iptal edilebilir."));
+                return BadRequest(ApiResponse<string>.FailureResult("Onaylanmış rezervasyonlar iptal edilemez."));
 
             _context.Reservations.Remove(res);
             await _context.SaveChangesAsync();
-
-            return Ok(ApiResponse<string>.SuccessResult(null, "Rezervasyon baĹąarÄąyla iptal edildi."));
+            
+            return Ok(ApiResponse<string>.SuccessResult(null, "Rezervasyon iptal edildi."));
         }
 
-        // ─── YENÄ° REZERVASYON (GĂśvenli Kod Ăretimi) ─────────────
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] Reservation reservation)
         {
-            // Benzersiz 6 Haneli Sorgu Kodu Ăret
+            // Secure 6-char upper code
             reservation.Code = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
             reservation.CreatedAt = DateTime.UtcNow;
             reservation.Status = ReservationStatus.Pending;
@@ -46,7 +53,7 @@ namespace BeachRehberi.API.Controllers
             _context.Reservations.Add(reservation);
             await _context.SaveChangesAsync();
 
-            return Ok(ApiResponse<Reservation>.SuccessResult(reservation, "Rezervasyon talebiniz alÄąndÄą."));
+            return Ok(ApiResponse<Reservation>.SuccessResult(reservation));
         }
     }
 }

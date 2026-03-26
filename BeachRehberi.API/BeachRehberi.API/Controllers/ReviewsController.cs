@@ -1,4 +1,4 @@
-﻿using BeachRehberi.API.Data;
+using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +13,6 @@ public class ReviewsController : ControllerBase
 
     public ReviewsController(BeachDbContext db) => _db = db;
 
-    // GET api/reviews/beach/5
     [HttpGet("beach/{beachId}")]
     public async Task<IActionResult> GetByBeach(int beachId)
     {
@@ -22,40 +21,41 @@ public class ReviewsController : ControllerBase
             .OrderByDescending(r => r.CreatedAt)
             .Take(20)
             .ToListAsync();
-        return Ok(reviews);
+        return Ok(ApiResponse<List<Review>>.SuccessResult(reviews));
     }
 
-    // POST api/reviews
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateReviewDto dto)
     {
+        if (dto.Rating < 1 || dto.Rating > 5) 
+            return BadRequest(ApiResponse<string>.FailureResult("Puan 1-5 arasında olmalıdır."));
+
         var review = new Review
         {
             BeachId = dto.BeachId,
             UserName = dto.UserName,
             UserPhone = dto.UserPhone,
-            Rating = Math.Clamp(dto.Rating, 1, 5),
+            Rating = dto.Rating,
             Comment = dto.Comment,
-            Source = "app"
+            IsApproved = true // Otomatik onay (Üretim ortamında false yapılabilir)
         };
 
         _db.Reviews.Add(review);
 
-        // Plaj ortalama puanını güncelle
         var beach = await _db.Beaches.FindAsync(dto.BeachId);
         if (beach != null)
         {
-            var allRatings = await _db.Reviews
+            var ratings = await _db.Reviews
                 .Where(r => r.BeachId == dto.BeachId && r.IsApproved)
                 .Select(r => r.Rating)
                 .ToListAsync();
-            allRatings.Add(dto.Rating);
-            beach.Rating = Math.Round(allRatings.Average(), 1);
-            beach.ReviewCount = allRatings.Count;
+            
+            ratings.Add(dto.Rating);
+            beach.Rating = Math.Round(ratings.Average(), 1);
         }
 
         await _db.SaveChangesAsync();
-        return Ok(new { Message = "Yorum eklendi!", review.Id });
+        return Ok(ApiResponse<Review>.SuccessResult(review, "Yorumunuz için teşekkürler."));
     }
 }
 

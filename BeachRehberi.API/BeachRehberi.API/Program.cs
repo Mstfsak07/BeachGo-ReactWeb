@@ -11,31 +11,32 @@ using BeachRehberi.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ─── VeritabanÄą ───────────────────────────────────────────
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-                    ?? "Data Source=beachrehberi.db";
-builder.Services.AddDbContext<BeachDbContext>(options => options.UseSqlite(connectionString));
+// ─── Environment Variables ───────────────────────────
+var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET") 
+                ?? builder.Configuration["Jwt:SecretKey"] 
+                ?? "Development_Secret_Key_Do_Not_Use_In_Production_2026!";
 
-// ─── Rate Limiting (GĂźvenlik) ───────────────────────────
+var dbConn = Environment.GetEnvironmentVariable("BEACHGO_DB_CONN") 
+             ?? builder.Configuration.GetConnectionString("DefaultConnection") 
+             ?? "Data Source=beachrehberi.db";
+
+// ─── Veritabanı ───────────────────────────────────────────
+builder.Services.AddDbContext<BeachDbContext>(options => options.UseSqlite(dbConn));
+
+// ─── Rate Limiting ────────────────────────────────────────
 builder.Services.AddRateLimiter(options => {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    
-    // Genel kÄąsÄątlama: IP baĹąÄąna 1 dakikada 100 istek
     options.AddFixedWindowLimiter("fixed", opt => {
         opt.Window = TimeSpan.FromMinutes(1);
         opt.PermitLimit = 100;
-        opt.QueueLimit = 0;
     });
-
-    // Auth kÄąsÄątlama: GiriĹą denemeleri iĂ§in 1 dakikada 5 istek (Brute-force korumasÄą)
     options.AddFixedWindowLimiter("auth", opt => {
         opt.Window = TimeSpan.FromMinutes(1);
         opt.PermitLimit = 5;
-        opt.QueueLimit = 0;
     });
 });
 
-// ─── Servisler ───────────────────────────────────────────
+// ─── Services ─────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -44,7 +45,7 @@ builder.Services.AddScoped<IBeachService, BeachService>();
 builder.Services.AddScoped<IWeatherService, WeatherService>();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-// ─── CORS (GĂźvenli YapÄąlandÄąrma) ────────────────────────
+// ─── CORS ─────────────────────────────────────────────────
 var allowedOrigins = Environment.GetEnvironmentVariable("BEACHGO_ALLOWED_ORIGINS")?.Split(',') 
                     ?? new[] { "http://localhost:3000" };
 
@@ -57,26 +58,17 @@ builder.Services.AddCors(options => {
     });
 });
 
-// ─── JWT Authentication ───────────────────────────────
-var jwtSettings = builder.Configuration.GetSection("Jwt");
-var secretKeyString = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET") 
-                    ?? jwtSettings["SecretKey"] 
-                    ?? "BeachRehberi_Development_Only_Super_Secret_Key_2026!";
-var secretKey = Encoding.ASCII.GetBytes(secretKeyString);
-
-builder.Services.AddAuthentication(options => {
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
+// ─── Authentication ───────────────────────────────────────
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options => {
     options.TokenValidationParameters = new TokenValidationParameters {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"] ?? "BeachRehberi.API",
-        ValidAudience = jwtSettings["Audience"] ?? "BeachRehberi.App",
-        IssuerSigningKey = new SymmetricSecurityKey(secretKey)
+        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "BeachRehberi.API",
+        ValidAudience = builder.Configuration["Jwt:Audience"] ?? "BeachRehberi.App",
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
     };
 });
 
@@ -86,9 +78,9 @@ builder.Services.AddAuthorization(options => {
 
 var app = builder.Build();
 
-// ─── Pipeline (Middleware) ─────────────────────────────
+// ─── Pipeline ─────────────────────────────────────────────
 app.UseMiddleware<ExceptionMiddleware>();
-app.UseRateLimiter(); // Ănemli: CORS'tan Ăśnce gelmeli mi? HayÄąr, Routing'den sonra.
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment()) {
     app.UseSwagger();
@@ -100,5 +92,5 @@ app.UseCors("BeachGoPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers().RequireRateLimiter("fixed"); // VarsayÄąlan olarak tĂźmĂźne uygula
+app.MapControllers().RequireRateLimiter("fixed");
 app.Run();

@@ -1,24 +1,20 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Services;
-using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting; 
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 
-namespace BeachRehberi.API.Controllers;
+namespace BeachRehberi.API.Controllers;  
 
 [ApiController]
 [Route("api/[controller]")]
 [EnableRateLimiting("fixed")]
 public class ReservationsController : ControllerBase {
     private readonly IReservationService _reservationService;
-    private readonly BeachDbContext _context;
 
-    public ReservationsController(IReservationService reservationService, BeachDbContext context) {
+    public ReservationsController(IReservationService reservationService) {
         _reservationService = reservationService;
-        _context = context;
     }
 
     [Authorize]
@@ -31,14 +27,12 @@ public class ReservationsController : ControllerBase {
     [Authorize]
     [HttpDelete("{code}")]
     public async Task<IActionResult> Cancel(string code) {
-        var res = await _context.Reservations.FirstOrDefaultAsync(r => r.ConfirmationCode == code);
-        if (res == null) return NotFound();
-        
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (int.TryParse(userIdStr, out int userId) && res.UserId != userId && !User.IsInRole("Admin"))
-            return Forbid();
+        if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
 
-        await _reservationService.CancelAsync(code);
+        var success = await _reservationService.CancelAsync(code, userId);
+        if (!success) return Forbid();
+
         return Ok(ApiResponse<string>.SuccessResult(null, "İptal edildi."));
     }
 

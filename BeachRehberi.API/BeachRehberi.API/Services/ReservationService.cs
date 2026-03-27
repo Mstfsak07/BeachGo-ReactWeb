@@ -1,4 +1,4 @@
-using BeachRehberi.API.Data;
+﻿using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,35 +15,40 @@ public class ReservationService : IReservationService
         _notification = notification;
     }
 
+    private string GenerateAlphanumericCode(int length = 8)
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; 
+        var random = new Random();
+        return new string(Enumerable.Repeat(chars, length)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
+    }
+
     public async Task<Reservation> CreateAsync(Reservation reservation)
     {
-        // 1. Ücret Hesaplama (Security: İstemciye güvenme)
-        var beach = await _db.Beaches.AsNoTracking().FirstOrDefaultAsync(x => x.Id == reservation.BeachId)
+        var beach = await _db.Beaches.AsNoTracking().FirstOrDefaultAsync(x => x.Id == reservation.BeachId)      
                     ?? throw new KeyNotFoundException("Plaj bulunamadı.");
 
         reservation.TotalPrice = (beach.EntryFee + beach.SunbedPrice) * reservation.PersonCount;
         reservation.Status = ReservationStatus.Confirmed;
         reservation.CreatedAt = DateTime.UtcNow;
 
-        // 2. Retry Pattern for Unique Confirmation Code
-        int maxRetries = 3;
+        int maxRetries = 10;
         while (maxRetries > 0)
         {
             try
             {
-                reservation.ConfirmationCode = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
+                reservation.ConfirmationCode = GenerateAlphanumericCode(8);
                 _db.Reservations.Add(reservation);
                 await _db.SaveChangesAsync();
                 break;
             }
             catch (DbUpdateException) when (maxRetries-- > 0)
             {
-                _db.Entry(reservation).State = EntityState.Detached; // Reset tracking for retry
+                _db.Entry(reservation).State = EntityState.Detached;
                 if (maxRetries == 0) throw new Exception("Şu an sistemsel bir çakışma yaşanıyor, lütfen tekrar deneyin.");
             }
         }
 
-        // 3. Bildirim Gönder (Aynı kaldı)
         await _notification.SendToBusinessAsync(
             reservation.BeachId,
             $"Yeni Rezervasyon: {reservation.UserName} ({reservation.PersonCount} Kişi)");
@@ -65,11 +70,11 @@ public class ReservationService : IReservationService
             .Include(r => r.Beach)
             .FirstOrDefaultAsync(r => r.ConfirmationCode == code);
 
-    public async Task<bool> CancelAsync(string code)
+    public async Task<bool> CancelAsync(string code, int userId)
     {
         var res = await _db.Reservations.FirstOrDefaultAsync(r => r.ConfirmationCode == code);
-        if (res == null) return false;
-        
+        if (res == null || res.UserId != userId) return false;
+
         res.Status = ReservationStatus.Cancelled;
         await _db.SaveChangesAsync();
         return true;

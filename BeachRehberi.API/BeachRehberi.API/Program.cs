@@ -11,16 +11,11 @@ using BeachRehberi.API.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- Environment Variables (Production Check) ---
+// --- Environment Variables ---
 var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET");
 if (string.IsNullOrEmpty(jwtSecret))
 {
-    // Production'da uygulama başlamasın
-    if (builder.Environment.IsProduction())
-        throw new InvalidOperationException("CRITICAL: BEACHGO_JWT_SECRET environment variable is missing!");
-    
-    // Dev ortamı için geçici anahtar
-    jwtSecret = "Development_Secret_Key_Do_Not_Use_In_Production_2026!";
+    throw new InvalidOperationException("CRITICAL: BEACHGO_JWT_SECRET environment variable is missing!");
 }
 
 var dbConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=beachrehberi.db";

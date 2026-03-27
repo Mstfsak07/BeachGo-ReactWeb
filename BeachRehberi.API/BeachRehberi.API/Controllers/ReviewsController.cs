@@ -1,15 +1,17 @@
-using BeachRehberi.API.Data;
+﻿using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
-namespace BeachRehberi.API.Controllers;
+namespace BeachRehberi.API.Controllers;        
 
 [ApiController]
 [Route("api/[controller]")]
 public class ReviewsController : ControllerBase
 {
-    private readonly BeachDbContext _db;
+    private readonly BeachDbContext _db;       
 
     public ReviewsController(BeachDbContext db) => _db = db;
 
@@ -24,20 +26,29 @@ public class ReviewsController : ControllerBase
         return Ok(ApiResponse<List<Review>>.SuccessResult(reviews));
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateReviewDto dto)
     {
-        if (dto.Rating < 1 || dto.Rating > 5) 
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+
+        if (dto.Rating < 1 || dto.Rating > 5)
             return BadRequest(ApiResponse<string>.FailureResult("Puan 1-5 arasında olmalıdır."));
+
+        var existingReview = await _db.Reviews.AnyAsync(r => r.BeachId == dto.BeachId && r.UserId == userId);
+        if (existingReview)
+            return BadRequest(ApiResponse<string>.FailureResult("Bu plaj için zaten yorum yaptınız."));
 
         var review = new Review
         {
+            UserId = userId,
             BeachId = dto.BeachId,
             UserName = dto.UserName,
             UserPhone = dto.UserPhone,
             Rating = dto.Rating,
             Comment = dto.Comment,
-            IsApproved = true // Otomatik onay (Üretim ortamında false yapılabilir)
+            IsApproved = true 
         };
 
         _db.Reviews.Add(review);
@@ -49,7 +60,7 @@ public class ReviewsController : ControllerBase
                 .Where(r => r.BeachId == dto.BeachId && r.IsApproved)
                 .Select(r => r.Rating)
                 .ToListAsync();
-            
+
             ratings.Add(dto.Rating);
             beach.Rating = Math.Round(ratings.Average(), 1);
         }

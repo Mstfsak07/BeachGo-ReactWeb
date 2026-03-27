@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -15,35 +15,24 @@ var builder = WebApplication.CreateBuilder(args);
 var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET");
 if (string.IsNullOrEmpty(jwtSecret))
 {
-    throw new InvalidOperationException("CRITICAL: BEACHGO_JWT_SECRET environment variable is missing!");
+    throw new InvalidOperationException("CRITICAL: BEACHGO_JWT_SECRET environment variable is missing!");       
 }
 
-var dbConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=beachrehberi.db";
+var dbConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=beachrehberi.db";   
 
 // --- Database ---
 builder.Services.AddDbContext<BeachDbContext>(options => options.UseSqlite(dbConn));
 
-// --- Rate Limiting (Korumalı) ---
+// --- Rate Limiting ---
 builder.Services.AddRateLimiter(options => {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            httpContext.Connection.RemoteIpAddress?.ToString() ?? "anon",
-            _ => new FixedWindowRateLimiterOptions
-            {
-                PermitLimit = 60,
-                Window = TimeSpan.FromMinutes(1),
-                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-                QueueLimit = 0
-            }));
-
     options.AddFixedWindowLimiter("fixed", opt => {
         opt.Window = TimeSpan.FromMinutes(1);
         opt.PermitLimit = 100;
     });
     options.AddFixedWindowLimiter("auth", opt => {
         opt.Window = TimeSpan.FromMinutes(1);
-        opt.PermitLimit = 5; // Production seviyesi kısıtlama
+        opt.PermitLimit = 5; 
     });
 });
 
@@ -54,6 +43,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
 
 // Business Services Registration
+builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IBeachService, BeachService>();
 builder.Services.AddScoped<IBusinessService, BusinessService>();
@@ -64,24 +54,28 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 // CORS
 builder.Services.AddCors(options => {
     options.AddPolicy("BeachGoPolicy", policy => {
-        policy.WithOrigins("https://beachgo.app", "http://localhost:3000").AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+        policy.WithOrigins("https://beachgo.app", "http://localhost:3000")
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
 // Authentication
-var jwtKey = Encoding.UTF8.GetBytes(jwtSecret);
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options => {
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
 .AddJwtBearer(options => {
     options.TokenValidationParameters = new TokenValidationParameters {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
-        RequireExpirationTime = true,
-        ClockSkew = TimeSpan.FromMinutes(2),
         ValidateIssuerSigningKey = true,
         ValidIssuer = "BeachRehberi.API",
         ValidAudience = "BeachRehberi.App",
-        IssuerSigningKey = new SymmetricSecurityKey(jwtKey)
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        ClockSkew = TimeSpan.Zero
     };
 });
 
@@ -92,14 +86,15 @@ builder.Services.AddAuthorization(options => {
 var app = builder.Build();
 
 // --- Production Pipeline ---
-app.UseMiddleware<GlobalExceptionMiddleware>(); // Global Exception Handling (En Başta)
+app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseRateLimiter();
 app.UseCors("BeachGoPolicy");
+
 app.UseAuthentication();
+app.UseMiddleware<JwtBlacklistMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
 
 app.Run();
-

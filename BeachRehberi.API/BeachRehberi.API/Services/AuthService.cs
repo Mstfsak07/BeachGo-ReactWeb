@@ -1,35 +1,99 @@
 ﻿using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
-using BCrypt.Net;
 
 namespace BeachRehberi.API.Services;
 
 public class AuthService : IAuthService {
     private readonly BeachDbContext _db;
-    public AuthService(BeachDbContext db) { _db = db; }
+    private readonly ITokenService _tokenService;
+
+    public AuthService(BeachDbContext db, ITokenService tokenService) { 
+        _db = db; 
+        _tokenService = tokenService;
+    }
 
     public async Task<AuthResponse?> LoginAsync(string email, string password) {
         var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == email);
-        if (user == null || !user.IsActive || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash)) return null;
+        if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash)) return null;
 
-        user.LastLoginAt = DateTime.UtcNow;
+        var accessToken = _tokenService.GenerateAccessToken(user);
+        var refreshTokenStr = _tokenService.GenerateRefreshToken();
+
+        var refreshToken = new RefreshToken {
+            UserId = user.Id,
+            Token = refreshTokenStr,
+            ExpiryDate = DateTime.UtcNow.AddDays(7),
+            IsRevoked = false
+        };
+
+        _db.RefreshTokens.Add(refreshToken);
         await _db.SaveChangesAsync();
 
         return new AuthResponse {
             Email = user.Email,
-            Token = GenerateJwtToken(user),
+            Token = accessToken,
+            RefreshToken = refreshTokenStr,
             Role = user.Role
         };
     }
 
+    public async Task<AuthResponse?> RefreshTokenAsync(string refreshTokenStr) {
+        var refreshToken = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshTokenStr);
+        if (refreshToken == null || refreshToken.ExpiryDate < DateTime.UtcNow || refreshToken.IsRevoked) return null;
+
+        var user = await _db.BusinessUsers.FindAsync(refreshToken.UserId);
+        if (user == null) return null;
+
+        // Revoke old token
+        refreshToken.IsRevoked = true;
+
+        // Generate new pair
+        var newAccessToken = _tokenService.GenerateAccessToken(user);
+        var newRefreshTokenStr = _tokenService.GenerateRefreshToken();
+
+        var newRefreshToken = new RefreshToken {
+            UserId = user.Id,
+            Token = newRefreshTokenStr,
+            ExpiryDate = DateTime.UtcNow.AddDays(7),
+            IsRevoked = false
+        };
+
+        _db.RefreshTokens.Add(newRefreshToken);
+        await _db.SaveChangesAsync();
+
+        return new AuthResponse {
+            Email = user.Email,
+            Token = newAccessToken,
+            RefreshToken = newRefreshTokenStr,
+            Role = user.Role
+        };
+    }
+
+    public async Task LogoutAsync(string? accessTokenStr, string? refreshTokenStr) {
+        if (!string.IsNullOrEmpty(refreshTokenStr)) {
+            var refreshToken = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshTokenStr);
+            if (refreshToken != null) {
+                refreshToken.IsRevoked = true;
+                // Revoke all other refresh tokens for this user for safety
+                var otherTokens = await _db.RefreshTokens.Where(rt => rt.UserId == refreshToken.UserId && !rt.IsRevoked).ToListAsync();
+                foreach(var t in otherTokens) t.IsRevoked = true;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(accessTokenStr)) {
+            var handler = new JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(accessTokenStr);
+            await _tokenService.BlacklistTokenAsync(accessTokenStr, jwtToken.ValidTo);
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
     public async Task<BusinessUser?> RegisterAsync(RegisterRequest request) {
         if (await _db.BusinessUsers.AnyAsync(u => u.Email == request.Email)) return null;
-        if (!await _db.Beaches.AnyAsync(b => b.Id == request.BeachId)) return null;
 
         var user = new BusinessUser {
             Email = request.Email,
@@ -41,28 +105,5 @@ public class AuthService : IAuthService {
         _db.BusinessUsers.Add(user);
         await _db.SaveChangesAsync();
         return user;
-    }
-
-    private string GenerateJwtToken(BusinessUser user) {
-        var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET");
-        if (string.IsNullOrEmpty(jwtSecret))
-            throw new InvalidOperationException("BEACHGO_JWT_SECRET is missing!");
-
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.UTF8.GetBytes(jwtSecret);
-        var tokenDescriptor = new SecurityTokenDescriptor {
-            Subject = new ClaimsIdentity(new[] {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role),
-                new Claim("BeachId", user.BeachId.ToString())
-            }),
-            Expires = DateTime.UtcNow.AddHours(8),
-            Issuer = "BeachRehberi.API",
-            Audience = "BeachRehberi.App",
-            SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-        };
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-        return tokenHandler.WriteToken(token);
     }
 }

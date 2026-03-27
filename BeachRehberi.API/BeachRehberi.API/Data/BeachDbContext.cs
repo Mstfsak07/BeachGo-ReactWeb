@@ -1,4 +1,4 @@
-using BeachRehberi.API.Models;
+﻿using BeachRehberi.API.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeachRehberi.API.Data;
@@ -13,28 +13,34 @@ public class BeachDbContext : DbContext
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<BeachPhoto> Photos => Set<BeachPhoto>();
     public DbSet<BusinessUser> BusinessUsers => Set<BusinessUser>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Reservation: Unique Index + Backend Price Calculation Mapping
         modelBuilder.Entity<Reservation>(e =>
         {
             e.HasKey(x => x.Id);
-            e.HasIndex(x => x.ConfirmationCode).IsUnique(); // Race Condition engeli
+            e.HasIndex(x => x.ConfirmationCode).IsUnique(); 
             e.Property(x => x.TotalPrice).HasColumnType("decimal(10,2)");
             e.HasOne(x => x.Beach).WithMany(x => x.Reservations).HasForeignKey(x => x.BeachId).OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Review: Composite Unique Index (Her user-beach ikilisi tekil olmalı)
         modelBuilder.Entity<Review>(e =>
         {
             e.HasKey(x => x.Id);
-            e.HasIndex(x => new { x.BeachId, x.UserId }).IsUnique(); // Kısıtlama
+            e.HasIndex(x => new { x.BeachId, x.UserId }).IsUnique(); 
             e.HasOne(x => x.Beach).WithMany(x => x.Reviews).HasForeignKey(x => x.BeachId).OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Seed Data... (Aynı kaldı)
+        modelBuilder.Entity<RefreshToken>(e => {
+            e.HasIndex(x => x.Token).IsUnique();
+        });
+
+        modelBuilder.Entity<RevokedToken>(e => {
+            e.HasKey(x => x.Token);
+        });
     }
 }

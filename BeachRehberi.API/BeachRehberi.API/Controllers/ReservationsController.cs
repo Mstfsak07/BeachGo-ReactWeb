@@ -42,7 +42,7 @@ public class ReservationsController : ControllerBase {
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] Reservation reservation) {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (int.TryParse(userIdStr, out int userId)) reservation.UserId = userId;
+        reservation.UserId = int.TryParse(userIdStr, out int userId) ? userId : null;
         var result = await _reservationService.CreateAsync(reservation);
         return Ok(ApiResponse<Reservation>.SuccessResult(result));
     }

@@ -58,16 +58,19 @@ builder.Services.AddCors(options => {
 });
 
 // Authentication
+var jwtKey = Encoding.UTF8.GetBytes(jwtSecret);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options => {
     options.TokenValidationParameters = new TokenValidationParameters {
         ValidateIssuer = true,
         ValidateAudience = true,
         ValidateLifetime = true,
+        RequireExpirationTime = true,
+        ClockSkew = TimeSpan.FromMinutes(2),
         ValidateIssuerSigningKey = true,
         ValidIssuer = "BeachRehberi.API",
         ValidAudience = "BeachRehberi.App",
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+        IssuerSigningKey = new SymmetricSecurityKey(jwtKey)
     };
 });
 

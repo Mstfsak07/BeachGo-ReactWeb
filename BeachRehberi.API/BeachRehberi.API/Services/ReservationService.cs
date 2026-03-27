@@ -1,6 +1,8 @@
 ﻿using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace BeachRehberi.API.Services;
 
@@ -15,12 +17,21 @@ public class ReservationService : IReservationService
         _notification = notification;
     }
 
+    private static readonly char[] ConfirmationChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".ToCharArray();
+
     private string GenerateAlphanumericCode(int length = 8)
     {
-        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; 
-        var random = new Random();
-        return new string(Enumerable.Repeat(chars, length)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
+        var codeChars = new char[length];
+        for (int i = 0; i < length; i++)
+        {
+            codeChars[i] = ConfirmationChars[RandomNumberGenerator.GetInt32(ConfirmationChars.Length)];
+        }
+        return new string(codeChars);
+    }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+    {
+        return ex.InnerException is SqliteException sqliteEx && sqliteEx.SqliteErrorCode == 19;
     }
 
     public async Task<Reservation> CreateAsync(Reservation reservation)
@@ -42,7 +53,7 @@ public class ReservationService : IReservationService
                 await _db.SaveChangesAsync();
                 break;
             }
-            catch (DbUpdateException) when (maxRetries-- > 0)
+            catch (DbUpdateException ex) when (maxRetries-- > 0 && IsUniqueConstraintViolation(ex))
             {
                 _db.Entry(reservation).State = EntityState.Detached;
                 if (maxRetries == 0) throw new Exception("Şu an sistemsel bir çakışma yaşanıyor, lütfen tekrar deneyin.");

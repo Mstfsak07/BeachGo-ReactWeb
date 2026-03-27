@@ -34,7 +34,15 @@ namespace BeachRehberi.API.Controllers
             if (user == null)
                 return BadRequest(ApiResponse<string>.FailureResult("Bu e-posta adresi zaten kullanımda."));
 
-            return Ok(ApiResponse<BusinessUser>.SuccessResult(user, "Kayıt başarılı."));
+            return Ok(ApiResponse<object>.SuccessResult(new {
+                user.Id,
+                user.Email,
+                user.BusinessName,
+                user.ContactName,
+                user.BeachId,
+                user.Role,
+                user.CreatedAt
+            }, "Kayıt başarılı."));
         }
     }
 }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using System.Text.Encodings.Web;
 
 namespace BeachRehberi.API.Controllers;        
 
@@ -22,8 +23,14 @@ public class ReviewsController : ControllerBase
             .Where(r => r.BeachId == beachId && r.IsApproved)
             .OrderByDescending(r => r.CreatedAt)
             .Take(20)
+            .Select(r => new PublicReviewDto {
+                UserName = r.UserName,
+                Rating = r.Rating,
+                Comment = r.Comment,
+                CreatedAt = r.CreatedAt
+            })
             .ToListAsync();
-        return Ok(ApiResponse<List<Review>>.SuccessResult(reviews));
+        return Ok(ApiResponse<List<PublicReviewDto>>.SuccessResult(reviews));
     }
 
     [Authorize]
@@ -44,10 +51,10 @@ public class ReviewsController : ControllerBase
         {
             UserId = userId,
             BeachId = dto.BeachId,
-            UserName = dto.UserName,
-            UserPhone = dto.UserPhone,
+            UserName = HtmlEncoder.Default.Encode(dto.UserName),
+            UserPhone = HtmlEncoder.Default.Encode(dto.UserPhone),
             Rating = dto.Rating,
-            Comment = dto.Comment,
+            Comment = HtmlEncoder.Default.Encode(dto.Comment),
             IsApproved = true 
         };
 
@@ -68,6 +75,14 @@ public class ReviewsController : ControllerBase
         await _db.SaveChangesAsync();
         return Ok(ApiResponse<Review>.SuccessResult(review, "Yorumunuz için teşekkürler."));
     }
+}
+
+public class PublicReviewDto
+{
+    public string UserName { get; set; } = string.Empty;
+    public int Rating { get; set; }
+    public string Comment { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
 }
 
 public class CreateReviewDto

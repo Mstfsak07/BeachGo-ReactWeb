@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace BeachRehberi.API.Models
@@ -18,12 +18,12 @@ namespace BeachRehberi.API.Models
         public int BeachId { get; set; }
         public Beach? Beach { get; set; }
 
-        [Required(ErrorMessage = \"Kullanıcı adı zorunludur.\")]
+        [Required(ErrorMessage = "Kullanıcı adı zorunludur.")]
         [StringLength(100, MinimumLength = 2)]
         public required string UserName { get; set; }
 
-        [Required(ErrorMessage = \"Telefon numarası zorunludur.\")]
-        [RegularExpression(@\"^\+?(\d{10,12})$\", ErrorMessage = \"Geçerli bir telefon numarası giriniz.\")]
+        [Required(ErrorMessage = "Telefon numarası zorunludur.")]
+        [RegularExpression(@"^\+?(\d{10,12})$", ErrorMessage = "Geçerli bir telefon numarası giriniz.")]
         public required string UserPhone { get; set; }
 
         [Range(1, 20)]

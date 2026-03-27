@@ -1,15 +1,22 @@
-﻿namespace BeachRehberi.API.Models;
+using System;
+
+namespace BeachRehberi.API.Models;
 
 public class BusinessUser
 {
     public int Id { get; set; }
     public int BeachId { get; set; }
-    public Beach Beach { get; set; } = null!;
-    public string Email { get; set; } = string.Empty;
-    public string PasswordHash { get; set; } = string.Empty;
-    public string ContactName { get; set; } = string.Empty;
-    public string Role { get; set; } = "BusinessOwner"; // Default rol
+    public Beach? Beach { get; set; }
+    
+    public required string Email { get; set; }
+    public required string PasswordHash { get; set; }
+    
+    public string? ContactName { get; set; }
+    public string? BusinessName { get; set; } // Hata vermemesi için nullable yaptım
+    
+    public string Role { get; set; } = "BusinessOwner";
+    public DateTime? LastLoginAt { get; set; }
+    
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime? LastLoginAt { get; set; }
 }

@@ -23,7 +23,7 @@ var dbConn = Environment.GetEnvironmentVariable("BEACHGO_DB_CONN")
 // ─── Veritabanı ───────────────────────────────────────────
 builder.Services.AddDbContext<BeachDbContext>(options => options.UseSqlite(dbConn));
 
-// ─── Rate Limiting ────────────────────────────────────────
+// ─── Rate Limiting ───────────────────────────────────────
 builder.Services.AddRateLimiter(options => {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddFixedWindowLimiter("fixed", opt => {
@@ -58,7 +58,7 @@ builder.Services.AddCors(options => {
     });
 });
 
-// ─── Authentication ───────────────────────────────────────
+// ─── Authentication ─────────────────────────────────────
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options => {
     options.TokenValidationParameters = new TokenValidationParameters {

@@ -56,11 +56,11 @@ public class ReservationService : IReservationService
         return reservation;
     }
 
-    public async Task<List<Reservation>> GetByPhoneAsync(string phone) =>
+    public async Task<List<Reservation>> GetByUserAsync(int userId) =>
         await _db.Reservations
             .AsNoTracking()
             .Include(r => r.Beach)
-            .Where(r => r.UserPhone == phone)
+            .Where(r => r.UserId == userId)
             .OrderByDescending(r => r.ReservationDate)
             .ToListAsync();
 

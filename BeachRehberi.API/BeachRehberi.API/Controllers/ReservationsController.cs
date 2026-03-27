@@ -18,9 +18,12 @@ public class ReservationsController : ControllerBase {
     }
 
     [Authorize]
-    [HttpGet("phone/{phone}")]
-    public async Task<IActionResult> GetByPhone(string phone) {
-        var res = await _reservationService.GetByPhoneAsync(phone);
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMyReservations() {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+
+        var res = await _reservationService.GetByUserAsync(userId);
         return Ok(ApiResponse<List<Reservation>>.SuccessResult(res));
     }
 

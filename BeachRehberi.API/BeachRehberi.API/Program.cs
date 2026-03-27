@@ -1,4 +1,7 @@
-﻿using System.Text;
+﻿using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +11,23 @@ using Microsoft.AspNetCore.Builder;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Services;
 using BeachRehberi.API.Middlewares;
+
+var instanceMutexName = "BeachRehberi.API.Singleton";
+Mutex? instanceMutex = null;
+
+try
+{
+    instanceMutex = new Mutex(true, instanceMutexName, out bool createdNew);
+    if (!createdNew)
+    {
+        Console.WriteLine("Another BeachRehberi.API instance is already running. Exiting duplicate instance.");
+        return;
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Unable to acquire instance lock: {ex.Message}");
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,7 +103,18 @@ builder.Services.AddAuthorization(options => {
     options.AddPolicy("BusinessOnly", policy => policy.RequireRole("BusinessOwner", "Admin"));
 });
 
+var preferredHttpPort = 5143;
+var actualHttpPort = FindAvailablePort(preferredHttpPort);
+builder.WebHost.UseUrls($"http://127.0.0.1:{actualHttpPort}");
+Console.WriteLine($"BeachRehberi.API will listen on http://127.0.0.1:{actualHttpPort}");
+
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 // --- Production Pipeline ---
 app.UseMiddleware<GlobalExceptionMiddleware>();
@@ -98,4 +129,33 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static int FindAvailablePort(int preferredPort)
+{
+    for (var port = preferredPort; port < preferredPort + 1000; port++)
+    {
+        if (!IsTcpPortInUse(port))
+        {
+            return port;
+        }
+    }
+
+    throw new InvalidOperationException("Unable to find an available HTTP port for BeachRehberi.API.");
+}
+
+static bool IsTcpPortInUse(int port)
+{
+    try
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, port);
+        listener.Start();
+        listener.Stop();
+        return false;
+    }
+    catch (SocketException)
+    {
+        return true;
+    }
+}
+
 

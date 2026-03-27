@@ -27,4 +27,8 @@
     <Folder Include="Migrations\" />
   </ItemGroup>
 
+  <Target Name="KillConflictingProjectProcesses" BeforeTargets="BeforeBuild" Condition="'$(OS)' == 'Windows_NT'">
+    <Exec Command="powershell -NoProfile -Command &quot;$processes = Get-CimInstance Win32_Process | Where-Object { ($_.Name -ieq 'BeachRehberi.API.exe') -or ($_.Name -ieq 'dotnet.exe' -and ($_.CommandLine -match 'BeachRehberi.API.dll' -or $_.CommandLine -match 'BeachRehberi.API.exe')) }; if ($processes) { $processes | ForEach-Object { Write-Host 'Stopping process' $_.ProcessId; Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } }&quot;" />
+  </Target>
+
 </Project>

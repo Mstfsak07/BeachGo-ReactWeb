@@ -5,8 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.RateLimiting;
 using BeachRehberi.API.Data;
-using BeachRehberi.API.Middlewares; // Eklendi
-using BeachRehberi.API.Mappings; // Eklendi
+
 using BeachRehberi.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -76,7 +75,7 @@ builder.Services.AddAuthorization(options => {
 var app = builder.Build();
 
 // ─── Pipeline ─────────────────────────────────────────────
-app.UseMiddleware<ExceptionMiddleware>();
+
 app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment()) {

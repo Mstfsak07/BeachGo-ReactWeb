@@ -13,7 +13,6 @@ public class EventsController : ControllerBase
 
     public EventsController(BeachDbContext db) => _db = db;
 
-    // GET api/events
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -22,33 +21,31 @@ public class EventsController : ControllerBase
             .Where(e => e.IsActive && e.StartDate >= DateTime.UtcNow)
             .OrderBy(e => e.StartDate)
             .ToListAsync();
-        return Ok(events);
+            
+        return Ok(ApiResponse<List<BeachEvent>>.SuccessResult(events));
     }
 
-    // GET api/events/today
     [HttpGet("today")]
     public async Task<IActionResult> GetToday()
     {
         var today = DateTime.UtcNow.Date;
         var events = await _db.Events
             .Include(e => e.Beach)
-            .Where(e => e.IsActive &&
-                        e.StartDate.Date == today)
+            .Where(e => e.IsActive && e.StartDate.Date == today)
             .OrderBy(e => e.StartDate)
             .ToListAsync();
-        return Ok(events);
+            
+        return Ok(ApiResponse<List<BeachEvent>>.SuccessResult(events));
     }
 
-    // GET api/events/beach/5
     [HttpGet("beach/{beachId}")]
     public async Task<IActionResult> GetByBeach(int beachId)
     {
         var events = await _db.Events
-            .Where(e => e.BeachId == beachId &&
-                        e.IsActive &&
-                        e.StartDate >= DateTime.UtcNow)
+            .Where(e => e.BeachId == beachId && e.IsActive && e.StartDate >= DateTime.UtcNow)
             .OrderBy(e => e.StartDate)
             .ToListAsync();
-        return Ok(events);
+            
+        return Ok(ApiResponse<List<BeachEvent>>.SuccessResult(events));
     }
 }

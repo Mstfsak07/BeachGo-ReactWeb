@@ -17,59 +17,55 @@ public class BeachesController : ControllerBase
         _weatherService = weatherService;
     }
 
-    // GET api/beaches
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var beaches = await _beachService.GetAllAsync();
-        return Ok(beaches);
+        return Ok(ApiResponse<List<Beach>>.SuccessResult(beaches));
     }
 
-    // GET api/beaches/5
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
         var beach = await _beachService.GetByIdAsync(id);
-        if (beach == null) return NotFound();
-        return Ok(beach);
+        if (beach == null) 
+            return NotFound(ApiResponse<Beach>.FailureResult("Plaj bulunamadı."));
+            
+        return Ok(ApiResponse<Beach>.SuccessResult(beach));
     }
 
-    // GET api/beaches/search?q=kalypso
     [HttpGet("search")]
     public async Task<IActionResult> Search([FromQuery] string q)
     {
         var results = await _beachService.SearchAsync(q);
-        return Ok(results);
+        return Ok(ApiResponse<List<Beach>>.SuccessResult(results));
     }
 
-    // POST api/beaches/filter
     [HttpPost("filter")]
     public async Task<IActionResult> Filter([FromBody] BeachFilter filter)
     {
         var results = await _beachService.FilterAsync(filter);
-        return Ok(results);
+        return Ok(ApiResponse<List<Beach>>.SuccessResult(results));
     }
 
-    // GET api/beaches/5/weather
     [HttpGet("{id}/weather")]
     public async Task<IActionResult> GetWeather(int id)
     {
         var beach = await _beachService.GetByIdAsync(id);
-        if (beach == null) return NotFound();
+        if (beach == null) 
+            return NotFound(ApiResponse<object>.FailureResult("Plaj bulunamadı."));
 
         var weather = await _weatherService.GetWeatherAsync(beach.Latitude, beach.Longitude);
         var sea = await _weatherService.GetSeaDataAsync(beach.Latitude, beach.Longitude);
 
-        return Ok(new { weather, sea });
+        return Ok(ApiResponse<object>.SuccessResult(new { weather, sea }));
     }
 
-    // GET api/beaches/weather/all - Ana sayfa için tek istekte hava durumu
     [HttpGet("weather/konyaalti")]
     public async Task<IActionResult> GetKonyaaltiWeather()
     {
-        // Konyaaltı merkez koordinatları
         var weather = await _weatherService.GetWeatherAsync(36.8785, 30.6657);
         var sea = await _weatherService.GetSeaDataAsync(36.8785, 30.6657);
-        return Ok(new { weather, sea });
+        return Ok(ApiResponse<object>.SuccessResult(new { weather, sea }));
     }
 }

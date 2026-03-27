@@ -2,49 +2,56 @@
 using Microsoft.AspNetCore.Authorization;
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Services;
-using Microsoft.AspNetCore.RateLimiting; 
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
-namespace BeachRehberi.API.Controllers;  
+namespace BeachRehberi.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [EnableRateLimiting("fixed")]
 [Authorize]
-public class ReservationsController : ControllerBase {
+public class ReservationsController : ControllerBase 
+{
     private readonly IReservationService _reservationService;
 
-    public ReservationsController(IReservationService reservationService) {
+    public ReservationsController(IReservationService reservationService) 
+    {
         _reservationService = reservationService;
     }
 
-    [Authorize]
     [HttpGet("my")]
-    public async Task<IActionResult> GetMyReservations() {
+    public async Task<IActionResult> GetMyReservations() 
+    {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+        if (!int.TryParse(userIdStr, out int userId)) 
+            return Unauthorized(ApiResponse<object>.FailureResult("Kullanıcı kimliği doğrulanamadı."));
 
         var res = await _reservationService.GetByUserAsync(userId);
         return Ok(ApiResponse<List<Reservation>>.SuccessResult(res));
     }
 
-    [Authorize]
     [HttpDelete("{code}")]
-    public async Task<IActionResult> Cancel(string code) {
+    public async Task<IActionResult> Cancel(string code) 
+    {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+        if (!int.TryParse(userIdStr, out int userId)) 
+            return Unauthorized(ApiResponse<object>.FailureResult("Kullanıcı kimliği doğrulanamadı."));
 
         var success = await _reservationService.CancelAsync(code, userId);
-        if (!success) return Forbid();
+        if (!success) 
+            return BadRequest(ApiResponse<object>.FailureResult("Rezervasyon iptal edilemedi veya yetkiniz yok."));
 
-        return Ok(ApiResponse<string>.SuccessResult(null, "İptal edildi."));
+        return Ok(ApiResponse<string>.SuccessResult(null, "Rezervasyon iptal edildi."));
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] Reservation reservation) {
+    public async Task<IActionResult> Create([FromBody] Reservation reservation) 
+    {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         reservation.UserId = int.TryParse(userIdStr, out int userId) ? userId : null;
+        
         var result = await _reservationService.CreateAsync(reservation);
-        return Ok(ApiResponse<Reservation>.SuccessResult(result));
+        return Ok(ApiResponse<Reservation>.SuccessResult(result, "Rezervasyon başarıyla oluşturuldu."));
     }
 }

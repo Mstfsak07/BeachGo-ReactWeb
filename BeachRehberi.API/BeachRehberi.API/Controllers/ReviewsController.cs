@@ -7,14 +7,14 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
-namespace BeachRehberi.API.Controllers;        
+namespace BeachRehberi.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [EnableRateLimiting("fixed")]
 public class ReviewsController : ControllerBase
 {
-    private readonly BeachDbContext _db;       
+    private readonly BeachDbContext _db;
 
     public ReviewsController(BeachDbContext db) => _db = db;
 
@@ -32,6 +32,7 @@ public class ReviewsController : ControllerBase
                 CreatedAt = r.CreatedAt
             })
             .ToListAsync();
+            
         return Ok(ApiResponse<List<PublicReviewDto>>.SuccessResult(reviews));
     }
 
@@ -40,7 +41,8 @@ public class ReviewsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateReviewDto dto)
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdStr, out int userId)) return Unauthorized();
+        if (!int.TryParse(userIdStr, out int userId)) 
+            return Unauthorized(ApiResponse<object>.FailureResult("Kullanıcı kimliği doğrulanamadı."));
 
         if (dto.Rating < 1 || dto.Rating > 5)
             return BadRequest(ApiResponse<string>.FailureResult("Puan 1-5 arasında olmalıdır."));
@@ -57,7 +59,7 @@ public class ReviewsController : ControllerBase
             UserPhone = HtmlEncoder.Default.Encode(dto.UserPhone),
             Rating = dto.Rating,
             Comment = HtmlEncoder.Default.Encode(dto.Comment),
-            IsApproved = true 
+            IsApproved = true
         };
 
         _db.Reviews.Add(review);

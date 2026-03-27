@@ -23,7 +23,7 @@ public class BeachDbContext : DbContext
         modelBuilder.Entity<Reservation>(e =>
         {
             e.HasKey(x => x.Id);
-            e.HasIndex(x => x.ConfirmationCode).IsUnique(); 
+            e.HasIndex(x => x.ConfirmationCode).IsUnique();
             e.Property(x => x.TotalPrice).HasColumnType("decimal(10,2)");
             e.HasOne(x => x.Beach).WithMany(x => x.Reservations).HasForeignKey(x => x.BeachId).OnDelete(DeleteBehavior.Cascade);
         });
@@ -31,13 +31,14 @@ public class BeachDbContext : DbContext
         modelBuilder.Entity<Review>(e =>
         {
             e.HasKey(x => x.Id);
-            e.HasIndex(x => new { x.BeachId, x.UserId }).IsUnique(); 
+            e.HasIndex(x => new { x.BeachId, x.UserId }).IsUnique();
             e.HasOne(x => x.Beach).WithMany(x => x.Reviews).HasForeignKey(x => x.BeachId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<BusinessUser>(e =>
         {
             e.HasKey(u => u.Id);
+            e.HasIndex(u => u.Email).IsUnique(); // Database level unique constraint for email
             e.HasOne(u => u.Beach)
                 .WithMany()
                 .HasForeignKey(u => u.BeachId)
@@ -47,6 +48,8 @@ public class BeachDbContext : DbContext
 
         modelBuilder.Entity<RefreshToken>(e => {
             e.HasIndex(x => x.Token).IsUnique();
+            e.Property(x => x.ReplacedByToken).HasMaxLength(500);
+            e.Property(x => x.ReasonRevoked).HasMaxLength(500);
         });
 
         modelBuilder.Entity<RevokedToken>(e => {

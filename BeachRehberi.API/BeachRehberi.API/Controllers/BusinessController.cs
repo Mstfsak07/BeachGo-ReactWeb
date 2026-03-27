@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +25,8 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> GetMyReservations()
         {
             var beachId = GetUserBeachId();
-            if (beachId == -1) return Unauthorized();
+            if (beachId == -1) 
+                return Unauthorized(ApiResponse<object>.FailureResult("İşletme yetkiniz bulunamadı veya bağlı bir plaj yok."));
 
             var reservations = await _context.Reservations
                 .Where(r => r.BeachId == beachId)
@@ -50,13 +51,17 @@ namespace BeachRehberi.API.Controllers
         private async Task<IActionResult> UpdateReservationStatus(int id, ReservationStatus status, string? comment = null)
         {
             var beachId = GetUserBeachId();
+            if (beachId == -1) 
+                return Unauthorized(ApiResponse<object>.FailureResult("Yetki hatası."));
+
             var res = await _context.Reservations.FirstOrDefaultAsync(r => r.Id == id && r.BeachId == beachId);
 
-            if (res == null) return NotFound(ApiResponse<string>.FailureResult("Rezervasyon bulunamadı."));
+            if (res == null) 
+                return NotFound(ApiResponse<string>.FailureResult("Rezervasyon bulunamadı veya bu rezervasyona erişim yetkiniz yok."));
 
             res.Status = status;
             if (comment != null) res.BusinessComment = comment;
-            
+
             await _context.SaveChangesAsync();
             return Ok(ApiResponse<string>.SuccessResult(null, $"Rezervasyon {status} durumuna getirildi."));
         }

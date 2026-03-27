@@ -3,6 +3,7 @@ using BeachRehberi.API.Models;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Data;
 
 namespace BeachRehberi.API.Services;
 
@@ -19,10 +20,22 @@ public class AuthService : IAuthService
         _logger = logger;
     }
 
-    public async Task<AuthResponse?> LoginAsync(string email, string password)
+    public async Task<ApiResponse<AuthResponse>> LoginAsync(string email, string password)
     {
+        _logger.LogInformation("Login attempt for email: {Email}", email);
+        
         var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == email);
-        if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash)) return null;
+        
+        if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+        {
+            _logger.LogWarning("Invalid login attempt for email: {Email}", email);
+            return ApiResponse<AuthResponse>.FailureResult("E-posta adresi veya şifre hatalı.");
+        }
+
+        if (!user.IsActive)
+        {
+            return ApiResponse<AuthResponse>.FailureResult("Hesabınız pasif durumdadır.");
+        }
 
         var accessToken = _tokenService.GenerateAccessToken(user);
         var refreshTokenStr = _tokenService.GenerateRefreshToken();
@@ -32,35 +45,60 @@ public class AuthService : IAuthService
             UserId = user.Id,
             Token = refreshTokenStr,
             ExpiryDate = DateTime.UtcNow.AddDays(7),
-            IsRevoked = false
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow
         };
 
+        // Requirement 2: DB-backed refresh tokens
         _db.RefreshTokens.Add(refreshToken);
+        
+        user.LastLoginAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        return new AuthResponse
+        return ApiResponse<AuthResponse>.SuccessResult(new AuthResponse
         {
             Email = user.Email,
             Token = accessToken,
             RefreshToken = refreshTokenStr,
             Role = user.Role
-        };
+        }, "Giriş başarılı.");
     }
 
-    public async Task<AuthResponse?> RefreshTokenAsync(string refreshTokenStr)
+    public async Task<ApiResponse<AuthResponse>> RefreshTokenAsync(string refreshTokenStr)
     {
-        var affectedRows = await _db.RefreshTokens
-            .Where(rt => rt.Token == refreshTokenStr && !rt.IsRevoked && rt.ExpiryDate > DateTime.UtcNow)
-            .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.IsRevoked, true));
+        var refreshToken = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshTokenStr);
 
-        if (affectedRows == 0) return null;
+        if (refreshToken == null)
+        {
+            return ApiResponse<AuthResponse>.FailureResult("Geçersiz refresh token.");
+        }
 
-        var refreshToken = await _db.RefreshTokens.AsNoTracking().FirstOrDefaultAsync(rt => rt.Token == refreshTokenStr);
-        if (refreshToken == null) return null;
+        // Requirement 4: Token Reuse Detection
+        if (refreshToken.IsRevoked)
+        {
+            _logger.LogCritical("SECURITY BREACH: Refresh token reuse detected! Token: {Token}, User: {UserId}", refreshTokenStr, refreshToken.UserId);
+            
+            // Revoke all tokens for this user for safety - Compromised session detection
+            await _db.RefreshTokens
+                .Where(rt => rt.UserId == refreshToken.UserId)
+                .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.IsRevoked, true)
+                                         .SetProperty(rt => rt.ReasonRevoked, "Compromised: Refresh token reused"));
+                                         
+            return ApiResponse<AuthResponse>.FailureResult("Güvenlik ihlali nedeniyle tüm oturumlar sonlandırıldı.");
+        }
+
+        if (refreshToken.IsExpired)
+        {
+            return ApiResponse<AuthResponse>.FailureResult("Refresh token süresi dolmuş.");
+        }
 
         var user = await _db.BusinessUsers.FindAsync(refreshToken.UserId);
-        if (user == null) return null;
+        if (user == null || !user.IsActive)
+        {
+            return ApiResponse<AuthResponse>.FailureResult("Kullanıcı bulunamadı veya pasif.");
+        }
 
+        // Requirement 2: Refresh Token Rotation
         var newAccessToken = _tokenService.GenerateAccessToken(user);
         var newRefreshTokenStr = _tokenService.GenerateRefreshToken();
 
@@ -69,19 +107,25 @@ public class AuthService : IAuthService
             UserId = user.Id,
             Token = newRefreshTokenStr,
             ExpiryDate = DateTime.UtcNow.AddDays(7),
-            IsRevoked = false
+            IsRevoked = false,
+            CreatedAt = DateTime.UtcNow
         };
+
+        // Invalidate old token properly
+        refreshToken.IsRevoked = true;
+        refreshToken.ReplacedByToken = newRefreshTokenStr;
+        refreshToken.ReasonRevoked = "Replaced by rotation";
 
         _db.RefreshTokens.Add(newRefreshToken);
         await _db.SaveChangesAsync();
 
-        return new AuthResponse
+        return ApiResponse<AuthResponse>.SuccessResult(new AuthResponse
         {
             Email = user.Email,
             Token = newAccessToken,
             RefreshToken = newRefreshTokenStr,
             Role = user.Role
-        };
+        }, "Token yenilendi.");
     }
 
     public async Task LogoutAsync(string? accessTokenStr, string? refreshTokenStr)
@@ -94,74 +138,78 @@ public class AuthService : IAuthService
             {
                 var handler = new JwtSecurityTokenHandler();
                 var jwtToken = handler.ReadJwtToken(accessTokenStr);
-                var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == "sub")?.Value;
+                var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == "sub" || c.Type == JwtRegisteredClaimNames.Sub)?.Value;
                 if (int.TryParse(userIdClaim, out int id)) userId = id;
 
+                // Requirement 3: Blacklist access token
                 await _tokenService.BlacklistTokenAsync(accessTokenStr, jwtToken.ValidTo);
             }
-            catch { /* Token invalid or expired, ignore */ }
+            catch { /* Ignore invalid token */ }
         }
 
+        // Requirement 2: Revoke refresh token
         if (!string.IsNullOrEmpty(refreshTokenStr))
         {
             var rt = await _db.RefreshTokens.FirstOrDefaultAsync(t => t.Token == refreshTokenStr);
             if (rt != null)
             {
                 rt.IsRevoked = true;
+                rt.ReasonRevoked = "User logout";
                 userId ??= rt.UserId;
             }
         }
 
-        if (userId.HasValue)
-        {
-            await _db.RefreshTokens
-                .Where(rt => rt.UserId == userId.Value && !rt.IsRevoked)
-                .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.IsRevoked, true));
-        }
-
         await _db.SaveChangesAsync();
     }
 
-    public async Task<RegisterResult> RegisterAsync(RegisterRequest request)
+    public async Task<ApiResponse<BusinessUser>> RegisterAsync(RegisterRequest request)
     {
-        if (await _db.BusinessUsers.AnyAsync(u => u.Email == request.Email))
+        using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        
+        try
         {
-            return RegisterResult.Failure("Bu e-posta adresi zaten kayıtlı.");
-        }
-
-        int? beachId = request.BeachId;
-        if (beachId == 0) beachId = null;
-
-        if (beachId.HasValue)
-        {
-            var beachExists = await _db.Beaches.AnyAsync(b => b.Id == beachId.Value);
-            if (!beachExists)
+            if (await _db.BusinessUsers.AnyAsync(u => u.Email == request.Email))
             {
-                return RegisterResult.Failure($"Seçilen plaj bulunamadı: {beachId.Value}.");
+                return ApiResponse<BusinessUser>.FailureResult("Bu e-posta adresi zaten kullanımda.");
             }
+
+            int? beachId = request.BeachId;
+            if (beachId == 0) beachId = null;
+
+            if (beachId.HasValue)
+            {
+                var beachExists = await _db.Beaches.AnyAsync(b => b.Id == beachId.Value);
+                if (!beachExists)
+                {
+                    return ApiResponse<BusinessUser>.FailureResult($"Seçilen plaj bulunamadı: {beachId.Value}.");
+                }
+            }
+
+            var user = new BusinessUser
+            {
+                Email = request.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                BusinessName = request.BusinessName,
+                BeachId = beachId,
+                ContactName = request.ContactName,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true,
+                Role = "BusinessOwner"
+            };
+
+            _db.BusinessUsers.Add(user);
+            await _db.SaveChangesAsync();
+            
+            await transaction.CommitAsync();
+            
+            _logger.LogInformation("New business user registered: {Email}", user.Email);
+            return ApiResponse<BusinessUser>.SuccessResult(user, "Kayıt başarıyla tamamlandı.");
         }
-
-        var user = new BusinessUser
+        catch (Exception ex)
         {
-            Email = request.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            BusinessName = request.BusinessName,
-            BeachId = beachId,
-            ContactName = request.ContactName,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true,
-            Role = "BusinessOwner"
-        };
-
-        _db.BusinessUsers.Add(user);
-        await _db.SaveChangesAsync();
-
-        return RegisterResult.SuccessResult(user, "Kayıt başarılı.");
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error during registration for {Email}", request.Email);
+            return ApiResponse<BusinessUser>.FailureResult("Kayıt sırasında bir hata oluştu.");
+        }
     }
-}
-
-public sealed record RegisterResult(bool Success, string Message, BusinessUser? User = null)
-{
-    public static RegisterResult Failure(string message) => new(false, message);
-    public static RegisterResult SuccessResult(BusinessUser user, string message = "") => new(true, message, user);
 }

@@ -21,21 +21,26 @@ namespace BeachRehberi.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var response = await _authService.LoginAsync(request.Email, request.Password);
-            if (response == null)
-                return Unauthorized(ApiResponse<string>.FailureResult("E-posta veya şifre hatalı."));
+            var result = await _authService.LoginAsync(request.Email, request.Password);
+            if (!result.Success)
+            {
+                return Unauthorized(result);
+            }
 
-            return Ok(ApiResponse<AuthResponse>.SuccessResult(response));
+            return Ok(result);
         }
 
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
         {
-            var response = await _authService.RefreshTokenAsync(request.RefreshToken);
-            if (response == null)
-                return Unauthorized(ApiResponse<string>.FailureResult("Geçersiz veya süresi dolmuş refresh token."));
+            var result = await _authService.RefreshTokenAsync(request.RefreshToken);
+            if (!result.Success)
+            {
+                // If it's a security violation or generic failure
+                return Unauthorized(result);
+            }
 
-            return Ok(ApiResponse<AuthResponse>.SuccessResult(response));
+            return Ok(result);
         }
 
         [HttpPost("logout")]
@@ -59,10 +64,10 @@ namespace BeachRehberi.API.Controllers
             var result = await _authService.RegisterAsync(request);
             if (!result.Success)
             {
-                return BadRequest(ApiResponse<string>.FailureResult(result.Message));
+                return BadRequest(result);
             }
 
-            return Ok(ApiResponse<BusinessUser>.SuccessResult(result.User!, result.Message));
+            return Ok(result);
         }
     }
 }

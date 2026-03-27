@@ -8,9 +8,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Services;
 using BeachRehberi.API.Middlewares;
+using BeachRehberi.API.Validators;
+using BeachRehberi.API.Models;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 
 var instanceMutexName = "BeachRehberi.API.Singleton";
 Mutex? instanceMutex = null;
@@ -35,13 +40,16 @@ var builder = WebApplication.CreateBuilder(args);
 var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET");
 if (string.IsNullOrEmpty(jwtSecret))
 {
-    if (builder.Environment.IsProduction()) throw new InvalidOperationException("CRITICAL: BEACHGO_JWT_SECRET environment variable is missing!"); else jwtSecret = "Testing_Secret_Key_For_BeachGo_2026!";       
+    if (builder.Environment.IsProduction()) throw new InvalidOperationException("CRITICAL: BEACHGO_JWT_SECRET environment variable is missing!"); else jwtSecret = "Testing_Secret_Key_For_BeachGo_2026!";
 }
 
-var dbConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=beachrehberi.db";   
+var dbConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=beachrehberi.db";
 
 // --- Database ---
 builder.Services.AddDbContext<BeachDbContext>(options => options.UseSqlite(dbConn));
+
+// --- Memory Cache ---
+builder.Services.AddMemoryCache(); // Required for TokenService optimization
 
 // --- Rate Limiting ---
 builder.Services.AddRateLimiter(options => {
@@ -52,12 +60,36 @@ builder.Services.AddRateLimiter(options => {
     });
     options.AddFixedWindowLimiter("auth", opt => {
         opt.Window = TimeSpan.FromMinutes(1);
-        opt.PermitLimit = 5; 
+        opt.PermitLimit = 5;
     });
 });
 
-// --- Services ---
-builder.Services.AddControllers();
+// --- Services & Controllers ---
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+
+            var response = new ErrorResponse
+            {
+                Success = false,
+                Message = "Doğrulama hatası oluştu.",
+                Errors = errors
+            };
+
+            return new BadRequestObjectResult(response);
+        };
+    });
+
+// --- FluentValidation Configuration ---
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
@@ -157,5 +189,3 @@ static bool IsTcpPortInUse(int port)
         return true;
     }
 }
-
-

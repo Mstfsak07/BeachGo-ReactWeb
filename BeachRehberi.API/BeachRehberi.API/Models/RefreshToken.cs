@@ -10,4 +10,11 @@ public class RefreshToken
     public DateTime ExpiryDate { get; set; }
     public bool IsRevoked { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    
+    // Rotation & Security Tracking
+    public string? ReplacedByToken { get; set; }
+    public string? ReasonRevoked { get; set; }
+    
+    public bool IsExpired => DateTime.UtcNow >= ExpiryDate;
+    public bool IsActive => !IsRevoked && !IsExpired;
 }

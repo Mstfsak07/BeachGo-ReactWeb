@@ -26,6 +26,17 @@ builder.Services.AddDbContext<BeachDbContext>(options => options.UseSqlite(dbCon
 // --- Rate Limiting (Korumalı) ---
 builder.Services.AddRateLimiter(options => {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "anon",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
+
     options.AddFixedWindowLimiter("fixed", opt => {
         opt.Window = TimeSpan.FromMinutes(1);
         opt.PermitLimit = 100;

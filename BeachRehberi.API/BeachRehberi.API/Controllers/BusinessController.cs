@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
@@ -8,6 +9,7 @@ using System.Security.Claims;
 namespace BeachRehberi.API.Controllers
 {
     [Authorize(Roles = "BusinessOwner,Admin")]
+    [EnableRateLimiting("fixed")]
     [ApiController]
     [Route("api/[controller]")]
     public class BusinessController : ControllerBase

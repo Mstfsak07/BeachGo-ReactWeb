@@ -15,7 +15,10 @@ public class AuthService : IAuthService {
 
     public async Task<AuthResponse?> LoginAsync(string email, string password) {
         var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == email);
-        if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash)) return null;
+        if (user == null || !user.IsActive || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash)) return null;
+
+        user.LastLoginAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
 
         return new AuthResponse {
             Email = user.Email,
@@ -26,6 +29,7 @@ public class AuthService : IAuthService {
 
     public async Task<BusinessUser?> RegisterAsync(RegisterRequest request) {
         if (await _db.BusinessUsers.AnyAsync(u => u.Email == request.Email)) return null;
+        if (!await _db.Beaches.AnyAsync(b => b.Id == request.BeachId)) return null;
 
         var user = new BusinessUser {
             Email = request.Email,
@@ -45,7 +49,7 @@ public class AuthService : IAuthService {
             throw new InvalidOperationException("BEACHGO_JWT_SECRET is missing!");
 
         var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.ASCII.GetBytes(jwtSecret);
+        var key = Encoding.UTF8.GetBytes(jwtSecret);
         var tokenDescriptor = new SecurityTokenDescriptor {
             Subject = new ClaimsIdentity(new[] {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -53,7 +57,7 @@ public class AuthService : IAuthService {
                 new Claim(ClaimTypes.Role, user.Role),
                 new Claim("BeachId", user.BeachId.ToString())
             }),
-            Expires = DateTime.UtcNow.AddDays(1),
+            Expires = DateTime.UtcNow.AddHours(8),
             Issuer = "BeachRehberi.API",
             Audience = "BeachRehberi.App",
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)

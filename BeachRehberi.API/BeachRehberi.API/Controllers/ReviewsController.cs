@@ -1,8 +1,9 @@
 ﻿using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
@@ -10,6 +11,7 @@ namespace BeachRehberi.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("fixed")]
 public class ReviewsController : ControllerBase
 {
     private readonly BeachDbContext _db;       

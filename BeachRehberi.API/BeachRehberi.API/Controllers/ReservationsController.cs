@@ -10,6 +10,7 @@ namespace BeachRehberi.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [EnableRateLimiting("fixed")]
+[Authorize]
 public class ReservationsController : ControllerBase {
     private readonly IReservationService _reservationService;
 

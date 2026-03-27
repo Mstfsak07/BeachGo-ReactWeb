@@ -15,7 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET");
 if (string.IsNullOrEmpty(jwtSecret))
 {
-    throw new InvalidOperationException("CRITICAL: BEACHGO_JWT_SECRET environment variable is missing!");       
+    if (builder.Environment.IsProduction()) throw new InvalidOperationException("CRITICAL: BEACHGO_JWT_SECRET environment variable is missing!"); else jwtSecret = "Testing_Secret_Key_For_BeachGo_2026!";       
 }
 
 var dbConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=beachrehberi.db";   
@@ -98,3 +98,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+

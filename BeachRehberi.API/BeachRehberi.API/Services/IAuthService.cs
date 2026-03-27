@@ -4,8 +4,8 @@ namespace BeachRehberi.API.Services;
 
 public interface IAuthService
 {
-    Task<ApiResponse<AuthResponse>> LoginAsync(string email, string password);
-    Task<ApiResponse<AuthResponse>> RefreshTokenAsync(string refreshToken);
+    Task<ServiceResult<AuthResponse>> LoginAsync(string email, string password, string ipAddress, string userAgent);
+    Task<ServiceResult<AuthResponse>> RefreshTokenAsync(string refreshToken, string ipAddress, string userAgent);
     Task LogoutAsync(string? accessToken, string? refreshToken);
-    Task<ApiResponse<BusinessUser>> RegisterAsync(RegisterRequest request);
+    Task<ServiceResult<BusinessUser>> RegisterAsync(RegisterRequest request);
 }

@@ -1,5 +1,6 @@
 ﻿using BeachRehberi.API.Models;
 using BeachRehberi.API.Services;
+using BeachRehberi.API.Extensions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BeachRehberi.API.Controllers;
@@ -18,47 +19,31 @@ public class BeachesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
-    {
-        var beaches = await _beachService.GetAllAsync();
-        return Ok(ApiResponse<List<Beach>>.SuccessResult(beaches));
-    }
+    public async Task<IActionResult> GetAll() => (await _beachService.GetAllAsync()).ToOkApiResponse();
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
         var beach = await _beachService.GetByIdAsync(id);
-        if (beach == null) 
-            return NotFound(ApiResponse<Beach>.FailureResult("Plaj bulunamadı."));
-            
-        return Ok(ApiResponse<Beach>.SuccessResult(beach));
+        return beach != null ? beach.ToOkApiResponse() : "Plaj bulunamadı.".ToNotFoundApiResponse();
     }
 
     [HttpGet("search")]
-    public async Task<IActionResult> Search([FromQuery] string q)
-    {
-        var results = await _beachService.SearchAsync(q);
-        return Ok(ApiResponse<List<Beach>>.SuccessResult(results));
-    }
+    public async Task<IActionResult> Search([FromQuery] string q) => (await _beachService.SearchAsync(q)).ToOkApiResponse();
 
     [HttpPost("filter")]
-    public async Task<IActionResult> Filter([FromBody] BeachFilter filter)
-    {
-        var results = await _beachService.FilterAsync(filter);
-        return Ok(ApiResponse<List<Beach>>.SuccessResult(results));
-    }
+    public async Task<IActionResult> Filter([FromBody] BeachFilter filter) => (await _beachService.FilterAsync(filter)).ToOkApiResponse();
 
     [HttpGet("{id}/weather")]
     public async Task<IActionResult> GetWeather(int id)
     {
         var beach = await _beachService.GetByIdAsync(id);
-        if (beach == null) 
-            return NotFound(ApiResponse<object>.FailureResult("Plaj bulunamadı."));
+        if (beach == null) return "Plaj bulunamadı.".ToNotFoundApiResponse();
 
         var weather = await _weatherService.GetWeatherAsync(beach.Latitude, beach.Longitude);
         var sea = await _weatherService.GetSeaDataAsync(beach.Latitude, beach.Longitude);
 
-        return Ok(ApiResponse<object>.SuccessResult(new { weather, sea }));
+        return new { weather, sea }.ToOkApiResponse();
     }
 
     [HttpGet("weather/konyaalti")]
@@ -66,6 +51,6 @@ public class BeachesController : ControllerBase
     {
         var weather = await _weatherService.GetWeatherAsync(36.8785, 30.6657);
         var sea = await _weatherService.GetSeaDataAsync(36.8785, 30.6657);
-        return Ok(ApiResponse<object>.SuccessResult(new { weather, sea }));
+        return new { weather, sea }.ToOkApiResponse();
     }
 }

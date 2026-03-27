@@ -20,40 +20,72 @@ public class BeachDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<Reservation>(e =>
-        {
-            e.HasKey(x => x.Id);
-            e.HasIndex(x => x.ConfirmationCode).IsUnique();
-            e.Property(x => x.TotalPrice).HasColumnType("decimal(10,2)");
-            e.HasOne(x => x.Beach).WithMany(x => x.Reservations).HasForeignKey(x => x.BeachId).OnDelete(DeleteBehavior.Cascade);
-        });
+        // --- Global Query Filters (Soft Delete) ---
+        modelBuilder.Entity<BusinessUser>().HasQueryFilter(u => !u.IsDeleted);
+        modelBuilder.Entity<Beach>().HasQueryFilter(b => !b.IsDeleted);
+        modelBuilder.Entity<Reservation>().HasQueryFilter(r => !r.IsDeleted);
+        modelBuilder.Entity<Review>().HasQueryFilter(r => !r.IsDeleted);
+        modelBuilder.Entity<BeachEvent>().HasQueryFilter(e => !e.IsDeleted);
 
-        modelBuilder.Entity<Review>(e =>
+        // --- BusinessUser Configuration ---
+        modelBuilder.Entity<BusinessUser>(entity =>
         {
-            e.HasKey(x => x.Id);
-            e.HasIndex(x => new { x.BeachId, x.UserId }).IsUnique();
-            e.HasOne(x => x.Beach).WithMany(x => x.Reviews).HasForeignKey(x => x.BeachId).OnDelete(DeleteBehavior.Cascade);
-        });
-
-        modelBuilder.Entity<BusinessUser>(e =>
-        {
-            e.HasKey(u => u.Id);
-            e.HasIndex(u => u.Email).IsUnique(); // Database level unique constraint for email
-            e.HasOne(u => u.Beach)
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
+            
+            entity.HasOne(d => d.Beach)
                 .WithMany()
-                .HasForeignKey(u => u.BeachId)
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.SetNull);
+                .HasForeignKey(d => d.BeachId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
         });
 
-        modelBuilder.Entity<RefreshToken>(e => {
-            e.HasIndex(x => x.Token).IsUnique();
-            e.Property(x => x.ReplacedByToken).HasMaxLength(500);
-            e.Property(x => x.ReasonRevoked).HasMaxLength(500);
+        // --- Beach Configuration ---
+        modelBuilder.Entity<Beach>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
         });
 
-        modelBuilder.Entity<RevokedToken>(e => {
-            e.HasKey(x => x.Token);
+        // --- Reservation Configuration ---
+        modelBuilder.Entity<Reservation>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.ConfirmationCode).IsUnique();
+            entity.Property(e => e.TotalPrice).HasColumnType("decimal(18,2)");
+            
+            entity.HasOne(d => d.Beach)
+                .WithMany(p => p.Reservations)
+                .HasForeignKey(d => d.BeachId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // --- Other Relationships ---
+        modelBuilder.Entity<Review>(entity =>
+        {
+            entity.HasOne(d => d.Beach)
+                .WithMany(p => p.Reviews)
+                .HasForeignKey(d => d.BeachId);
+        });
+
+        modelBuilder.Entity<BeachEvent>(entity =>
+        {
+            entity.HasOne(d => d.Beach)
+                .WithMany(p => p.Events)
+                .HasForeignKey(d => d.BeachId);
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasIndex(e => e.Token).IsUnique();
+            entity.Property(x => x.CreatedByIp).HasMaxLength(100);
+            entity.Property(x => x.CreatedByUserAgent).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<RevokedToken>(entity =>
+        {
+            entity.HasKey(x => x.Token);
         });
     }
 }

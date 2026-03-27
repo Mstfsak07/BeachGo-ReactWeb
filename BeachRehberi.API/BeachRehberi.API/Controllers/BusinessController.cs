@@ -4,11 +4,13 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
+using BeachRehberi.API.Extensions;
 using System.Security.Claims;
 
 namespace BeachRehberi.API.Controllers
 {
-    [Authorize(Roles = "BusinessOwner,Admin")]
+    // Requirement 4: Protected for Business/Admin roles
+    [Authorize(Roles = UserRoles.Business + "," + UserRoles.Admin)]
     [EnableRateLimiting("fixed")]
     [ApiController]
     [Route("api/[controller]")]
@@ -26,14 +28,14 @@ namespace BeachRehberi.API.Controllers
         {
             var beachId = GetUserBeachId();
             if (beachId == -1) 
-                return Unauthorized(ApiResponse<object>.FailureResult("İşletme yetkiniz bulunamadı veya bağlı bir plaj yok."));
+                return "İşletme yetkiniz bulunamadı.".ToUnauthorizedApiResponse();
 
             var reservations = await _context.Reservations
                 .Where(r => r.BeachId == beachId)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
-            return Ok(ApiResponse<List<Reservation>>.SuccessResult(reservations));
+            return reservations.ToOkApiResponse();
         }
 
         [HttpPut("reservations/{id}/approve")]
@@ -51,19 +53,18 @@ namespace BeachRehberi.API.Controllers
         private async Task<IActionResult> UpdateReservationStatus(int id, ReservationStatus status, string? comment = null)
         {
             var beachId = GetUserBeachId();
-            if (beachId == -1) 
-                return Unauthorized(ApiResponse<object>.FailureResult("Yetki hatası."));
+            if (beachId == -1) return "Yetki hatası.".ToUnauthorizedApiResponse();
 
             var res = await _context.Reservations.FirstOrDefaultAsync(r => r.Id == id && r.BeachId == beachId);
 
             if (res == null) 
-                return NotFound(ApiResponse<string>.FailureResult("Rezervasyon bulunamadı veya bu rezervasyona erişim yetkiniz yok."));
+                return "Rezervasyon bulunamadı.".ToNotFoundApiResponse();
 
             res.Status = status;
             if (comment != null) res.BusinessComment = comment;
 
             await _context.SaveChangesAsync();
-            return Ok(ApiResponse<string>.SuccessResult(null, $"Rezervasyon {status} durumuna getirildi."));
+            return ((object?)null).ToOkApiResponse($"Rezervasyon {status} durumuna getirildi.");
         }
 
         private int GetUserBeachId()

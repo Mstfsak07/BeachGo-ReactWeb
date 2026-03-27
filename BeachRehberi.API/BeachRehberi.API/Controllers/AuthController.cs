@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Services;
+using BeachRehberi.API.Extensions;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace BeachRehberi.API.Controllers
@@ -21,26 +22,21 @@ namespace BeachRehberi.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var result = await _authService.LoginAsync(request.Email, request.Password);
-            if (!result.Success)
-            {
-                return Unauthorized(result);
-            }
-
-            return Ok(result);
+            var ipAddress = GetIpAddress();
+            var userAgent = Request.Headers["User-Agent"].ToString();
+            
+            var result = await _authService.LoginAsync(request.Email, request.Password, ipAddress, userAgent);
+            return result.ToActionResult();
         }
 
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
         {
-            var result = await _authService.RefreshTokenAsync(request.RefreshToken);
-            if (!result.Success)
-            {
-                // If it's a security violation or generic failure
-                return Unauthorized(result);
-            }
-
-            return Ok(result);
+            var ipAddress = GetIpAddress();
+            var userAgent = Request.Headers["User-Agent"].ToString();
+            
+            var result = await _authService.RefreshTokenAsync(request.RefreshToken, ipAddress, userAgent);
+            return result.ToActionResult();
         }
 
         [HttpPost("logout")]
@@ -55,19 +51,23 @@ namespace BeachRehberi.API.Controllers
             }
 
             await _authService.LogoutAsync(accessToken, request?.RefreshToken);
-            return Ok(ApiResponse<string>.SuccessResult(null, "Çıkış başarılı."));
+            return ((object?)null).ToOkApiResponse("Çıkış başarılı.");
         }
 
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             var result = await _authService.RegisterAsync(request);
-            if (!result.Success)
-            {
-                return BadRequest(result);
-            }
+            return result.ToActionResult();
+        }
 
-            return Ok(result);
+        private string GetIpAddress()
+        {
+            // Check X-Forwarded-For for proxy/load balancer
+            if (Request.Headers.ContainsKey("X-Forwarded-For"))
+                return Request.Headers["X-Forwarded-For"].ToString();
+            
+            return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
         }
     }
 }

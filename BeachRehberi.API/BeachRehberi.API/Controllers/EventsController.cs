@@ -1,5 +1,6 @@
 ﻿using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
+using BeachRehberi.API.Extensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,38 +15,35 @@ public class EventsController : ControllerBase
     public EventsController(BeachDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll() 
     {
-        var events = await _db.Events
+        var data = await _db.Events
             .Include(e => e.Beach)
             .Where(e => e.IsActive && e.StartDate >= DateTime.UtcNow)
             .OrderBy(e => e.StartDate)
             .ToListAsync();
-            
-        return Ok(ApiResponse<List<BeachEvent>>.SuccessResult(events));
+        return data.ToOkApiResponse();
     }
 
     [HttpGet("today")]
     public async Task<IActionResult> GetToday()
     {
         var today = DateTime.UtcNow.Date;
-        var events = await _db.Events
+        var data = await _db.Events
             .Include(e => e.Beach)
             .Where(e => e.IsActive && e.StartDate.Date == today)
             .OrderBy(e => e.StartDate)
             .ToListAsync();
-            
-        return Ok(ApiResponse<List<BeachEvent>>.SuccessResult(events));
+        return data.ToOkApiResponse();
     }
 
     [HttpGet("beach/{beachId}")]
     public async Task<IActionResult> GetByBeach(int beachId)
     {
-        var events = await _db.Events
+        var data = await _db.Events
             .Where(e => e.BeachId == beachId && e.IsActive && e.StartDate >= DateTime.UtcNow)
             .OrderBy(e => e.StartDate)
             .ToListAsync();
-            
-        return Ok(ApiResponse<List<BeachEvent>>.SuccessResult(events));
+        return data.ToOkApiResponse();
     }
 }

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Services;
+using BeachRehberi.API.Extensions;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
@@ -10,7 +11,7 @@ namespace BeachRehberi.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [EnableRateLimiting("fixed")]
-[Authorize]
+[Authorize] // Requirement 3: Minimum "User" role for basic operations
 public class ReservationsController : ControllerBase 
 {
     private readonly IReservationService _reservationService;
@@ -25,10 +26,10 @@ public class ReservationsController : ControllerBase
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out int userId)) 
-            return Unauthorized(ApiResponse<object>.FailureResult("Kullanıcı kimliği doğrulanamadı."));
+            return "Kullanıcı kimliği doğrulanamadı.".ToUnauthorizedApiResponse();
 
         var res = await _reservationService.GetByUserAsync(userId);
-        return Ok(ApiResponse<List<Reservation>>.SuccessResult(res));
+        return res.ToOkApiResponse();
     }
 
     [HttpDelete("{code}")]
@@ -36,13 +37,10 @@ public class ReservationsController : ControllerBase
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out int userId)) 
-            return Unauthorized(ApiResponse<object>.FailureResult("Kullanıcı kimliği doğrulanamadı."));
+            return "Kullanıcı kimliği doğrulanamadı.".ToUnauthorizedApiResponse();
 
         var success = await _reservationService.CancelAsync(code, userId);
-        if (!success) 
-            return BadRequest(ApiResponse<object>.FailureResult("Rezervasyon iptal edilemedi veya yetkiniz yok."));
-
-        return Ok(ApiResponse<string>.SuccessResult(null, "Rezervasyon iptal edildi."));
+        return success ? "Rezervasyon iptal edildi.".ToOkApiResponse() : "Rezervasyon iptal edilemedi veya yetkiniz yok.".ToBadRequestApiResponse();
     }
 
     [HttpPost]
@@ -52,6 +50,6 @@ public class ReservationsController : ControllerBase
         reservation.UserId = int.TryParse(userIdStr, out int userId) ? userId : null;
         
         var result = await _reservationService.CreateAsync(reservation);
-        return Ok(ApiResponse<Reservation>.SuccessResult(result, "Rezervasyon başarıyla oluşturuldu."));
+        return result.ToActionResult(); // Use mapper
     }
 }

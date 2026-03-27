@@ -10,11 +10,13 @@ public class ReservationService : IReservationService
 {
     private readonly BeachDbContext _db;
     private readonly INotificationService _notification;
+    private readonly ILogger<ReservationService> _logger;
 
-    public ReservationService(BeachDbContext db, INotificationService notification)
+    public ReservationService(BeachDbContext db, INotificationService notification, ILogger<ReservationService> logger)
     {
         _db = db;
         _notification = notification;
+        _logger = logger;
     }
 
     private static readonly char[] ConfirmationChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".ToCharArray();
@@ -34,37 +36,64 @@ public class ReservationService : IReservationService
         return ex.InnerException is SqliteException sqliteEx && sqliteEx.SqliteErrorCode == 19;
     }
 
-    public async Task<Reservation> CreateAsync(Reservation reservation)
+    public async Task<ServiceResult<Reservation>> CreateAsync(Reservation reservation)
     {
-        var beach = await _db.Beaches.AsNoTracking().FirstOrDefaultAsync(x => x.Id == reservation.BeachId)      
-                    ?? throw new KeyNotFoundException("Plaj bulunamadı.");
+        // Requirement 1 & 2: Transaction implementation
+        using var transaction = await _db.Database.BeginTransactionAsync();
 
-        reservation.TotalPrice = (beach.EntryFee + beach.SunbedPrice) * reservation.PersonCount;
-        reservation.Status = ReservationStatus.Confirmed;
-        reservation.CreatedAt = DateTime.UtcNow;
-
-        int maxRetries = 10;
-        while (maxRetries > 0)
+        try
         {
-            try
+            var beach = await _db.Beaches.AsNoTracking().FirstOrDefaultAsync(x => x.Id == reservation.BeachId);
+            if (beach == null)
             {
-                reservation.ConfirmationCode = GenerateAlphanumericCode(8);
-                _db.Reservations.Add(reservation);
-                await _db.SaveChangesAsync();
-                break;
+                return ServiceResult<Reservation>.FailureResult("Plaj bulunamadı.");
             }
-            catch (DbUpdateException ex) when (maxRetries-- > 0 && IsUniqueConstraintViolation(ex))
+
+            reservation.TotalPrice = (beach.EntryFee + beach.SunbedPrice) * reservation.PersonCount;
+            reservation.Status = ReservationStatus.Confirmed;
+            reservation.CreatedAt = DateTime.UtcNow;
+
+            int maxRetries = 10;
+            bool success = false;
+            
+            while (maxRetries > 0)
             {
-                _db.Entry(reservation).State = EntityState.Detached;
-                if (maxRetries == 0) throw new Exception("Şu an sistemsel bir çakışma yaşanıyor, lütfen tekrar deneyin.");
+                try
+                {
+                    reservation.ConfirmationCode = GenerateAlphanumericCode(8);
+                    _db.Reservations.Add(reservation);
+                    await _db.SaveChangesAsync();
+                    success = true;
+                    break;
+                }
+                catch (DbUpdateException ex) when (maxRetries-- > 0 && IsUniqueConstraintViolation(ex))
+                {
+                    _db.Entry(reservation).State = EntityState.Detached;
+                    _logger.LogWarning("Confirmation code collision. Retrying... Code: {Code}", reservation.ConfirmationCode);
+                }
             }
+
+            if (!success)
+            {
+                await transaction.RollbackAsync();
+                return ServiceResult<Reservation>.FailureResult("Rezervasyon kodu oluşturulamadı, lütfen tekrar deneyin.");
+            }
+
+            await transaction.CommitAsync();
+
+            // Notify asynchronously (outside transaction scope)
+            _ = _notification.SendToBusinessAsync(
+                reservation.BeachId,
+                $"Yeni Rezervasyon: {reservation.UserName} ({reservation.PersonCount} Kişi)");
+
+            return ServiceResult<Reservation>.SuccessResult(reservation, "Rezervasyon başarıyla oluşturuldu.");
         }
-
-        await _notification.SendToBusinessAsync(
-            reservation.BeachId,
-            $"Yeni Rezervasyon: {reservation.UserName} ({reservation.PersonCount} Kişi)");
-
-        return reservation;
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error creating reservation");
+            return ServiceResult<Reservation>.FailureResult("Rezervasyon sırasında bir hata oluştu.");
+        }
     }
 
     public async Task<List<Reservation>> GetByUserAsync(int userId) =>

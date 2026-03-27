@@ -15,6 +15,10 @@ public class RefreshToken
     public string? ReplacedByToken { get; set; }
     public string? ReasonRevoked { get; set; }
     
+    // Requirement 1: New Tracking Fields
+    public string? CreatedByIp { get; set; }
+    public string? CreatedByUserAgent { get; set; }
+    
     public bool IsExpired => DateTime.UtcNow >= ExpiryDate;
     public bool IsActive => !IsRevoked && !IsExpired;
 }

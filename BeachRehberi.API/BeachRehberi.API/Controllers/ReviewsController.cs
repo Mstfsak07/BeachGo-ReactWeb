@@ -1,5 +1,6 @@
 ﻿using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
+using BeachRehberi.API.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -33,7 +34,7 @@ public class ReviewsController : ControllerBase
             })
             .ToListAsync();
             
-        return Ok(ApiResponse<List<PublicReviewDto>>.SuccessResult(reviews));
+        return reviews.ToOkApiResponse();
     }
 
     [Authorize]
@@ -42,14 +43,14 @@ public class ReviewsController : ControllerBase
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out int userId)) 
-            return Unauthorized(ApiResponse<object>.FailureResult("Kullanıcı kimliği doğrulanamadı."));
+            return "Kullanıcı kimliği doğrulanamadı.".ToUnauthorizedApiResponse();
 
         if (dto.Rating < 1 || dto.Rating > 5)
-            return BadRequest(ApiResponse<string>.FailureResult("Puan 1-5 arasında olmalıdır."));
+            return "Puan 1-5 arasında olmalıdır.".ToBadRequestApiResponse();
 
         var existingReview = await _db.Reviews.AnyAsync(r => r.BeachId == dto.BeachId && r.UserId == userId);
         if (existingReview)
-            return BadRequest(ApiResponse<string>.FailureResult("Bu plaj için zaten yorum yaptınız."));
+            return "Bu plaj için zaten yorum yaptınız.".ToBadRequestApiResponse();
 
         var review = new Review
         {
@@ -77,7 +78,7 @@ public class ReviewsController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
-        return Ok(ApiResponse<Review>.SuccessResult(review, "Yorumunuz için teşekkürler."));
+        return review.ToOkApiResponse("Yorumunuz için teşekkürler.");
     }
 }
 

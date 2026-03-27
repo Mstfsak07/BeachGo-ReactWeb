@@ -15,21 +15,24 @@ public class RaceConditionTestController : ControllerBase
         _authService = authService;
     }
 
-    [HttpPost("test")]
+    [HttpPost("test-race")]
     public async Task<IActionResult> TestRace([FromBody] RefreshRequest request)
     {
-        var task1 = _authService.RefreshTokenAsync(request.RefreshToken);
-        var task2 = _authService.RefreshTokenAsync(request.RefreshToken);
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+        var userAgent = Request.Headers["User-Agent"].ToString();
 
-        await Task.WhenAll(task1, task2);
+        var task1 = _authService.RefreshTokenAsync(request.RefreshToken, ipAddress, userAgent);
+        var task2 = _authService.RefreshTokenAsync(request.RefreshToken, ipAddress, userAgent);
 
         var result1 = await task1;
         var result2 = await task2;
 
         return Ok(new
         {
-            Request1 = result1 != null ? "Success" : "Failed",
-            Request2 = result2 != null ? "Success" : "Failed"
+            Request1 = result1.Success ? "Success" : "Failed",
+            Request2 = result2.Success ? "Success" : "Failed",
+            Message1 = result1.Message,
+            Message2 = result2.Message
         });
     }
 }

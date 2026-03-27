@@ -20,149 +20,190 @@ public class AuthService : IAuthService
         _logger = logger;
     }
 
-    public async Task<ApiResponse<AuthResponse>> LoginAsync(string email, string password)
+    public async Task<ServiceResult<AuthResponse>> LoginAsync(string email, string password, string ipAddress, string userAgent)
     {
-        _logger.LogInformation("Login attempt for email: {Email}", email);
+        _logger.LogInformation("Login attempt for email: {Email} from IP: {IP}", email, ipAddress);
         
         var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == email);
         
         if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
         {
-            _logger.LogWarning("Invalid login attempt for email: {Email}", email);
-            return ApiResponse<AuthResponse>.FailureResult("E-posta adresi veya şifre hatalı.");
+            _logger.LogWarning("Invalid login attempt for email: {Email} from IP: {IP}", email, ipAddress);
+            return ServiceResult<AuthResponse>.FailureResult("E-posta adresi veya şifre hatalı.");
         }
 
         if (!user.IsActive)
         {
-            return ApiResponse<AuthResponse>.FailureResult("Hesabınız pasif durumdadır.");
+            _logger.LogWarning("Login attempt for inactive account: {Email}", email);
+            return ServiceResult<AuthResponse>.FailureResult("Hesabınız pasif durumdadır.");
         }
 
-        var accessToken = _tokenService.GenerateAccessToken(user);
-        var refreshTokenStr = _tokenService.GenerateRefreshToken();
-
-        var refreshToken = new RefreshToken
+        using var transaction = await _db.Database.BeginTransactionAsync();
+        try
         {
-            UserId = user.Id,
-            Token = refreshTokenStr,
-            ExpiryDate = DateTime.UtcNow.AddDays(7),
-            IsRevoked = false,
-            CreatedAt = DateTime.UtcNow
-        };
+            var accessToken = _tokenService.GenerateAccessToken(user);
+            var refreshTokenStr = _tokenService.GenerateRefreshToken();
 
-        // Requirement 2: DB-backed refresh tokens
-        _db.RefreshTokens.Add(refreshToken);
-        
-        user.LastLoginAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync();
+            var refreshToken = new RefreshToken
+            {
+                UserId = user.Id,
+                Token = refreshTokenStr,
+                ExpiryDate = DateTime.UtcNow.AddDays(7),
+                IsRevoked = false,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByIp = ipAddress,
+                CreatedByUserAgent = userAgent
+            };
 
-        return ApiResponse<AuthResponse>.SuccessResult(new AuthResponse
+            _db.RefreshTokens.Add(refreshToken);
+            
+            user.LastLoginAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            _logger.LogInformation("Successful login for user: {Email} (Role: {Role})", email, user.Role);
+
+            return ServiceResult<AuthResponse>.SuccessResult(new AuthResponse
+            {
+                Email = user.Email,
+                Token = accessToken,
+                RefreshToken = refreshTokenStr,
+                Role = user.Role
+            }, "Giriş başarılı.");
+        }
+        catch (Exception ex)
         {
-            Email = user.Email,
-            Token = accessToken,
-            RefreshToken = refreshTokenStr,
-            Role = user.Role
-        }, "Giriş başarılı.");
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error during Login for {Email}", email);
+            return ServiceResult<AuthResponse>.FailureResult("Giriş işlemi sırasında bir hata oluştu.");
+        }
     }
 
-    public async Task<ApiResponse<AuthResponse>> RefreshTokenAsync(string refreshTokenStr)
+    public async Task<ServiceResult<AuthResponse>> RefreshTokenAsync(string refreshTokenStr, string ipAddress, string userAgent)
     {
-        var refreshToken = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshTokenStr);
-
-        if (refreshToken == null)
+        using var transaction = await _db.Database.BeginTransactionAsync();
+        try
         {
-            return ApiResponse<AuthResponse>.FailureResult("Geçersiz refresh token.");
+            var refreshToken = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.Token == refreshTokenStr);
+
+            if (refreshToken == null)
+            {
+                return ServiceResult<AuthResponse>.FailureResult("Geçersiz refresh token.");
+            }
+
+            if (refreshToken.IsRevoked)
+            {
+                _logger.LogCritical("SECURITY BREACH: Refresh token reuse detected! User: {UserId}, IP: {IP}", refreshToken.UserId, ipAddress);
+                
+                await _db.RefreshTokens
+                    .Where(rt => rt.UserId == refreshToken.UserId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.IsRevoked, true)
+                                             .SetProperty(rt => rt.ReasonRevoked, "Compromised: Refresh token reused"));
+                                             
+                await transaction.CommitAsync();
+                return ServiceResult<AuthResponse>.FailureResult("Güvenlik ihlali nedeniyle tüm oturumlar sonlandırıldı.");
+            }
+
+            if (refreshToken.IsExpired)
+            {
+                return ServiceResult<AuthResponse>.FailureResult("Refresh token süresi dolmuş.");
+            }
+
+            if (refreshToken.CreatedByIp != ipAddress)
+            {
+                _logger.LogWarning("Suspicious IP change on refresh: Original {OldIP}, New {NewIP}", refreshToken.CreatedByIp, ipAddress);
+            }
+
+            var user = await _db.BusinessUsers.FindAsync(refreshToken.UserId);
+            if (user == null || !user.IsActive)
+            {
+                return ServiceResult<AuthResponse>.FailureResult("Kullanıcı bulunamadı veya pasif.");
+            }
+
+            var newAccessToken = _tokenService.GenerateAccessToken(user);
+            var newRefreshTokenStr = _tokenService.GenerateRefreshToken();
+
+            var newRefreshToken = new RefreshToken
+            {
+                UserId = user.Id,
+                Token = newRefreshTokenStr,
+                ExpiryDate = DateTime.UtcNow.AddDays(7),
+                IsRevoked = false,
+                CreatedAt = DateTime.UtcNow,
+                CreatedByIp = ipAddress,
+                CreatedByUserAgent = userAgent
+            };
+
+            refreshToken.IsRevoked = true;
+            refreshToken.ReplacedByToken = newRefreshTokenStr;
+            refreshToken.ReasonRevoked = "Replaced by rotation";
+
+            _db.RefreshTokens.Add(newRefreshToken);
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            _logger.LogInformation("Token rotated for user: {Email}", user.Email);
+
+            return ServiceResult<AuthResponse>.SuccessResult(new AuthResponse
+            {
+                Email = user.Email,
+                Token = newAccessToken,
+                RefreshToken = newRefreshTokenStr,
+                Role = user.Role
+            }, "Token yenilendi.");
         }
-
-        // Requirement 4: Token Reuse Detection
-        if (refreshToken.IsRevoked)
+        catch (Exception ex)
         {
-            _logger.LogCritical("SECURITY BREACH: Refresh token reuse detected! Token: {Token}, User: {UserId}", refreshTokenStr, refreshToken.UserId);
-            
-            // Revoke all tokens for this user for safety - Compromised session detection
-            await _db.RefreshTokens
-                .Where(rt => rt.UserId == refreshToken.UserId)
-                .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.IsRevoked, true)
-                                         .SetProperty(rt => rt.ReasonRevoked, "Compromised: Refresh token reused"));
-                                         
-            return ApiResponse<AuthResponse>.FailureResult("Güvenlik ihlali nedeniyle tüm oturumlar sonlandırıldı.");
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error during RefreshToken");
+            return ServiceResult<AuthResponse>.FailureResult("Token yenileme sırasında bir hata oluştu.");
         }
-
-        if (refreshToken.IsExpired)
-        {
-            return ApiResponse<AuthResponse>.FailureResult("Refresh token süresi dolmuş.");
-        }
-
-        var user = await _db.BusinessUsers.FindAsync(refreshToken.UserId);
-        if (user == null || !user.IsActive)
-        {
-            return ApiResponse<AuthResponse>.FailureResult("Kullanıcı bulunamadı veya pasif.");
-        }
-
-        // Requirement 2: Refresh Token Rotation
-        var newAccessToken = _tokenService.GenerateAccessToken(user);
-        var newRefreshTokenStr = _tokenService.GenerateRefreshToken();
-
-        var newRefreshToken = new RefreshToken
-        {
-            UserId = user.Id,
-            Token = newRefreshTokenStr,
-            ExpiryDate = DateTime.UtcNow.AddDays(7),
-            IsRevoked = false,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        // Invalidate old token properly
-        refreshToken.IsRevoked = true;
-        refreshToken.ReplacedByToken = newRefreshTokenStr;
-        refreshToken.ReasonRevoked = "Replaced by rotation";
-
-        _db.RefreshTokens.Add(newRefreshToken);
-        await _db.SaveChangesAsync();
-
-        return ApiResponse<AuthResponse>.SuccessResult(new AuthResponse
-        {
-            Email = user.Email,
-            Token = newAccessToken,
-            RefreshToken = newRefreshTokenStr,
-            Role = user.Role
-        }, "Token yenilendi.");
     }
 
     public async Task LogoutAsync(string? accessTokenStr, string? refreshTokenStr)
     {
-        int? userId = null;
-
-        if (!string.IsNullOrEmpty(accessTokenStr))
+        using var transaction = await _db.Database.BeginTransactionAsync();
+        try
         {
-            try
+            int? userId = null;
+
+            if (!string.IsNullOrEmpty(accessTokenStr))
             {
-                var handler = new JwtSecurityTokenHandler();
-                var jwtToken = handler.ReadJwtToken(accessTokenStr);
-                var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == "sub" || c.Type == JwtRegisteredClaimNames.Sub)?.Value;
-                if (int.TryParse(userIdClaim, out int id)) userId = id;
+                try
+                {
+                    var handler = new JwtSecurityTokenHandler();
+                    var jwtToken = handler.ReadJwtToken(accessTokenStr);
+                    var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == "sub" || c.Type == JwtRegisteredClaimNames.Sub)?.Value;
+                    if (int.TryParse(userIdClaim, out int id)) userId = id;
 
-                // Requirement 3: Blacklist access token
-                await _tokenService.BlacklistTokenAsync(accessTokenStr, jwtToken.ValidTo);
+                    await _tokenService.BlacklistTokenAsync(accessTokenStr, jwtToken.ValidTo);
+                }
+                catch { /* Ignore */ }
             }
-            catch { /* Ignore invalid token */ }
-        }
 
-        // Requirement 2: Revoke refresh token
-        if (!string.IsNullOrEmpty(refreshTokenStr))
+            if (!string.IsNullOrEmpty(refreshTokenStr))
+            {
+                var rt = await _db.RefreshTokens.FirstOrDefaultAsync(t => t.Token == refreshTokenStr);
+                if (rt != null)
+                {
+                    rt.IsRevoked = true;
+                    rt.ReasonRevoked = "User logout";
+                    userId ??= rt.UserId;
+                }
+            }
+
+            await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
+            _logger.LogInformation("Successful logout for user: {UserId}", userId);
+        }
+        catch (Exception ex)
         {
-            var rt = await _db.RefreshTokens.FirstOrDefaultAsync(t => t.Token == refreshTokenStr);
-            if (rt != null)
-            {
-                rt.IsRevoked = true;
-                rt.ReasonRevoked = "User logout";
-                userId ??= rt.UserId;
-            }
+            await transaction.RollbackAsync();
+            _logger.LogError(ex, "Error during Logout");
         }
-
-        await _db.SaveChangesAsync();
     }
 
-    public async Task<ApiResponse<BusinessUser>> RegisterAsync(RegisterRequest request)
+    public async Task<ServiceResult<BusinessUser>> RegisterAsync(RegisterRequest request)
     {
         using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         
@@ -170,18 +211,25 @@ public class AuthService : IAuthService
         {
             if (await _db.BusinessUsers.AnyAsync(u => u.Email == request.Email))
             {
-                return ApiResponse<BusinessUser>.FailureResult("Bu e-posta adresi zaten kullanımda.");
+                return ServiceResult<BusinessUser>.FailureResult("Bu e-posta adresi zaten kullanımda.");
             }
 
             int? beachId = request.BeachId;
             if (beachId == 0) beachId = null;
+
+            // Simple security: Registration defaults to User role, Admin/Business can be granted later or through specific logic
+            string userRole = UserRoles.User;
+            if (request.Role == UserRoles.Business && beachId.HasValue) 
+            {
+                userRole = UserRoles.Business;
+            }
 
             if (beachId.HasValue)
             {
                 var beachExists = await _db.Beaches.AnyAsync(b => b.Id == beachId.Value);
                 if (!beachExists)
                 {
-                    return ApiResponse<BusinessUser>.FailureResult($"Seçilen plaj bulunamadı: {beachId.Value}.");
+                    return ServiceResult<BusinessUser>.FailureResult($"Seçilen plaj bulunamadı: {beachId.Value}.");
                 }
             }
 
@@ -194,7 +242,7 @@ public class AuthService : IAuthService
                 ContactName = request.ContactName,
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true,
-                Role = "BusinessOwner"
+                Role = userRole // Use mapped role
             };
 
             _db.BusinessUsers.Add(user);
@@ -202,14 +250,14 @@ public class AuthService : IAuthService
             
             await transaction.CommitAsync();
             
-            _logger.LogInformation("New business user registered: {Email}", user.Email);
-            return ApiResponse<BusinessUser>.SuccessResult(user, "Kayıt başarıyla tamamlandı.");
+            _logger.LogInformation("New user registered: {Email} (Role: {Role})", user.Email, userRole);
+            return ServiceResult<BusinessUser>.SuccessResult(user, "Kayıt başarıyla tamamlandı.");
         }
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
             _logger.LogError(ex, "Error during registration for {Email}", request.Email);
-            return ApiResponse<BusinessUser>.FailureResult("Kayıt sırasında bir hata oluştu.");
+            return ServiceResult<BusinessUser>.FailureResult("Kayıt sırasında bir hata oluştu.");
         }
     }
 }

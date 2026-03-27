@@ -53,7 +53,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 // CORS
 builder.Services.AddCors(options => {
     options.AddPolicy("BeachGoPolicy", policy => {
-        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+        policy.WithOrigins("https://beachgo.app", "http://localhost:3000").AllowAnyHeader().AllowAnyMethod().AllowCredentials();
     });
 });
 
@@ -88,3 +88,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+

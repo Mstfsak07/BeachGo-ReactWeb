@@ -21,7 +21,7 @@ public class TokenService : ITokenService
             throw new InvalidOperationException("BEACHGO_JWT_SECRET is missing!");
 
         var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.ASCII.GetBytes(jwtSecret);
+        var key = Encoding.UTF8.GetBytes(jwtSecret);
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(new[] {
@@ -59,3 +59,4 @@ public class TokenService : ITokenService
         return await _db.RevokedTokens.AnyAsync(r => r.Token == token);
     }
 }
+

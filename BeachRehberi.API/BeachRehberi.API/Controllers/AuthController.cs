@@ -40,7 +40,7 @@ namespace BeachRehberi.API.Controllers
 
         [HttpPost("logout")]
         [Authorize]
-        public async Task<IActionResult> Logout([FromBody] RefreshRequest request)
+        public async Task<IActionResult> Logout([FromBody] RefreshRequest? request)
         {
             var authHeader = Request.Headers["Authorization"].ToString();
             string? accessToken = null;
@@ -48,7 +48,7 @@ namespace BeachRehberi.API.Controllers
                  accessToken = authHeader.Substring("Bearer ".Length).Trim();
             }
 
-            await _authService.LogoutAsync(accessToken, request.RefreshToken);
+            await _authService.LogoutAsync(accessToken, request?.RefreshToken);
             return Ok(ApiResponse<string>.SuccessResult(null, "Çıkış başarılı."));
         }
 

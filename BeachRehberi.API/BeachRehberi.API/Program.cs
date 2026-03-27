@@ -41,9 +41,6 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient();
-builder.Services.AddScoped<IBeachService, BeachService>();
-builder.Services.AddScoped<IWeatherService, WeatherService>();
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
 // ─── CORS ─────────────────────────────────────────────────
 var allowedOrigins = Environment.GetEnvironmentVariable("BEACHGO_ALLOWED_ORIGINS")?.Split(',') 

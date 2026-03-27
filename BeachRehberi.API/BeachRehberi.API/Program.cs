@@ -7,24 +7,47 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Builder;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Services;
+using BeachRehberi.API.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<BeachDbContext>(options => 
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=beachrehberi.db"));
+// --- Environment Variables (Production Check) ---
+var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET");
+if (string.IsNullOrEmpty(jwtSecret))
+{
+    // Production'da uygulama başlamasın
+    if (builder.Environment.IsProduction())
+        throw new InvalidOperationException("CRITICAL: BEACHGO_JWT_SECRET environment variable is missing!");
+    
+    // Dev ortamı için geçici anahtar
+    jwtSecret = "Development_Secret_Key_Do_Not_Use_In_Production_2026!";
+}
 
+var dbConn = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=beachrehberi.db";
+
+// --- Database ---
+builder.Services.AddDbContext<BeachDbContext>(options => options.UseSqlite(dbConn));
+
+// --- Rate Limiting (Korumalı) ---
 builder.Services.AddRateLimiter(options => {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddFixedWindowLimiter("fixed", opt => {
         opt.Window = TimeSpan.FromMinutes(1);
         opt.PermitLimit = 100;
     });
+    options.AddFixedWindowLimiter("auth", opt => {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 5; // Production seviyesi kısıtlama
+    });
 });
 
+// --- Services ---
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpClient();
 
+// Business Services Registration
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IBeachService, BeachService>();
 builder.Services.AddScoped<IBusinessService, BusinessService>();
@@ -32,19 +55,41 @@ builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IWeatherService, WeatherService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
+// CORS
 builder.Services.AddCors(options => {
     options.AddPolicy("BeachGoPolicy", policy => {
         policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
     });
 });
 
+// Authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+.AddJwtBearer(options => {
+    options.TokenValidationParameters = new TokenValidationParameters {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = "BeachRehberi.API",
+        ValidAudience = "BeachRehberi.App",
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+    };
+});
+
+builder.Services.AddAuthorization(options => {
+    options.AddPolicy("BusinessOnly", policy => policy.RequireRole("BusinessOwner", "Admin"));
+});
+
 var app = builder.Build();
+
+// --- Production Pipeline ---
+app.UseMiddleware<GlobalExceptionMiddleware>(); // Global Exception Handling (En Başta)
 
 app.UseRateLimiter();
 app.UseCors("BeachGoPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers(); // RequireRateLimiter burada kaldırıldı, Controller seviyesine taşındı.
+app.MapControllers();
 
 app.Run();

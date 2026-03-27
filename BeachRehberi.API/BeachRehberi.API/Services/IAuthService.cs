@@ -1,9 +1,6 @@
-﻿using BeachRehberi.API.Models;
-
+using BeachRehberi.API.Models;
 namespace BeachRehberi.API.Services;
-
-public interface IAuthService
-{
-    Task<string?> LoginAsync(string email, string password);
-    Task<BusinessUser?> GetUserAsync(string email);
+public interface IAuthService {
+    Task<AuthResponse?> LoginAsync(string email, string password);
+    Task<BusinessUser?> RegisterAsync(RegisterRequest request);
 }

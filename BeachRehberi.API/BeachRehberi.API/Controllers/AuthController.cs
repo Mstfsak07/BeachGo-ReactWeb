@@ -1,101 +1,40 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
-using BeachRehberi.API.DTOs;
-using BCrypt.Net;
+using BeachRehberi.API.Services;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace BeachRehberi.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("auth")]
+    [EnableRateLimiting("auth")] // 5 req / 1 min policy
     public class AuthController : ControllerBase
     {
-        private readonly BeachDbContext _context;
-        private readonly IConfiguration _config;
+        private readonly IAuthService _authService;
 
-        public AuthController(BeachDbContext context, IConfiguration config)
+        public AuthController(IAuthService authService)
         {
-            _context = context;
-            _config = config;
+            _authService = authService;
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var user = await _context.BusinessUsers
-                .FirstOrDefaultAsync(u => u.Email == loginDto.Email && u.IsActive);
+            var response = await _authService.LoginAsync(request.Email, request.Password);
+            if (response == null) 
+                return Unauthorized(ApiResponse<string>.FailureResult("E-posta veya şifre hatalı."));
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.PasswordHash))
-            {
-                return Unauthorized(ApiResponse<string>.FailureResult("Geçersiz e-posta veya şifre."));
-            }
-
-            var token = GenerateJwtToken(user);
-            user.LastLoginAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            return Ok(ApiResponse<object>.SuccessResult(new {
-                Token = token,
-                User = new { user.Id, user.Email, user.ContactName, user.Role, user.BeachId }
-            }));
+            return Ok(ApiResponse<AuthResponse>.SuccessResult(response));
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            if (await _context.BusinessUsers.AnyAsync(u => u.Email == registerDto.Email))
-            {
+            var user = await _authService.RegisterAsync(request);
+            if (user == null)
                 return BadRequest(ApiResponse<string>.FailureResult("Bu e-posta adresi zaten kullanımda."));
-            }
 
-            // BCrypt Hashing (WorkFactor 11)
-            var newUser = new BusinessUser
-            {
-                Email = registerDto.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(registerDto.Password, 11),
-                ContactName = registerDto.ContactName,
-                BeachId = registerDto.BeachId,
-                Role = "BusinessOwner",
-                IsActive = true
-            };
-
-            _context.BusinessUsers.Add(newUser);
-            await _context.SaveChangesAsync();
-
-            return Ok(ApiResponse<string>.SuccessResult(null, "Hesap başarıyla oluşturuldu."));
-        }
-
-        private string GenerateJwtToken(BusinessUser user)
-        {
-            var secret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET") 
-                         ?? _config["Jwt:SecretKey"] 
-                         ?? "Development_Secret_Key_Do_Not_Use_In_Production_2026!";
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new List<Claim> {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role),
-                new Claim("BeachId", user.BeachId.ToString())
-            };
-
-            var token = new JwtSecurityToken(
-                issuer: _config["Jwt:Issuer"] ?? "BeachRehberi.API",
-                audience: _config["Jwt:Audience"] ?? "BeachRehberi.App",
-                claims: claims,
-                expires: DateTime.Now.AddDays(7),
-                signingCredentials: creds
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            return Ok(ApiResponse<BusinessUser>.SuccessResult(user, "Kayıt başarılı."));
         }
     }
 }

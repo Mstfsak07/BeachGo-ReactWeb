@@ -1,58 +1,52 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Services;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
-namespace BeachRehberi.API.Controllers
-{
-    [ApiController]
-    [Route("api/[controller]")]
-    [EnableRateLimiting("fixed")]
-    public class ReservationsController : ControllerBase
-    {
-        private readonly BeachDbContext _context;
-        private readonly IReservationService _reservationService;
+namespace BeachRehberi.API.Controllers;
 
-        public ReservationsController(BeachDbContext context, IReservationService reservationService)
-        {
-            _context = context;
-            _reservationService = reservationService;
-        }
+[ApiController]
+[Route("api/[controller]")]
+[EnableRateLimiting("fixed")]
+public class ReservationsController : ControllerBase {
+    private readonly IReservationService _reservationService;
+    private readonly BeachDbContext _context;
 
-        [HttpGet("phone/{phone}")]
-        public async Task<IActionResult> GetByPhone(string phone)
-        {
-            var res = await _reservationService.GetByPhoneAsync(phone);
-            return Ok(ApiResponse<List<Reservation>>.SuccessResult(res));
-        }
+    public ReservationsController(IReservationService reservationService, BeachDbContext context) {
+        _reservationService = reservationService;
+        _context = context;
+    }
 
-        [HttpGet("{code}")]
-        public async Task<IActionResult> GetByCode(string code)
-        {
-            var res = await _reservationService.GetByCodeAsync(code);
-            if (res == null) return NotFound(ApiResponse<string>.FailureResult("Rezervasyon bulunamadı."));
-            return Ok(ApiResponse<Reservation>.SuccessResult(res));
-        }
+    [Authorize]
+    [HttpGet("phone/{phone}")]
+    public async Task<IActionResult> GetByPhone(string phone) {
+        var res = await _reservationService.GetByPhoneAsync(phone);
+        return Ok(ApiResponse<List<Reservation>>.SuccessResult(res));
+    }
 
-        [HttpDelete("{code}")]
-        public async Task<IActionResult> Cancel(string code)
-        {
-            var success = await _reservationService.CancelAsync(code);
-            if (!success) return NotFound(ApiResponse<string>.FailureResult("Rezervasyon bulunamadı."));
-            return Ok(ApiResponse<string>.SuccessResult(null, "Rezervasyon iptal edildi."));
-        }
+    [Authorize]
+    [HttpDelete("{code}")]
+    public async Task<IActionResult> Cancel(string code) {
+        var res = await _context.Reservations.FirstOrDefaultAsync(r => r.ConfirmationCode == code);
+        if (res == null) return NotFound();
+        
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(userIdStr, out int userId) && res.UserId != userId && !User.IsInRole("Admin"))
+            return Forbid();
 
-        [HttpPost]
-        public async Task<IActionResult> Create([FromBody] Reservation reservation)
-        {
-            try {
-                var result = await _reservationService.CreateAsync(reservation);
-                return Ok(ApiResponse<Reservation>.SuccessResult(result));
-            } catch (Exception ex) {
-                return BadRequest(ApiResponse<string>.FailureResult(ex.Message));
-            }
-        }
+        await _reservationService.CancelAsync(code);
+        return Ok(ApiResponse<string>.SuccessResult(null, "İptal edildi."));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] Reservation reservation) {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(userIdStr, out int userId)) reservation.UserId = userId;
+        var result = await _reservationService.CreateAsync(reservation);
+        return Ok(ApiResponse<Reservation>.SuccessResult(result));
     }
 }

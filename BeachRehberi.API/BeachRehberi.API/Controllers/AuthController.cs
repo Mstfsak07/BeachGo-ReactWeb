@@ -8,8 +8,8 @@ namespace BeachRehberi.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [EnableRateLimiting("auth")] 
-    public class AuthController : ControllerBase        
+    [EnableRateLimiting("auth")]
+    public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
 
@@ -44,8 +44,9 @@ namespace BeachRehberi.API.Controllers
         {
             var authHeader = Request.Headers["Authorization"].ToString();
             string? accessToken = null;
-            if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)) {
-                 accessToken = authHeader.Substring("Bearer ".Length).Trim();
+            if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                accessToken = authHeader.Substring("Bearer ".Length).Trim();
             }
 
             await _authService.LogoutAsync(accessToken, request?.RefreshToken);
@@ -55,11 +56,13 @@ namespace BeachRehberi.API.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            var user = await _authService.RegisterAsync(request);
-            if (user == null)
-                return BadRequest(ApiResponse<string>.FailureResult("Bu e-posta adresi zaten kullanımda."));   
+            var result = await _authService.RegisterAsync(request);
+            if (!result.Success)
+            {
+                return BadRequest(ApiResponse<string>.FailureResult(result.Message));
+            }
 
-            return Ok(ApiResponse<BusinessUser>.SuccessResult(user, "Kayıt başarılı."));
+            return Ok(ApiResponse<BusinessUser>.SuccessResult(result.User!, result.Message));
         }
     }
 }

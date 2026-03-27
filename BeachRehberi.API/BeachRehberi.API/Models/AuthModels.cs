@@ -12,7 +12,7 @@ public class RegisterRequest
     public required string Password { get; set; }
     public required string BusinessName { get; set; }
     public string? ContactName { get; set; }
-    public int BeachId { get; set; }
+    public int? BeachId { get; set; }
 }
 
 public class AuthResponse

@@ -6,7 +6,7 @@ namespace BeachRehberi.API.Models;
 public class BusinessUser
 {
     public int Id { get; set; }
-    public int BeachId { get; set; }
+    public int? BeachId { get; set; }
     [JsonIgnore]
     public Beach? Beach { get; set; }
     

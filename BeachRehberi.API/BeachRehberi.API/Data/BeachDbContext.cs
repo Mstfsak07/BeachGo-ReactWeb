@@ -35,6 +35,16 @@ public class BeachDbContext : DbContext
             e.HasOne(x => x.Beach).WithMany(x => x.Reviews).HasForeignKey(x => x.BeachId).OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<BusinessUser>(e =>
+        {
+            e.HasKey(u => u.Id);
+            e.HasOne(u => u.Beach)
+                .WithMany()
+                .HasForeignKey(u => u.BeachId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
         modelBuilder.Entity<RefreshToken>(e => {
             e.HasIndex(x => x.Token).IsUnique();
         });

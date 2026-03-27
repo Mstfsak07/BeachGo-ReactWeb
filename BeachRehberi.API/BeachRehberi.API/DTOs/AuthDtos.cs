@@ -1,35 +1,34 @@
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace BeachRehberi.API.DTOs
 {
-    public class LoginDto 
-    { 
+    public class LoginDto
+    {
         [Required(ErrorMessage = "E-posta adresi zorunludur.")]
-        [EmailAddress(ErrorMessage = "GeĂ§ersiz e-posta formatÄą.")]
-        public string Email { get; set; } = ""; 
+        [EmailAddress(ErrorMessage = "Geçersiz e-posta formatı.")]
+        public string Email { get; set; } = "";
 
-        [Required(ErrorMessage = "Ĺifre zorunludur.")]
-        [MinLength(6, ErrorMessage = "Ĺifre en az 6 karakter olmalÄądÄąr.")]
-        public string Password { get; set; } = ""; 
+        [Required(ErrorMessage = "Şifre zorunludur.")]
+        [MinLength(6, ErrorMessage = "Şifre en az 6 karakter olmalıdır.")]
+        public string Password { get; set; } = "";
     }
 
-    public class RegisterDto 
-    { 
+    public class RegisterDto
+    {
         [Required]
         [EmailAddress]
         [MaxLength(100)]
-        public string Email { get; set; } = ""; 
+        public string Email { get; set; } = "";
 
         [Required]
         [MinLength(6)]
         [MaxLength(50)]
-        public string Password { get; set; } = ""; 
+        public string Password { get; set; } = "";
 
         [Required]
         [MaxLength(50)]
-        public string ContactName { get; set; } = ""; 
+        public string ContactName { get; set; } = "";
 
-        [Required]
-        public int BeachId { get; set; } 
+        public int? BeachId { get; set; }
     }
 }

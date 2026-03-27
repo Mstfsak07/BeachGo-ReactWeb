@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
@@ -20,7 +20,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> GetByPhone(string phone)
         {
             var res = await _context.Reservations
-                .Where(r => r.Phone == phone)
+                .Where(r => r.UserPhone == phone)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
             return Ok(ApiResponse<List<Reservation>>.SuccessResult(res));
@@ -29,16 +29,16 @@ namespace BeachRehberi.API.Controllers
         [HttpDelete("{code}")]
         public async Task<IActionResult> Cancel(string code, [FromQuery] string phone)
         {
-            var res = await _context.Reservations.FirstOrDefaultAsync(r => r.Code == code && r.Phone == phone);
-            
+            var res = await _context.Reservations.FirstOrDefaultAsync(r => r.ConfirmationCode == code && r.UserPhone == phone);
+
             if (res == null) return NotFound(ApiResponse<string>.FailureResult("Rezervasyon veya telefon numarası hatalı."));
-            
-            if (res.Status == ReservationStatus.Approved)
+
+            if (res.Status == ReservationStatus.Confirmed || res.Status == ReservationStatus.Approved)
                 return BadRequest(ApiResponse<string>.FailureResult("Onaylanmış rezervasyonlar iptal edilemez."));
 
             _context.Reservations.Remove(res);
             await _context.SaveChangesAsync();
-            
+
             return Ok(ApiResponse<string>.SuccessResult(null, "Rezervasyon iptal edildi."));
         }
 
@@ -46,7 +46,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> Create([FromBody] Reservation reservation)
         {
             // Secure 6-char upper code
-            reservation.Code = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
+            reservation.ConfirmationCode = Guid.NewGuid().ToString("N").Substring(0, 6).ToUpper();
             reservation.CreatedAt = DateTime.UtcNow;
             reservation.Status = ReservationStatus.Pending;
 

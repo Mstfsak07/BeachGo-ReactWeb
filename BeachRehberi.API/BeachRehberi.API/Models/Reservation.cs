@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace BeachRehberi.API.Models
 {
@@ -6,6 +7,7 @@ namespace BeachRehberi.API.Models
     {
         Pending,
         Approved,
+        Confirmed,
         Rejected,
         Cancelled
     }
@@ -14,14 +16,24 @@ namespace BeachRehberi.API.Models
     {
         public int Id { get; set; }
         public int BeachId { get; set; }
-        public Beach Beach { get; set; } = null!;
-        public string CustomerName { get; set; } = string.Empty;
-        public string Phone { get; set; } = string.Empty;
-        public int Pax { get; set; } // KiĹąi sayÄąsÄą
-        public string Code { get; set; } = string.Empty; // Sorgu kodu
-        public DateTime ReservationDate { get; set; } // Hangi gĂźn iĂ§in?
+        public Beach? Beach { get; set; }
+
+        [Required(ErrorMessage = \"Kullanıcı adı zorunludur.\")]
+        [StringLength(100, MinimumLength = 2)]
+        public required string UserName { get; set; }
+
+        [Required(ErrorMessage = \"Telefon numarası zorunludur.\")]
+        [RegularExpression(@\"^\+?(\d{10,12})$\", ErrorMessage = \"Geçerli bir telefon numarası giriniz.\")]
+        public required string UserPhone { get; set; }
+
+        [Range(1, 20)]
+        public int PersonCount { get; set; }
+
+        public string? ConfirmationCode { get; set; }
+        public decimal TotalPrice { get; set; }
+        public DateTime ReservationDate { get; set; }
         public ReservationStatus Status { get; set; } = ReservationStatus.Pending;
-        public string? BusinessComment { get; set; } // Ä°Ĺąletmenin notu (Red sebebi vb.)
+        public string? BusinessComment { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BeachRehberi.API.Services;
 
-
 public class ReservationService : IReservationService
 {
     private readonly BeachDbContext _db;
@@ -18,17 +17,28 @@ public class ReservationService : IReservationService
 
     public async Task<Reservation> CreateAsync(Reservation reservation)
     {
-        reservation.ConfirmationCode = $"BR-{new Random().Next(10000, 99999)}";
+        var beach = await _db.Beaches.FindAsync(reservation.BeachId);
+        if (beach == null) throw new Exception(\"Plaj bulunamadı.\");
+
+        reservation.TotalPrice = (beach.EntryFee + beach.SunbedPrice) * reservation.PersonCount;
+
+        string newCode;
+        bool isUsed;
+        do {
+            newCode = Guid.NewGuid().ToString(\"N\").Substring(0, 6).ToUpper();
+            isUsed = await _db.Reservations.AnyAsync(r => r.ConfirmationCode == newCode);
+        } while (isUsed);
+
+        reservation.ConfirmationCode = newCode;
         reservation.Status = ReservationStatus.Confirmed;
         reservation.CreatedAt = DateTime.UtcNow;
 
         _db.Reservations.Add(reservation);
         await _db.SaveChangesAsync();
 
-        // İşletmeye bildirim gönder
         await _notification.SendToBusinessAsync(
             reservation.BeachId,
-            $"Yeni rezervasyon: {reservation.UserName} · {reservation.PersonCount} kişi · {reservation.ReservationDate:dd.MM.yyyy}");
+            $\"Yeni Rezervasyon: {reservation.UserName} ({reservation.PersonCount} Kişi) - Kod: {newCode}\");
 
         return reservation;
     }

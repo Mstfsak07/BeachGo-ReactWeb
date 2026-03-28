@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Services;
@@ -140,6 +140,8 @@ namespace BeachRehberi.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
+            // Client-provided Role field MUST NOT be trusted - ALWAYS assign User role
+            request.Role = UserRoles.User;
             try
             {
                 var result = await _authService.RegisterAsync(request, GetIpAddress(), Request.Headers["User-Agent"].ToString());

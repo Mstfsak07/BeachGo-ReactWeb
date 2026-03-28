@@ -29,7 +29,8 @@ namespace BeachRehberi.API.Services
             
             // KRİTİK GÜVENLİK DÜZELTMESİ: İstemciden gelen rol bilgisi kesinlikle reddediliyor.
             // Yeni kayıt olan her kullanıcı varsayılan olarak sadece 'Business' rolünü alabilir.
-            user.Role = UserRoles.Business; 
+            // BusinessUser sınıfının Role özelliği, veritabanına sadece backend tarafından belirlenen bu değerle yazılır.
+            user.Role = UserRoles.Business;
 
             // Şifre güvenli bir şekilde hash'leniyor.
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);

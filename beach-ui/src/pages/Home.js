@@ -39,15 +39,15 @@ const Home = () => {
         <div className="container mx-auto px-6 relative z-10">
           <div className="max-w-2xl text-white space-y-8 animate-in slide-in-from-left duration-700">
             <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-none">
-              Antalya'nÄąn <br />
-              <span className="text-primary-400 font-black">En Ä°yisini</span> Bulun.
+              Antalya'nın <br />
+              <span className="text-primary-400 font-black">En İyisini</span> Bulun.
             </h1>
             <p className="text-xl md:text-2xl text-slate-200 font-medium max-w-lg leading-relaxed italic">
-              Mavi bayraklÄą plajlar, anlÄąk doluluk oranlarÄą ve popĂźler etkinlikler.
+              Mavi bayraklı plajlar, anlık doluluk oranları ve popüler etkinlikler.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Link to="/beaches" className="btn-primary text-lg px-10 py-4 font-black tracking-widest uppercase">
-                KeĹąfet
+                Keşfet
               </Link>
             </div>
           </div>
@@ -58,11 +58,14 @@ const Home = () => {
       <section className="py-24 container mx-auto px-6">
         <div className="flex justify-between items-end mb-12">
           <div>
-            <span className="text-primary-500 font-black tracking-widest uppercase text-sm mb-2 block tracking-tighter">PopĂźler SeĂ§imler</span>
-            <h2 className="text-4xl font-black text-slate-800 tracking-tight">Ăne ĂÄąkan Plajlar</h2>
+            <span className="text-primary-500 font-black tracking-widest uppercase text-sm mb-2 block tracking-tighter">Popüler Seçimler</span>
+            <h2 className="text-4xl font-black text-slate-800 tracking-tight">Öne Çıkan Plajlar</h2>
           </div>
           <Link to="/beaches" className="text-primary-600 font-bold flex items-center gap-2 hover:gap-4 transition-all group underline-offset-4 hover:underline">
-            TĂźmĂźnĂź GĂśr
+            Tümünü Görüntüle
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
           </Link>
         </div>
 
@@ -83,11 +86,11 @@ const Home = () => {
         <div className="container mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-12 text-white text-center">
           <div>
             <div className="text-5xl font-black mb-1 text-primary-400 tracking-tighter">50+</div>
-            <div className="text-slate-400 text-xs font-black uppercase tracking-widest">Plaj SeĂ§eneÄąi</div>
+            <div className="text-slate-400 text-xs font-black uppercase tracking-widest">Plaj Seçeneği</div>
           </div>
           <div>
             <div className="text-5xl font-black mb-1 text-primary-400 tracking-tighter">12K+</div>
-            <div className="text-slate-400 text-xs font-black uppercase tracking-widest">ZiyaretĂ§i</div>
+            <div className="text-slate-400 text-xs font-black uppercase tracking-widest">Ziyaretçi</div>
           </div>
           <div>
             <div className="text-5xl font-black mb-1 text-primary-400 tracking-tighter">15+</div>

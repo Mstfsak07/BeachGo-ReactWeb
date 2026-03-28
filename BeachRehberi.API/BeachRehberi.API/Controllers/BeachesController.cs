@@ -10,7 +10,7 @@ namespace BeachRehberi.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "User,Business,Admin")]
+[AllowAnonymous] // 🔥 bunu ekle
 public class BeachesController : ControllerBase
 {
     private readonly IBeachService _beachService;

@@ -185,12 +185,16 @@ builder.Services.AddCors(options =>
         // Production domains - uncomment for production
         // policy.WithOrigins("https://beachgo.com", "https://www.beachgo.com")
 
-        // Development domains
+        // Development domains (HTTP + HTTPS)
         policy.WithOrigins(
                 "http://localhost:3000",
+                "https://localhost:3000",
                 "http://localhost:5173",
+                "https://localhost:5173",
                 "http://192.168.1.6:3000",
-                "http://192.168.1.6:5173")
+                "https://192.168.1.6:3000",
+                "http://192.168.1.6:5173",
+                "https://192.168.1.6:5173")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();

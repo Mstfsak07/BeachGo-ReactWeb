@@ -3,6 +3,9 @@ from pathlib import Path
 
 root = Path('.')
 
+# node_modules klasörünü exclude et
+excluded_dirs = {'node_modules', '.git', 'build', 'dist', '.next'}
+
 patterns = [
     (re.compile(r'\\"'), '"'),
     (re.compile(r"\\\'"), "'"),
@@ -18,19 +21,23 @@ invalid = re.compile(r'[\x00-\x08\x0B\x0C\x0E-\x1F\uFEFF\u202A-\u202E]')
 
 count = 0
 issues = []
-for file in list(root.rglob('*.js')) + list(root.rglob('*.jsx')):
-    try:
-        text = file.read_bytes().decode('utf-8', errors='replace')
-    except Exception as e:
-        issues.append((file, 'decode', str(e)))
-        continue
-    orig = text
-    for pat, repl in patterns:
-        text = pat.sub(repl, text)
-    text = invalid.sub('', text)
-    if text != orig:
-        file.write_text(text, encoding='utf-8')
-        count += 1
+
+# Sadece src klasöründe işlem yap
+src_dir = Path('src')
+if src_dir.exists():
+    for file in list(src_dir.rglob('*.js')) + list(src_dir.rglob('*.jsx')):
+        try:
+            text = file.read_bytes().decode('utf-8', errors='replace')
+        except Exception as e:
+            issues.append((file, 'decode', str(e)))
+            continue
+        orig = text
+        for pat, repl in patterns:
+            text = pat.sub(repl, text)
+        text = invalid.sub('', text)
+        if text != orig:
+            file.write_text(text, encoding='utf-8')
+            count += 1
 
 print(f'Processed files: {count}, issues: {len(issues)}')
 for f,e,m in issues:

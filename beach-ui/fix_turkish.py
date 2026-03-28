@@ -25,7 +25,7 @@ for f in changed:
 issues = []
 for file in list(root.rglob('*.js')) + list(root.rglob('*.jsx')):
     txt = file.read_text(encoding='utf-8', errors='replace')
-    if 'Giri�' in txt or '�ifre' in txt or 'Ho�' in txt:
+    if 'Giri' in txt or '�ifre' in txt or 'Ho�' in txt:
         issues.append(file)
 print('remaining bad tokens in', len(issues), 'files')
 for f in issues:

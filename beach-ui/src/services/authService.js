@@ -1,34 +1,49 @@
-import api, { setAccessToken } from '../api/axios';
+import api, { setAccessToken, getAccessToken } from '../api/axios';
 
 const authService = {
   login: async (email, password) => {
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { token, refreshToken, email: userEmail, role } = response.data.data;
-      
-      // Access token memory'de, refresh token localStorage'da
-      setAccessToken(token);
-      localStorage.setItem('refreshToken', refreshToken);
-      
+      const { data: tokenData } = response.data;
+
+      setAccessToken(tokenData.token);
+      localStorage.setItem('refreshToken', tokenData.refreshToken);
+      localStorage.setItem('user', JSON.stringify({
+        email: tokenData.email,
+        role: tokenData.role
+      }));
+
       return {
-        user: { email: userEmail, role },
-        accessToken: token
+        user: { email: tokenData.email, role: tokenData.role },
+        accessToken: tokenData.token
       };
     } catch (error) {
-      throw error.response?.data || error.message;
+      throw new Error(error.response?.data?.message || 'Giriş başarısız');
     }
   },
 
   logout: async () => {
     try {
       const refreshToken = localStorage.getItem('refreshToken');
-      await api.post('/auth/logout', { refreshToken });
+      if (refreshToken) {
+        await api.post('/auth/logout', { refreshToken });
+      }
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
       setAccessToken(null);
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
     }
+  },
+
+  isAuthenticated: () => {
+    return !!getAccessToken() && !!localStorage.getItem('refreshToken');
+  },
+
+  getUser: () => {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
   },
 
   refreshToken: async () => {
@@ -38,17 +53,25 @@ const authService = {
 
       const response = await api.post('/auth/refresh', { refreshToken });
       const { token, refreshToken: newRefreshToken } = response.data.data;
-      
+
       setAccessToken(token);
       localStorage.setItem('refreshToken', newRefreshToken);
-      
+
       return token;
     } catch (error) {
       setAccessToken(null);
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
       throw error;
     }
-  },
+  }
 };
 
-export default authService;
+// Logout event listener
+window.addEventListener('logout', () => {
+  authService.logout();
+  window.location.href = '/login';
+});
+
+export default authService;
+

@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Singleton access token storage (Memory only)
 let accessToken = null;
 
 export const setAccessToken = (token) => {
@@ -10,14 +9,13 @@ export const setAccessToken = (token) => {
 export const getAccessToken = () => accessToken;
 
 const api = axios.create({
-    baseURL: 'http://localhost:5144/api',
-    withCredentials: true, // HttpOnly cookie'lerin gönderilmesi için kritik
+    baseURL: 'https://localhost:7296/api',
+    withCredentials: true,
     headers: {
         'Content-Type': 'application/json'
     }
 });
 
-// Refresh token işlemi sırasında gelen diğer istekleri kuyruğa alalım
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -32,7 +30,7 @@ const processQueue = (error, token = null) => {
     failedQueue = [];
 };
 
-// Request Interceptor: Her isteğe token ekler
+// Request Interceptor
 api.interceptors.request.use(
     (config) => {
         if (accessToken) {
@@ -43,17 +41,15 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response Interceptor: 401 hatalarını (Expired Token) yakalar
+// Response Interceptor
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
 
-        // 401 Unauthorized ve istek daha önce tekrar edilmemişse
+        // 401 - Token expired
         if (error.response?.status === 401 && !originalRequest._retry) {
-
             if (isRefreshing) {
-                // Eğer şu an bir refresh işlemi yapılıyorsa, bu isteği kuyruğa ekle
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
                 })
@@ -61,25 +57,41 @@ api.interceptors.response.use(
                         originalRequest.headers.Authorization = `Bearer ${token}`;
                         return api(originalRequest);
                     })
-                    .catch(err => Promise.reject(err));
+                    .catch(err => {
+                        window.dispatchEvent(new Event('logout'));
+                        return Promise.reject(err);
+                    });
             }
 
             originalRequest._retry = true;
             isRefreshing = true;
 
             return new Promise((resolve, reject) => {
-                // Refresh endpoint'ine istek at (Cookie otomatik gider)
-                axios.post('http://localhost:5144/api/auth/refresh', {}, { withCredentials: true })
+                const refreshToken = localStorage.getItem('refreshToken');
+
+                if (!refreshToken) {
+                    window.dispatchEvent(new Event('logout'));
+                    reject(error);
+                    isRefreshing = false;
+                    return;
+                }
+
+                axios.post('https://localhost:7296/api/auth/refresh',
+                    { refreshToken },
+                    { withCredentials: true }
+                )
                     .then(({ data }) => {
                         const newToken = data.data.token;
                         setAccessToken(newToken);
+                        localStorage.setItem('refreshToken', data.data.refreshToken);
                         processQueue(null, newToken);
                         resolve(api(originalRequest));
                     })
                     .catch((err) => {
                         processQueue(err, null);
-                        // Refresh fail olursa (cookie expire vs) kullanıcıyı logout'a zorla
-                        window.dispatchEvent(new Event('auth-failure'));
+                        setAccessToken(null);
+                        localStorage.removeItem('refreshToken');
+                        window.dispatchEvent(new Event('logout'));
                         reject(err);
                     })
                     .finally(() => {
@@ -87,6 +99,13 @@ api.interceptors.response.use(
                     });
             });
         }
+
+        // Log errors
+        console.error('API Error:', {
+            status: error.response?.status,
+            message: error.response?.data?.message || error.message,
+            url: error.config?.url
+        });
 
         return Promise.reject(error);
     }

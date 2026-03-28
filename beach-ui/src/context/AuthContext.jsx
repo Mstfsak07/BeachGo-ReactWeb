@@ -65,14 +65,20 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         silentRefresh();
 
-        // Axios'tan gelen auth-failure event'ini dinle (örn: Refresh failed)
-        const handleAuthFailure = () => {
+        // Logout event handlers
+        const handleLogout = () => {
             logout();
-            toast.error('Oturum süreniz doldu, lütfen tekrar giriş yapın.');
+            window.location.href = '/login';
         };
 
-        window.addEventListener('auth-failure', handleAuthFailure);
-        return () => window.removeEventListener('auth-failure', handleAuthFailure);
+        // Multiple event sources for logout
+        window.addEventListener('logout', handleLogout);
+        window.addEventListener('auth-failure', handleLogout);
+
+        return () => {
+            window.removeEventListener('logout', handleLogout);
+            window.removeEventListener('auth-failure', handleLogout);
+        };
     }, [silentRefresh, logout]);
 
     const value = {

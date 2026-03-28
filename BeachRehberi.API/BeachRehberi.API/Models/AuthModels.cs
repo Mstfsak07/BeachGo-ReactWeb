@@ -13,6 +13,13 @@ public class LoginRequest
     public required string Password { get; set; }
 }
 
+public class UserRegisterRequest  // ← YENİ: User Registration
+{
+    public required string Username { get; set; }
+    public required string Email { get; set; }
+    public required string Password { get; set; }
+}
+
 public class RegisterRequest
 {
     public required string Email { get; set; }
@@ -20,18 +27,26 @@ public class RegisterRequest
     public required string BusinessName { get; set; }
     public string? ContactName { get; set; }
     public int? BeachId { get; set; }
-    public string Role { get; set; } = UserRoles.User; // New field for role selection if needed
+    public string Role { get; set; } = UserRoles.User;
+}
+
+// ← DEĞİŞTİ: artık body tabanlı, cookie yok
+public class RefreshRequest
+{
+    public required string AccessToken { get; set; }
+    public required string RefreshToken { get; set; }
+}
+
+public class RevokeRequest  // ← YENİ
+{
+    public required string RefreshToken { get; set; }
 }
 
 public class AuthResponse
 {
-    public string Token { get; set; } = string.Empty;
-    public string? RefreshToken { get; set; } // Nullable for cookie implementation
+    public string AccessToken { get; set; } = string.Empty;
+    public string RefreshToken { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
-}
-
-public class RefreshRequest
-{
-    public required string RefreshToken { get; set; }
+    public DateTime AccessTokenExpiry { get; set; } // ← YENİ: proaktif refresh için
 }

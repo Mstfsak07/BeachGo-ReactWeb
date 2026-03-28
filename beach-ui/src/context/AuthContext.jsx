@@ -1,97 +1,137 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api, { setAccessToken } from '../api/axios';
-import toast from 'react-hot-toast';
+import React, {
+    createContext, useContext, useState,
+    useEffect, useCallback, useRef
+} from 'react';
+import api, { setAccessToken, clearAccessToken } from '../api/axios';
+import authService from '../services/authService';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const refreshTimerRef = useRef(null);
 
-    // Logout: Session temizleme
-    const logout = useCallback(async () => {
-        try {
-            await api.post('/auth/logout');
-        } catch (err) {
-            console.error('Logout error:', err);
-        } finally {
-            setUser(null);
-            setAccessToken(null);
-            setLoading(false);
+    // ── Session temizleme ───────────────────────────────────────────────────
+    const clearSession = useCallback(() => {
+        clearAccessToken();
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        setUser(null);
+        if (refreshTimerRef.current) {
+            clearTimeout(refreshTimerRef.current);
+            refreshTimerRef.current = null;
         }
     }, []);
 
-    // Login: Kimlik doğrulama isteği
-    const login = async (email, password) => {
+    // ── Proaktif refresh zamanlayıcısı ─────────────────────────────────────
+    // accessTokenExpiry'den 1 dk önce otomatik refresh yapar.
+    // Kullanıcı 401 görmeden token yenilenir.
+    const scheduleProactiveRefresh = useCallback((expiryISO) => {
+        if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+        if (!expiryISO) return;
+
+        const expiry = new Date(expiryISO).getTime();
+        const now = Date.now();
+        const delay = expiry - now - 60_000; // 1 dk erken
+
+        if (delay <= 0) return; // Zaten yakın veya geçmiş
+
+        refreshTimerRef.current = setTimeout(async () => {
+            try {
+                const data = await authService.refreshToken();
+                scheduleProactiveRefresh(data.accessTokenExpiry);
+            } catch {
+                clearSession();
+                window.location.href = '/login';
+            }
+        }, delay);
+    }, [clearSession]);
+
+    // ── Logout ─────────────────────────────────────────────────────────────
+    const logout = useCallback(async () => {
         try {
-            setLoading(true);
+            await authService.logout();
+        } finally {
+            clearSession();
+        }
+    }, [clearSession]);
 
-            const res = await api.post("/auth/login", { email, password });
+    // ── Login ──────────────────────────────────────────────────────────────
+    const login = useCallback(async (email, password) => {
+        setLoading(true);
+        try {
+            const result = await authService.login(email, password);
+            setUser(result.user);
 
-            console.log(res.data);
+            // Proaktif refresh zamanlayıcısını başlat
+            const storedUser = authService.getUser();
+            const expiryISO = localStorage.getItem('accessTokenExpiry');
+            scheduleProactiveRefresh(expiryISO);
 
-            // ✅ SENDE TOKEN BU
-            setAccessToken(res.data.data.token);
-
-            setUser({
-                email: res.data.data.email,
-                role: res.data.data.role
-            });
-
-            return res.data;
-
-        } catch (error) {
-            throw error.response?.data || error.message;
+            return result;
         } finally {
             setLoading(false);
         }
-    };
+    }, [scheduleProactiveRefresh]);
 
-    // Silent Refresh: Uygulama ilk açıldığında cookie üzerinden oturum canlandırma
+    // ── Silent Refresh: sayfa açılışında oturum canlandırma ──────────────
     const silentRefresh = useCallback(async () => {
+        const storedRefreshToken = localStorage.getItem('refreshToken');
+
+        if (!storedRefreshToken) {
+            setLoading(false);
+            return;
+        }
+
         try {
-            const response = await api.post('/auth/refresh', {});
-            setAccessToken(response.data.data.token);
-            setUser({ email: response.data.data.email, role: response.data.data.role });
-        } catch (error) {
-            // Eğer cookie yoksa sessizce çıkış yap
-            console.log('No active session found.');
-            logout();
+            const data = await authService.refreshToken();
+            setUser({ email: data.email, role: data.role });
+            localStorage.setItem('user', JSON.stringify({ email: data.email, role: data.role }));
+            scheduleProactiveRefresh(data.accessTokenExpiry);
+        } catch {
+            // Refresh başarısız → session geçersiz
+            clearSession();
         } finally {
             setLoading(false);
         }
-    }, [logout]);
+    }, [clearSession, scheduleProactiveRefresh]);
 
+    // ── Event listeners ────────────────────────────────────────────────────
     useEffect(() => {
         silentRefresh();
 
-        // Logout event handlers
-        const handleLogout = () => {
-            logout();
+        const handleAuthLogout = (e) => {
+            console.warn('[AuthContext] Auth logout event:', e.detail?.reason);
+            clearSession();
             window.location.href = '/login';
         };
 
-        // Multiple event sources for logout
-        window.addEventListener('logout', handleLogout);
-        window.addEventListener('auth-failure', handleLogout);
+        // axios interceptor bu event'i dispatch eder (refresh başarısız olunca)
+        window.addEventListener('auth:logout', handleAuthLogout);
+        // eski event adı için geriye uyumluluk
+        window.addEventListener('logout', handleAuthLogout);
 
         return () => {
-            window.removeEventListener('logout', handleLogout);
-            window.removeEventListener('auth-failure', handleLogout);
+            window.removeEventListener('auth:logout', handleAuthLogout);
+            window.removeEventListener('logout', handleAuthLogout);
+            if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
         };
-    }, [silentRefresh, logout]);
+    }, [silentRefresh, clearSession]);
 
     const value = {
         user,
         loading,
+        isAuthenticated: !!user,
         login,
         logout,
-        isAuthenticated: !!user
+        refreshToken: authService.refreshToken, // direkt erişim
     };
 
     return (
         <AuthContext.Provider value={value}>
-            {!loading && children}
+            {!loading ? children : null}
         </AuthContext.Provider>
     );
 };

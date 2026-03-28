@@ -23,8 +23,8 @@ public class TokenService : ITokenService
         _db = db;
         _cache = cache;
         _logger = logger;
-        _jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET") 
-                     ?? configuration["Jwt:SecretKey"] 
+        _jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET")
+                     ?? configuration["Jwt:SecretKey"]
                      ?? throw new InvalidOperationException("JWT Secret is missing!");
     }
 
@@ -32,7 +32,7 @@ public class TokenService : ITokenService
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.UTF8.GetBytes(_jwtSecret);
-        
+
         var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
@@ -70,7 +70,7 @@ public class TokenService : ITokenService
     public async Task BlacklistTokenAsync(string token, DateTime expiry)
     {
         _logger.LogInformation("Blacklisting token expiring at {Expiry}", expiry);
-        
+
         if (!await _db.RevokedTokens.AnyAsync(r => r.Token == token))
         {
             _db.RevokedTokens.Add(new RevokedToken { Token = token, ExpiryDate = expiry });
@@ -79,6 +79,41 @@ public class TokenService : ITokenService
 
         var cacheEntryOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(expiry);
         _cache.Set(BlacklistCachePrefix + token, true, cacheEntryOptions);
+    }
+    public ClaimsPrincipalResult? ValidateExpiredAccessToken(string accessToken)
+    {
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var key = Encoding.UTF8.GetBytes(_jwtSecret);
+
+            var principal = handler.ValidateToken(accessToken, new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateIssuerSigningKey = true,
+                ValidateLifetime = false, // ← intentional: expired token kabul et
+                ValidIssuer = "BeachRehberi.API",
+                ValidAudience = "BeachRehberi.App",
+                IssuerSigningKey = new SymmetricSecurityKey(key),
+                ClockSkew = TimeSpan.Zero
+            }, out var securityToken);
+
+            if (securityToken is not JwtSecurityToken jwt ||
+                !jwt.Header.Alg.Equals(SecurityAlgorithms.HmacSha256,
+                    StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            return new ClaimsPrincipalResult
+            {
+                UserId = principal.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                         ?? principal.FindFirstValue(ClaimTypes.NameIdentifier) ?? "",
+                Email = principal.FindFirstValue(JwtRegisteredClaimNames.Email) ?? "",
+                Role = principal.FindFirstValue(ClaimTypes.Role) ?? "",
+                Jti = principal.FindFirstValue(JwtRegisteredClaimNames.Jti) ?? ""
+            };
+        }
+        catch { return null; }
     }
 
     public async Task<bool> IsTokenBlacklistedAsync(string token)

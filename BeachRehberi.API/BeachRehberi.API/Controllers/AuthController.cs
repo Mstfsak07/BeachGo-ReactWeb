@@ -50,59 +50,90 @@ namespace BeachRehberi.API.Controllers
             return result.ToActionResult();
         }
 
+        // Login endpoint değişmedi, Refresh ve Logout değişti:
+
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh([FromBody] RefreshRequest? request)
+        [AllowAnonymous]
+        public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
         {
-            var ipAddress = GetIpAddress();
-            var userAgent = Request.Headers["User-Agent"].ToString();
+            if (string.IsNullOrWhiteSpace(request?.AccessToken) ||
+                string.IsNullOrWhiteSpace(request?.RefreshToken))
+                return BadRequest("Access token ve refresh token gerekli.");
 
-            // Get refresh token from HttpOnly cookie
-            var refreshToken = Request.Cookies["refreshToken"];
-            if (string.IsNullOrEmpty(refreshToken))
-            {
-                return "Refresh token bulunamadı.".ToUnauthorizedApiResponse();
-            }
+            var result = await _authService.RefreshTokenAsync(
+                request.AccessToken, request.RefreshToken,
+                GetIpAddress(), Request.Headers.UserAgent.ToString());
 
-            var result = await _authService.RefreshTokenAsync(refreshToken, ipAddress, userAgent);
+            return result.ToActionResult();
+        }
 
-            if (result.Success)
-            {
-                // Update refresh token cookie
-                Response.Cookies.Append("refreshToken", result.Data.RefreshToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = false, // Set to true in production with HTTPS
-                    SameSite = SameSiteMode.Strict,
-                    Expires = DateTime.UtcNow.AddDays(7)
-                });
-
-                // Remove from response body
-                result.Data.RefreshToken = null;
-            }
-
+        [HttpPost("revoke")]   // ← YENİ ENDPOINT
+        [Authorize]
+        public async Task<IActionResult> Revoke([FromBody] RevokeRequest request)
+        {
+            var result = await _authService.RevokeTokenAsync(
+                request.RefreshToken, GetIpAddress(), "manual_revoke");
             return result.ToActionResult();
         }
 
         [HttpPost("logout")]
         [Authorize]
-        public async Task<IActionResult> Logout()
+        public async Task<IActionResult> Logout([FromBody] RevokeRequest? request)
         {
-            var authHeader = Request.Headers["Authorization"].ToString();
             string? accessToken = null;
+            var authHeader = Request.Headers.Authorization.ToString();
             if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            {
-                accessToken = authHeader.Substring("Bearer ".Length).Trim();
-            }
+                accessToken = authHeader["Bearer ".Length..].Trim();
 
-            // Get refresh token from cookie
-            var refreshToken = Request.Cookies["refreshToken"];
-
-            await _authService.LogoutAsync(accessToken, refreshToken);
-
-            // Clear refresh token cookie
-            Response.Cookies.Delete("refreshToken");
-
+            await _authService.LogoutAsync(accessToken, request?.RefreshToken);
             return ((object?)null).ToOkApiResponse("Çıkış başarılı.");
+        }
+
+        [HttpPost("register-user")]
+        [AllowAnonymous]
+        public async Task<IActionResult> RegisterUser([FromBody] UserRegisterRequest request)
+        {
+            try
+            {
+                // Simple user registration: create user with standard role
+                var registerRequest = new RegisterRequest
+                {
+                    Email = request.Email,
+                    Password = request.Password,
+                    BusinessName = request.Username, // Use username as businessName for now
+                    ContactName = request.Username,
+                    BeachId = null,
+                    Role = UserRoles.User
+                };
+
+                var result = await _authService.RegisterAsync(registerRequest, GetIpAddress(), Request.Headers["User-Agent"].ToString());
+                return result.ToActionResult();
+            }
+            catch (FluentValidation.ValidationException ex)
+            {
+                return UnprocessableEntity(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = _configuration["Auth:ValidationErrorMessage"] ?? "Doğrulama hataları var.",
+                    Errors = ex.Errors.Select(e => e.ErrorMessage).ToList()
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = _configuration["Auth:ServerErrorMessage"] ?? "Sunucu hatası oluştu."
+                });
+            }
         }
 
         [HttpPost("register")]
@@ -111,7 +142,7 @@ namespace BeachRehberi.API.Controllers
         {
             try
             {
-                var result = await _authService.RegisterAsync(request);
+                var result = await _authService.RegisterAsync(request, GetIpAddress(), Request.Headers["User-Agent"].ToString());
                 return result.ToActionResult();
             }
             catch (FluentValidation.ValidationException ex)

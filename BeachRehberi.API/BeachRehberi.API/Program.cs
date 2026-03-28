@@ -209,7 +209,12 @@ var app = builder.Build();
 // ─────────────────────────────────────────
 // MIDDLEWARE PIPELINE (sıralama kritik!)
 // ─────────────────────────────────────────
-app.UseHttpsRedirection();
+// HTTPS redirect: production ortamında enable et
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -218,13 +223,15 @@ app.UseSwaggerUI(c =>
     c.DisplayRequestDuration();
 });
 
+// CORS: Authentication'dan ÖNCE olmalı
 app.UseCors("AllowFrontend");
 app.UseRateLimiter();
 
-// JWT Blacklist kontrolü Authentication'dan önce olmalı
+// Exception handling: en erken
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseMiddleware<JwtBlacklistMiddleware>();
 
+// Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -1,77 +1,91 @@
-import api, { setAccessToken, getAccessToken } from '../api/axios';
+import api, { setAccessToken, clearAccessToken } from '../api/axios';
 
 const authService = {
+  // ── LOGIN ─────────────────────────────────────────────────────────────────
   login: async (email, password) => {
-    try {
-      const response = await api.post('/auth/login', { email, password });
-      const { data: tokenData } = response.data;
+    const response = await api.post('/Auth/login', { email, password });
+    const data = response.data?.data;
 
-      setAccessToken(tokenData.token);
-      localStorage.setItem('refreshToken', tokenData.refreshToken);
-      localStorage.setItem('user', JSON.stringify({
-        email: tokenData.email,
-        role: tokenData.role
-      }));
-
-      return {
-        user: { email: tokenData.email, role: tokenData.role },
-        accessToken: tokenData.token
-      };
-    } catch (error) {
-      throw new Error(error.response?.data?.message || 'Giriş başarısız');
+    if (!data?.accessToken || !data?.refreshToken) {
+      throw new Error('Sunucudan token alınamadı.');
     }
+
+    // accessToken → memory (güvenli) + localStorage (refresh body için)
+    setAccessToken(data.accessToken, data.accessTokenExpiry);
+    localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('refreshToken', data.refreshToken);
+    localStorage.setItem('user', JSON.stringify({
+      email: data.email,
+      role: data.role,
+    }));
+
+    return {
+      user: { email: data.email, role: data.role },
+      accessToken: data.accessToken,
+    };
   },
 
+  // ── LOGOUT ────────────────────────────────────────────────────────────────
   logout: async () => {
     try {
       const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) {
-        await api.post('/auth/logout', { refreshToken });
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
+      await api.post('/Auth/logout', refreshToken ? { refreshToken } : {});
+    } catch (err) {
+      // Logout hatası sessizce geçilir – local state her durumda temizlenir
+      console.error('[authService] Logout API error:', err);
     } finally {
-      setAccessToken(null);
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
+      authService._clearLocalSession();
     }
   },
 
+  // ── REFRESH ───────────────────────────────────────────────────────────────
+  // Not: Bu metod doğrudan çağrılmaz; axios interceptor tarafından otomatik
+  // tetiklenir. Ancak AuthContext'te proaktif refresh için kullanılabilir.
+  refreshToken: async () => {
+    const storedRefreshToken = localStorage.getItem('refreshToken');
+    const storedAccessToken = localStorage.getItem('accessToken');
+
+    if (!storedRefreshToken) throw new Error('Refresh token yok.');
+
+    const response = await api.post('/Auth/refresh', {
+      accessToken: storedAccessToken || '',
+      refreshToken: storedRefreshToken,
+    });
+
+    const data = response.data?.data;
+
+    setAccessToken(data.accessToken, data.accessTokenExpiry);
+    localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('refreshToken', data.refreshToken);
+
+    return data;
+  },
+
+  // ── REVOKE (belirli bir token'ı iptal et) ────────────────────────────────
+  revokeToken: async (refreshToken) => {
+    return api.post('/Auth/revoke', { refreshToken });
+  },
+
+  // ── HELPERS ───────────────────────────────────────────────────────────────
   isAuthenticated: () => {
-    return !!getAccessToken() && !!localStorage.getItem('refreshToken');
+    return !!localStorage.getItem('refreshToken');
   },
 
   getUser: () => {
-    const user = localStorage.getItem('user');
-    return user ? JSON.parse(user) : null;
+    try {
+      const user = localStorage.getItem('user');
+      return user ? JSON.parse(user) : null;
+    } catch {
+      return null;
+    }
   },
 
-  refreshToken: async () => {
-    try {
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (!refreshToken) throw new Error('No refresh token');
-
-      const response = await api.post('/auth/refresh', { refreshToken });
-      const { token, refreshToken: newRefreshToken } = response.data.data;
-
-      setAccessToken(token);
-      localStorage.setItem('refreshToken', newRefreshToken);
-
-      return token;
-    } catch (error) {
-      setAccessToken(null);
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      throw error;
-    }
-  }
+  _clearLocalSession: () => {
+    clearAccessToken();
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+  },
 };
 
-// Logout event listener
-window.addEventListener('logout', () => {
-  authService.logout();
-  window.location.href = '/login';
-});
-
 export default authService;
-

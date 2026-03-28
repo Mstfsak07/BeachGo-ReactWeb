@@ -40,13 +40,13 @@ const BusinessDashboard = () => {
       // Listeyi gĂźncelle
       setReservations(prev => prev.map(r => r.id === id ? { ...r, status: status === 'Approved' ? 1 : 2 } : r));
     } catch (err) {
-      console.error("GĂźncelleme hatasÄą", err);
+      console.error("Güncelleme hatası", err);
     }
   };
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-slate-50 animate-pulse">
-      <div className="text-primary-500 font-black tracking-widest uppercase">YĂźkleniyor...</div>
+      <div className="text-primary-500 font-black tracking-widest uppercase">Yükleniyor...</div>
     </div>
   );
 
@@ -71,20 +71,20 @@ const BusinessDashboard = () => {
         <div className="flex justify-between items-center mb-10">
           <div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">Yönetim Merkezi</h1>
-            <p className="text-slate-500 font-medium italic">{beach?.name} Ä°Ĺąletmecisi</p>
+            <p className="text-slate-500 font-medium italic">{beach?.name} işletmecisi</p>
           </div>
           <div className="h-12 w-12 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-primary-500 hover:scale-110 transition-transform cursor-pointer"><Bell size={24} /></div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          {/* Rezervasyon Listesi (BĂźyĂźk Alan) */}
+          {/* Rezervasyon Listesi (Büyük Alan) */}
           <div className="xl:col-span-2 space-y-6">
             <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
               <Calendar className="text-primary-500" /> Rezervasyon Talepleri
             </h2>
             
             {reservations.length === 0 ? (
-               <div className="card p-12 text-center border-dashed border-2 bg-slate-50/50 italic text-slate-400">HenĂźz bekleyen talep bulunmuyor.</div>
+               <div className="card p-12 text-center border-dashed border-2 bg-slate-50/50 italic text-slate-400">Henüz bekleyen talep bulunmuyor.</div>
             ) : (
                <div className="grid grid-cols-1 gap-4">
                   {reservations.map(res => (
@@ -106,7 +106,7 @@ const BusinessDashboard = () => {
                              </>
                           ) : (
                              <span className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${res.status === 1 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                                {res.status === 1 ? 'OnaylandÄą' : 'Reddedildi'}
+                                {res.status === 1 ? 'Onaylandı' : 'Reddedildi'}
                              </span>
                           )}
                        </div>
@@ -119,17 +119,17 @@ const BusinessDashboard = () => {
           {/* SaÄą Sidebar (HÄązlÄą Ä°statistikler) */}
           <div className="space-y-6">
              <div className="card p-8 bg-primary-600 text-white shadow-xl shadow-primary-900/20">
-                <h3 className="text-xs font-black uppercase tracking-widest opacity-60 mb-1">AnlÄąk Doluluk OranÄą</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest opacity-60 mb-1">Anlık Doluluk Oranı</h3>
                 <div className="text-5xl font-black tracking-tighter mb-6">%{beach?.occupancyRate || '0'}</div>
                 <div className="w-full bg-primary-700 rounded-full h-2 mb-8"><div className="bg-white h-2 rounded-full shadow-lg" style={{ width: `${beach?.occupancyRate || 0}%` }}></div></div>
-                <button className="w-full bg-white/10 hover:bg-white/20 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all">DoluluÄąu GĂźncelle</button>
+                <button className="w-full bg-white/10 hover:bg-white/20 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all">Doluluğu Güncelle</button>
              </div>
              
              <div className="card p-6">
-                <h3 className="text-sm font-black text-slate-800 mb-6 uppercase tracking-widest">GĂźnlĂźk Ăzet</h3>
+                <h3 className="text-sm font-black text-slate-800 mb-6 uppercase tracking-widest">Günlük Özet</h3>
                 <div className="space-y-4">
                    <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100 italic">
-                      <span className="text-xs font-bold text-slate-500 uppercase tracking-tight tracking-wider">BugĂźnkĂź Etkinlik</span>
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-tight tracking-wider">Bugünkü Etkinlik</span>
                       <span className="text-sm font-black text-primary-600">Konser</span>
                    </div>
                 </div>

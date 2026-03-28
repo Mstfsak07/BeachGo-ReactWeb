@@ -1,7 +1,7 @@
 import axios from "axios";
 import toast from "react-hot-toast";
 
-const API_BASE_URL = "http://localhost:5143/api";
+const API_BASE_URL = "http://localhost:5144/api";
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -29,22 +29,22 @@ apiClient.interceptors.response.use(
     // Bizim ApiResponse<T> yapÄąmÄązÄą burada yĂśnetiyoruz
     const apiRes = response.data;
     if (apiRes && !apiRes.success) {
-       toast.error(apiRes.message || "Bilinmeyen bir hata oluĹątu.");
-       return Promise.reject(apiRes);
+      toast.error(apiRes.message || "Bilinmeyen bir hata oluĹątu.");
+      return Promise.reject(apiRes);
     }
     return response;
   },
   (error) => {
-    const msg = error.response?.data?.message || "Sunucuyla baÄąlantÄą kurulamadÄą.";
-    
+    const msg = error.response?.data?.message || "Sunucuyla bağlantı kurulamadı.";
+
     if (error.response?.status === 401) {
-      toast.error("Oturum sĂźresi doldu, lĂźtfen tekrar giriĹą yapÄąn.");
+      toast.error("Oturum sÜresi doldu, lütfen tekrar giriş yapın.");
       localStorage.removeItem("beach_token");
       window.location.href = "/login";
     } else {
       toast.error(msg);
     }
-    
+
     return Promise.reject(error);
   }
 );

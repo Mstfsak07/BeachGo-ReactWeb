@@ -3,6 +3,7 @@ using System;
 using BeachRehberi.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeachRehberi.API.Migrations
 {
     [DbContext(typeof(BeachDbContext))]
-    partial class BeachDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260328163043_AddRefreshTokenRotation")]
+    partial class AddRefreshTokenRotation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");

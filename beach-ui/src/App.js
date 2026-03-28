@@ -7,9 +7,10 @@ import Navbar from "./components/Navbar";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 import Home from "./pages/Home";
-import Dashboard from "./pages/Dashboard";
-import LoginPage from "./pages/LoginPage";
+import Beaches from "./pages/Beaches";
+import Login from "./pages/Login";
 import Register from "./pages/Register";
+import BusinessRegister from "./pages/BusinessRegister";
 
 function App() {
   return (
@@ -20,14 +21,15 @@ function App() {
 
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/business-register" element={<BusinessRegister />} />
 
           <Route
             path="/beaches"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <Beaches />
               </ProtectedRoute>
             }
           />

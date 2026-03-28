@@ -31,22 +31,61 @@ namespace BeachRehberi.API.Controllers
             var userAgent = Request.Headers["User-Agent"].ToString();
 
             var result = await _authService.LoginAsync(request.Email, request.Password, ipAddress, userAgent);
+
+            if (result.Success)
+            {
+                // Set refresh token as HttpOnly cookie
+                Response.Cookies.Append("refreshToken", result.Data.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false, // Set to true in production with HTTPS
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTime.UtcNow.AddDays(7)
+                });
+
+                // Remove refreshToken from response body
+                result.Data.RefreshToken = null;
+            }
+
             return result.ToActionResult();
         }
 
         [HttpPost("refresh")]
-        public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
+        public async Task<IActionResult> Refresh([FromBody] RefreshRequest? request)
         {
             var ipAddress = GetIpAddress();
             var userAgent = Request.Headers["User-Agent"].ToString();
 
-            var result = await _authService.RefreshTokenAsync(request.RefreshToken, ipAddress, userAgent);
+            // Get refresh token from HttpOnly cookie
+            var refreshToken = Request.Cookies["refreshToken"];
+            if (string.IsNullOrEmpty(refreshToken))
+            {
+                return "Refresh token bulunamadı.".ToUnauthorizedApiResponse();
+            }
+
+            var result = await _authService.RefreshTokenAsync(refreshToken, ipAddress, userAgent);
+
+            if (result.Success)
+            {
+                // Update refresh token cookie
+                Response.Cookies.Append("refreshToken", result.Data.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = false, // Set to true in production with HTTPS
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTime.UtcNow.AddDays(7)
+                });
+
+                // Remove from response body
+                result.Data.RefreshToken = null;
+            }
+
             return result.ToActionResult();
         }
 
         [HttpPost("logout")]
         [Authorize]
-        public async Task<IActionResult> Logout([FromBody] RefreshRequest? request)
+        public async Task<IActionResult> Logout()
         {
             var authHeader = Request.Headers["Authorization"].ToString();
             string? accessToken = null;
@@ -55,7 +94,14 @@ namespace BeachRehberi.API.Controllers
                 accessToken = authHeader.Substring("Bearer ".Length).Trim();
             }
 
-            await _authService.LogoutAsync(accessToken, request?.RefreshToken);
+            // Get refresh token from cookie
+            var refreshToken = Request.Cookies["refreshToken"];
+
+            await _authService.LogoutAsync(accessToken, refreshToken);
+
+            // Clear refresh token cookie
+            Response.Cookies.Delete("refreshToken");
+
             return ((object?)null).ToOkApiResponse("Çıkış başarılı.");
         }
 

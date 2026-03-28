@@ -1,0 +1,90 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import api, { setAccessToken } from '../api/axios';
+import toast from 'react-hot-toast';
+
+const AuthContext = createContext(null);
+
+export const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    // Logout: Session temizleme
+    const logout = useCallback(async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (err) {
+            console.error('Logout error:', err);
+        } finally {
+            setUser(null);
+            setAccessToken(null);
+            setLoading(false);
+        }
+    }, []);
+
+    // Login: Kimlik doðrulama isteði
+    const login = async (email, password) => {
+        try {
+            setLoading(true);
+            const response = await api.post('/auth/login', { email, password });
+            
+            // AccessToken bellekte (axios.js setAccessToken ile)
+            setAccessToken(response.data.data.token);
+            
+            // User bilgisini kaydet
+            setUser({ email: response.data.data.email, role: response.data.data.role });
+            return response.data;
+        } catch (error) {
+            throw error.response?.data || error.message;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Silent Refresh: Uygulama ilk açýldýðýnda cookie üzerinden oturum canlandýrma
+    const silentRefresh = useCallback(async () => {
+        try {
+            const response = await api.post('/auth/refresh', {});
+            setAccessToken(response.data.data.token);
+            setUser({ email: response.data.data.email, role: response.data.data.role });
+        } catch (error) {
+            // Eðer cookie yoksa sessizce çýkýþ yap
+            console.log('No active session found.');
+            logout();
+        } finally {
+            setLoading(false);
+        }
+    }, [logout]);
+
+    useEffect(() => {
+        silentRefresh();
+        
+        // Axios'tan gelen auth-failure event'ini dinle (Örn: Refresh failed)
+        const handleAuthFailure = () => {
+            logout();
+            toast.error('Oturum süreniz doldu, lütfen tekrar giriþ yapýn.');
+        };
+        
+        window.addEventListener('auth-failure', handleAuthFailure);
+        return () => window.removeEventListener('auth-failure', handleAuthFailure);
+    }, [silentRefresh, logout]);
+
+    const value = {
+        user,
+        loading,
+        login,
+        logout,
+        isAuthenticated: !!user
+    };
+
+    return (
+        <AuthContext.Provider value={value}>
+            {!loading && children}
+        </AuthContext.Provider>
+    );
+};
+
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) throw new Error('useAuth must be used within AuthProvider');
+    return context;
+};

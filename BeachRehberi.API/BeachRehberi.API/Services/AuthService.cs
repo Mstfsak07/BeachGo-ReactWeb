@@ -30,21 +30,22 @@ public class AuthService : IAuthService
         if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
         {
             _logger.LogWarning("Invalid login attempt for email: {Email} from IP: {IP}", email, ipAddress);
-            return ServiceResult<AuthResponse>.FailureResult("E-posta veya þifre hatalý.");
+            return ServiceResult<AuthResponse>.FailureResult("E-posta veya ï¿½ifre hatalï¿½.");
         }
 
         if (!user.IsActive)
         {
             _logger.LogWarning("Login attempt for inactive account: {Email}", email);
-            return ServiceResult<AuthResponse>.FailureResult("Hesabýnýz pasif durumdadýr.");
+            return ServiceResult<AuthResponse>.FailureResult("Hesabï¿½nï¿½z pasif durumdadï¿½r.");
         }
 
         // Check max active sessions (5 per user)
-        var activeSessions = await _db.RefreshTokens.CountAsync(rt => rt.UserId == user.Id && rt.IsActive);
+        var now = DateTime.UtcNow;
+        var activeSessions = await _db.RefreshTokens.CountAsync(rt => rt.UserId == user.Id && rt.RevokedAt == null && rt.ExpiresAt > now);
         if (activeSessions >= 5)
         {
             _logger.LogWarning("Max active sessions reached for user: {Email} ({ActiveSessions})", email, activeSessions);
-            return ServiceResult<AuthResponse>.FailureResult("Maksimum aktif oturum sayýsýna ulaþtýnýz. Lütfen eski oturumlarý kapatýn.");
+            return ServiceResult<AuthResponse>.FailureResult("Maksimum aktif oturum sayï¿½sï¿½na ulaï¿½tï¿½nï¿½z. Lï¿½tfen eski oturumlarï¿½ kapatï¿½n.");
         }
 
         using var transaction = await _db.Database.BeginTransactionAsync();
@@ -75,13 +76,13 @@ public class AuthService : IAuthService
                 Token = accessToken,
                 RefreshToken = refreshTokenStr,
                 Role = user.Role
-            }, "Giriþ baþarýlý.");
+            }, "Giriï¿½ baï¿½arï¿½lï¿½.");
         }
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
             _logger.LogError(ex, "Error during Login for {Email}", email);
-            return ServiceResult<AuthResponse>.FailureResult("Giriþ iþlemi sýrasýnda bir hata oluþtu.");
+            return ServiceResult<AuthResponse>.FailureResult("Giriï¿½ iï¿½lemi sï¿½rasï¿½nda bir hata oluï¿½tu.");
         }
     }
 
@@ -95,7 +96,7 @@ public class AuthService : IAuthService
 
             if (refreshToken == null)
             {
-                return ServiceResult<AuthResponse>.FailureResult("Geçersiz refresh token.");
+                return ServiceResult<AuthResponse>.FailureResult("Geï¿½ersiz refresh token.");
             }
 
             if (refreshToken.IsRevoked)
@@ -107,18 +108,18 @@ public class AuthService : IAuthService
                     .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.RevokedAt, DateTime.UtcNow));
 
                 await transaction.CommitAsync();
-                return ServiceResult<AuthResponse>.FailureResult("Güvenlik ihlali nedeniyle tüm oturumlar sonlandýrýldý.");
+                return ServiceResult<AuthResponse>.FailureResult("Gï¿½venlik ihlali nedeniyle tï¿½m oturumlar sonlandï¿½rï¿½ldï¿½.");
             }
 
             if (refreshToken.IsExpired)
             {
-                return ServiceResult<AuthResponse>.FailureResult("Refresh token süresi dolmuþ.");
+                return ServiceResult<AuthResponse>.FailureResult("Refresh token sï¿½resi dolmuï¿½.");
             }
 
             var user = await _db.BusinessUsers.FindAsync(refreshToken.UserId);
             if (user == null || !user.IsActive)
             {
-                return ServiceResult<AuthResponse>.FailureResult("Kullanýcý bulunamadý veya pasif.");
+                return ServiceResult<AuthResponse>.FailureResult("Kullanï¿½cï¿½ bulunamadï¿½ veya pasif.");
             }
 
             var newAccessToken = _tokenService.GenerateAccessToken(user);
@@ -152,7 +153,7 @@ public class AuthService : IAuthService
         {
             await transaction.RollbackAsync();
             _logger.LogError(ex, "Error during RefreshToken");
-            return ServiceResult<AuthResponse>.FailureResult("Token yenileme sýrasýnda bir hata oluþtu.");
+            return ServiceResult<AuthResponse>.FailureResult("Token yenileme sï¿½rasï¿½nda bir hata oluï¿½tu.");
         }
     }
 
@@ -202,20 +203,20 @@ public class AuthService : IAuthService
     public async Task<ServiceResult<BusinessUser>> RegisterAsync(RegisterRequest request)
     {
         if (request == null)
-            return ServiceResult<BusinessUser>.FailureResult("Geçersiz kayýt verisi.");
+            return ServiceResult<BusinessUser>.FailureResult("Geï¿½ersiz kayï¿½t verisi.");
 
         using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
         try
         {
             if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
-                return ServiceResult<BusinessUser>.FailureResult("Email ve þifre zorunludur.");
+                return ServiceResult<BusinessUser>.FailureResult("Email ve ï¿½ifre zorunludur.");
 
             var normalizedEmail = request.Email.ToLower().Trim();
 
             if (await _db.BusinessUsers.AnyAsync(u => u.Email == normalizedEmail))
             {
-                return ServiceResult<BusinessUser>.FailureResult("Bu e-posta adresi zaten kullanýmda.");
+                return ServiceResult<BusinessUser>.FailureResult("Bu e-posta adresi zaten kullanï¿½mda.");
             }
 
             int? beachId = request.BeachId;
@@ -231,21 +232,21 @@ public class AuthService : IAuthService
                     var beachExists = await _db.Beaches.AnyAsync(b => b.Id == beachId.Value);
                     if (!beachExists)
                     {
-                        return ServiceResult<BusinessUser>.FailureResult("Beach bulunamadý.");
+                        return ServiceResult<BusinessUser>.FailureResult("Beach bulunamadï¿½.");
                     }
                 }
                 userRole = UserRoles.Business;
             }
             else if (normalizedRole == UserRoles.Admin)
             {
-                return ServiceResult<BusinessUser>.FailureResult("Admin rolü ile kayýt yapýlamaz.");
+                return ServiceResult<BusinessUser>.FailureResult("Admin rolï¿½ ile kayï¿½t yapï¿½lamaz.");
             }
 
             if (!string.IsNullOrWhiteSpace(request.BusinessName) && request.BusinessName.Length > 120)
-                return ServiceResult<BusinessUser>.FailureResult("BusinessName çok uzun.");
+                return ServiceResult<BusinessUser>.FailureResult("BusinessName ï¿½ok uzun.");
 
             if (!string.IsNullOrWhiteSpace(request.ContactName) && request.ContactName.Length > 100)
-                return ServiceResult<BusinessUser>.FailureResult("ContactName çok uzun.");
+                return ServiceResult<BusinessUser>.FailureResult("ContactName ï¿½ok uzun.");
 
             var user = new BusinessUser(
                 normalizedEmail,
@@ -262,7 +263,7 @@ public class AuthService : IAuthService
             await transaction.CommitAsync();
 
             _logger.LogInformation("New user registered: {Email} (Role: {Role}, BeachId: {BeachId})", user.Email, userRole, user.BeachId);
-            return ServiceResult<BusinessUser>.SuccessResult(user, "Kayýt baþarýyla tamamlandý.");
+            return ServiceResult<BusinessUser>.SuccessResult(user, "Kayï¿½t baï¿½arï¿½yla tamamlandï¿½.");
         }
         catch (DomainException ex)
         {
@@ -274,7 +275,7 @@ public class AuthService : IAuthService
         {
             await transaction.RollbackAsync();
             _logger.LogError(ex, "Unhandled error during registration for {Email} (role={Role}, beachId={BeachId})", request.Email, request.Role, request.BeachId);
-            return ServiceResult<BusinessUser>.FailureResult($"Kayýt sýrasýnda bir hata oluþtu: {ex.Message}");
+            return ServiceResult<BusinessUser>.FailureResult($"Kayï¿½t sï¿½rasï¿½nda bir hata oluï¿½tu: {ex.Message}");
         }
     }
 }

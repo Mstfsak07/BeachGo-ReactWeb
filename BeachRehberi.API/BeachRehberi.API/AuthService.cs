@@ -27,8 +27,8 @@ namespace BeachRehberi.API.Services
             user.UpdateProfile(request.BusinessName, request.BusinessName);
             user.AssignToBeach(request.BeachId);
             
-            // GÜVENLİK DÜZELTMESİ: Rol ataması sadece backend tarafında kontrol edilerek yapılıyor.
-            // İstemciden gelen herhangi bir Role alanı (request.Role vb.) dikkate alınmıyor.
+            // KRİTİK GÜVENLİK DÜZELTMESİ: İstemciden gelen rol bilgisi kesinlikle reddediliyor.
+            // Yeni kayıt olan her kullanıcı varsayılan olarak sadece 'Business' rolünü alabilir.
             user.Role = UserRoles.Business; 
 
             // Şifre güvenli bir şekilde hash'leniyor.

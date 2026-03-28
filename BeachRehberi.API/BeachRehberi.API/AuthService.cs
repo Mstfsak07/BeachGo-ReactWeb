@@ -22,14 +22,17 @@ namespace BeachRehberi.API.Services
             if (existingUser)
                 return ServiceResult<AuthResponse>.FailureResult("Bu e-posta adresi zaten kullanımda.");
 
-            // GÜVENLİK DÜZELTMESİ: İstemciden gelen Role bilgisi yerine varsayılan olarak 'Business' atanıyor.
             var user = new BusinessUser();
             user.SetEmail(request.Email);
             user.UpdateProfile(request.BusinessName, request.BusinessName);
             user.AssignToBeach(request.BeachId);
             
-            // Şifre hashleme ve diğer zorunlu alanlar burada set edilmelidir.
-            // Örnek: user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            // GÜVENLİK DÜZELTMESİ: Rol ataması sadece backend tarafında kontrol edilerek yapılıyor.
+            // İstemciden gelen herhangi bir Role alanı (request.Role vb.) dikkate alınmıyor.
+            user.Role = UserRoles.Business; 
+
+            // Şifre güvenli bir şekilde hash'leniyor.
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
             _db.BusinessUsers.Add(user);
             await _db.SaveChangesAsync();

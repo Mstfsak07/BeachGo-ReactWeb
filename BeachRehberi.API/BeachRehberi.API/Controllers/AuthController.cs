@@ -24,6 +24,7 @@ namespace BeachRehberi.API.Controllers
         }
 
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             var ipAddress = GetIpAddress();
@@ -59,6 +60,7 @@ namespace BeachRehberi.API.Controllers
         }
 
         [HttpPost("register")]
+        [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             try

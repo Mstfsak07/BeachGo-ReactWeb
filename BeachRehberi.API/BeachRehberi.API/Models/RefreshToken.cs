@@ -1,44 +1,53 @@
 using System;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace BeachRehberi.API.Models;
 
 public class RefreshToken
 {
     public int Id { get; private set; }
+    public string TokenHash { get; private set; } = string.Empty;
     public int UserId { get; private set; }
-    public string Token { get; private set; } = string.Empty;
-    public DateTime ExpiryDate { get; private set; }
-    public bool IsRevoked { get; private set; }
+    public DateTime ExpiresAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
-
-    // Rotation & Security Tracking
-    public string? ReplacedByToken { get; private set; }
-    public string? ReasonRevoked { get; private set; }
-
+    public DateTime? RevokedAt { get; private set; }
     public string? CreatedByIp { get; private set; }
     public string? CreatedByUserAgent { get; private set; }
 
-    public bool IsExpired => DateTime.UtcNow >= ExpiryDate;
+    public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
+    public bool IsRevoked => RevokedAt != null;
     public bool IsActive => !IsRevoked && !IsExpired;
 
     // EF Core constructor
     private RefreshToken() { }
 
-    public RefreshToken(int userId, string token, DateTime expiryDate, string? ipAddress, string? userAgent)
+    public RefreshToken(int userId, string token, DateTime expiresAt, string? ipAddress, string? userAgent)
     {
         UserId = userId;
-        Token = token ?? throw new ArgumentNullException(nameof(token));
-        ExpiryDate = expiryDate;
+        TokenHash = HashToken(token) ?? throw new ArgumentNullException(nameof(token));
+        ExpiresAt = expiresAt;
         CreatedByIp = ipAddress;
         CreatedByUserAgent = userAgent;
         CreatedAt = DateTime.UtcNow;
     }
 
-    public void Revoke(string? reason = null, string? replacedByToken = null)
+    public static string HashToken(string token)
     {
-        IsRevoked = true;
-        ReasonRevoked = reason;
-        ReplacedByToken = replacedByToken;
+        if (string.IsNullOrEmpty(token)) return string.Empty;
+        using var sha256 = SHA256.Create();
+        var bytes = Encoding.UTF8.GetBytes(token);
+        var hash = sha256.ComputeHash(bytes);
+        return Convert.ToBase64String(hash);
+    }
+
+    public bool VerifyToken(string token)
+    {
+        return TokenHash == HashToken(token);
+    }
+
+    public void Revoke()
+    {
+        RevokedAt = DateTime.UtcNow;
     }
 }
-

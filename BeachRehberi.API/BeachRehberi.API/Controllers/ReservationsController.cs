@@ -12,7 +12,7 @@ namespace BeachRehberi.API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [EnableRateLimiting("fixed")]
-[Authorize]
+[Authorize(Roles = "User,Business,Admin")]
 public class ReservationsController : ControllerBase
 {
     private readonly IMediator _mediator;

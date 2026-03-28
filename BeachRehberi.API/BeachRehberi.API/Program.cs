@@ -15,6 +15,7 @@ using MapsterMapper;
 using MediatR;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using BCrypt.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -101,8 +102,8 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddFixedWindowLimiter("auth", opt =>
     {
-        opt.Window = TimeSpan.FromMinutes(15);
-        opt.PermitLimit = 10;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 5;
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 0;
     });
@@ -181,6 +182,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
+        // Production domains - uncomment for production
+        // policy.WithOrigins("https://beachgo.com", "https://www.beachgo.com")
+
+        // Development domains
         policy.WithOrigins(
                 "http://localhost:3000",
                 "http://localhost:5173",
@@ -200,6 +205,7 @@ var app = builder.Build();
 // ─────────────────────────────────────────
 // MIDDLEWARE PIPELINE (sıralama kritik!)
 // ─────────────────────────────────────────
+app.UseHttpsRedirection();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -235,6 +241,34 @@ using (var scope = app.Services.CreateScope())
         db.Beaches.Add(beach);
         await db.SaveChangesAsync();
         Console.WriteLine("Seed data: Test beach created with ID: " + beach.Id);
+    }
+
+    // Seed admin user
+    if (!await db.BusinessUsers.AnyAsync(u => u.Email == "admin@beachgo.com"))
+    {
+        var adminUser = new BeachRehberi.API.Models.BusinessUser(
+            "admin@beachgo.com",
+            BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+            BeachRehberi.API.Models.UserRoles.Admin
+        );
+        adminUser.UpdateProfile("Admin User", "BeachGo Admin");
+        db.BusinessUsers.Add(adminUser);
+        await db.SaveChangesAsync();
+        Console.WriteLine("Seed data: Admin user created");
+    }
+
+    // Seed normal user
+    if (!await db.BusinessUsers.AnyAsync(u => u.Email == "user@beachgo.com"))
+    {
+        var normalUser = new BeachRehberi.API.Models.BusinessUser(
+            "user@beachgo.com",
+            BCrypt.Net.BCrypt.HashPassword("User123!"),
+            BeachRehberi.API.Models.UserRoles.User
+        );
+        normalUser.UpdateProfile("Normal User", "BeachGo User");
+        db.BusinessUsers.Add(normalUser);
+        await db.SaveChangesAsync();
+        Console.WriteLine("Seed data: Normal user created");
     }
 }
 

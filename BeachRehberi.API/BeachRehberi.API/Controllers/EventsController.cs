@@ -1,11 +1,13 @@
 using BeachRehberi.API.Services;
 using BeachRehberi.API.Extensions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
-namespace BeachRehberi.API.Controllers;       
+namespace BeachRehberi.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[AllowAnonymous]
 public class EventsController : ControllerBase
 {
     private readonly IEventService _eventService;

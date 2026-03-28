@@ -3,6 +3,7 @@ using System;
 using BeachRehberi.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BeachRehberi.API.Migrations
 {
     [DbContext(typeof(BeachDbContext))]
-    partial class BeachDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260328120859_RefreshTokenHashSecurity")]
+    partial class RefreshTokenHashSecurity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
@@ -307,10 +310,16 @@ namespace BeachRehberi.API.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("ExpiresAt")
+                    b.Property<DateTime>("ExpiryDate")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("RevokedAt")
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ReasonRevoked")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ReplacedByToken")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("TokenHash")

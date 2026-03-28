@@ -33,7 +33,7 @@ public class BeachDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Email).IsUnique();
             entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
-            
+
             entity.HasOne(d => d.Beach)
                 .WithMany()
                 .HasForeignKey(d => d.BeachId)
@@ -54,7 +54,7 @@ public class BeachDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.ConfirmationCode).IsUnique();
             entity.Property(e => e.TotalPrice).HasColumnType("decimal(18,2)");
-            
+
             entity.HasOne(d => d.Beach)
                 .WithMany(p => p.Reservations)
                 .HasForeignKey(d => d.BeachId)
@@ -78,7 +78,7 @@ public class BeachDbContext : DbContext
 
         modelBuilder.Entity<RefreshToken>(entity =>
         {
-            entity.HasIndex(e => e.Token).IsUnique();
+            entity.HasIndex(e => e.TokenHash).IsUnique();
             entity.Property(x => x.CreatedByIp).HasMaxLength(100);
             entity.Property(x => x.CreatedByUserAgent).HasMaxLength(500);
         });

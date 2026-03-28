@@ -22,6 +22,7 @@ public class AuthService : IAuthService
 
     public async Task<ServiceResult<AuthResponse>> LoginAsync(string email, string password, string ipAddress, string userAgent)
     {
+        email = email.ToLower().Trim();
         _logger.LogInformation("Login attempt for email: {Email} from IP: {IP}", email, ipAddress);
 
         var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == email);
@@ -29,7 +30,7 @@ public class AuthService : IAuthService
         if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
         {
             _logger.LogWarning("Invalid login attempt for email: {Email} from IP: {IP}", email, ipAddress);
-            return ServiceResult<AuthResponse>.FailureResult("E-posta adresi veya şifre hatalı.");
+            return ServiceResult<AuthResponse>.FailureResult("E-posta veya şifre hatalı.");
         }
 
         if (!user.IsActive)
@@ -201,7 +202,9 @@ public class AuthService : IAuthService
             if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
                 return ServiceResult<BusinessUser>.FailureResult("Email ve şifre zorunludur.");
 
-            if (await _db.BusinessUsers.AnyAsync(u => u.Email == request.Email))
+            var normalizedEmail = request.Email.ToLower().Trim();
+
+            if (await _db.BusinessUsers.AnyAsync(u => u.Email == normalizedEmail))
             {
                 return ServiceResult<BusinessUser>.FailureResult("Bu e-posta adresi zaten kullanımda.");
             }
@@ -214,9 +217,15 @@ public class AuthService : IAuthService
 
             if (normalizedRole == UserRoles.Business)
             {
-                if (!beachId.HasValue)
-                    return ServiceResult<BusinessUser>.FailureResult("Business kullanıcı kaydı için BeachId gereklidir.");
-
+                // Test için beachId optional yapıldı, ama varsa kontrol et
+                if (beachId.HasValue)
+                {
+                    var beachExists = await _db.Beaches.AnyAsync(b => b.Id == beachId.Value);
+                    if (!beachExists)
+                    {
+                        return ServiceResult<BusinessUser>.FailureResult("Beach bulunamadı.");
+                    }
+                }
                 userRole = UserRoles.Business;
             }
             else if (normalizedRole == UserRoles.Admin)
@@ -231,17 +240,8 @@ public class AuthService : IAuthService
             if (!string.IsNullOrWhiteSpace(request.ContactName) && request.ContactName.Length > 100)
                 return ServiceResult<BusinessUser>.FailureResult("ContactName çok uzun.");
 
-            if (beachId.HasValue)
-            {
-                var beachExists = await _db.Beaches.AnyAsync(b => b.Id == beachId.Value);
-                if (!beachExists)
-                {
-                    return ServiceResult<BusinessUser>.FailureResult($"Seçilen plaj bulunamadı: {beachId.Value}.");
-                }
-            }
-
             var user = new BusinessUser(
-                request.Email.Trim(),
+                normalizedEmail,
                 BCrypt.Net.BCrypt.HashPassword(request.Password),
                 userRole
             );

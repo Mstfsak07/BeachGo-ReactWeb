@@ -24,7 +24,7 @@ public class TokenService : ITokenService
         _cache = cache;
         _logger = logger;
         _jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET") 
-                     ?? configuration["Jwt:Secret"] 
+                     ?? configuration["Jwt:SecretKey"] 
                      ?? throw new InvalidOperationException("JWT Secret is missing!");
     }
 

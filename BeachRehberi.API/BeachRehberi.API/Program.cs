@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -9,41 +7,112 @@ using BeachRehberi.API.Data;
 using BeachRehberi.API.Services;
 using BeachRehberi.API.Middlewares;
 using BeachRehberi.API.Validators;
-using BeachRehberi.API.Models;
+using BeachRehberi.API.Mappings;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Mapster;
+using MapsterMapper;
+using MediatR;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// --- JWT SECRET ---
-var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET");
-if (string.IsNullOrEmpty(jwtSecret))
-{
-    jwtSecret = "Testing_Secret_Key_For_BeachGo_2026!";
-}
+// ─────────────────────────────────────────
+// 1. JWT SECRET (env var > appsettings fallback)
+// ─────────────────────────────────────────
+var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET")
+                ?? builder.Configuration["Jwt:SecretKey"]
+                ?? "Testing_Secret_Key_For_BeachGo_2026_MinLength32Chars!";
 
-// --- DATABASE ---
+if (jwtSecret.Length < 32)
+    throw new InvalidOperationException("JWT Secret must be at least 32 characters long.");
+
+// ─────────────────────────────────────────
+// 2. DATABASE
+// ─────────────────────────────────────────
 var dbConn = builder.Configuration.GetConnectionString("DefaultConnection")
              ?? "Data Source=beachrehberi.db";
 
 builder.Services.AddDbContext<BeachDbContext>(options =>
     options.UseSqlite(dbConn));
 
-// --- SERVICES ---
+// ─────────────────────────────────────────
+// 3. CORE INFRASTRUCTURE
+// ─────────────────────────────────────────
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
 
+// ─────────────────────────────────────────
+// 4. APPLICATION SERVICES (tüm DI kayıtları)
+// ─────────────────────────────────────────
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IBeachService, BeachService>();
 
-// --- VALIDATION ---
+// IGeoCalculator – BeachService constructor dependency (düzeltildi)
+builder.Services.AddSingleton<IGeoCalculator, GeoCalculator>();
+
+builder.Services.AddScoped<IBeachService, BeachService>();
+builder.Services.AddScoped<IBusinessService, BusinessService>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IConfirmationCodeGenerator, ConfirmationCodeGenerator>();
+
+// WeatherService – typed HttpClient
+builder.Services.AddHttpClient<IWeatherService, WeatherService>();
+
+// ─────────────────────────────────────────
+// 5. MAPSTER – IMapper DI (ReservationService dependency)
+// ─────────────────────────────────────────
+MapsterConfig.Register();
+var mapsterConfig = TypeAdapterConfig.GlobalSettings;
+mapsterConfig.Scan(typeof(Program).Assembly);
+builder.Services.AddSingleton(mapsterConfig);
+builder.Services.AddScoped<IMapper, ServiceMapper>();
+
+// ─────────────────────────────────────────
+// 6. MEDIATR
+// ─────────────────────────────────────────
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+// ─────────────────────────────────────────
+// 7. FLUENT VALIDATION
+// ─────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 
-// --- AUTH ---
+// ─────────────────────────────────────────
+// 8. RATE LIMITING (controllers [EnableRateLimiting] bekliyor)
+// ─────────────────────────────────────────
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("fixed", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 60;
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+
+    options.AddFixedWindowLimiter("auth", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(15);
+        opt.PermitLimit = 10;
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;
+    });
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
+
+// ─────────────────────────────────────────
+// 9. JWT AUTHENTICATION
+// ─────────────────────────────────────────
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -59,20 +128,24 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = "BeachRehberi.API",
         ValidAudience = "BeachRehberi.App",
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        ClockSkew = TimeSpan.Zero
     };
 });
 
 builder.Services.AddAuthorization();
 
-// --- SWAGGER + JWT ---
+// ─────────────────────────────────────────
+// 10. SWAGGER + JWT AUTHORIZE BUTONU
+// ─────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "BeachRehberi.API",
-        Version = "v1"
+        Title = "BeachRehberi API",
+        Version = "v1",
+        Description = "BeachGo – Plaj Rehberi REST API"
     });
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -82,7 +155,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Bearer {token}"
+        Description = "Token değerini girin (Bearer prefix otomatik eklenir).\nÖrnek: eyJhbGciOiJIUzI1NiIs..."
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -96,21 +169,73 @@ builder.Services.AddSwaggerGen(options =>
                     Id = "Bearer"
                 }
             },
-            new string[] {}
+            Array.Empty<string>()
         }
     });
 });
 
-// --- BUILD ---
+// ─────────────────────────────────────────
+// 11. CORS
+// ─────────────────────────────────────────
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://192.168.1.6:3000",
+                "http://192.168.1.6:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
+// ─────────────────────────────────────────
+// BUILD
+// ─────────────────────────────────────────
 var app = builder.Build();
 
-// --- MIDDLEWARE ---
+// ─────────────────────────────────────────
+// MIDDLEWARE PIPELINE (sıralama kritik!)
+// ─────────────────────────────────────────
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "BeachRehberi API v1");
+    c.RoutePrefix = "swagger";
+    c.DisplayRequestDuration();
+});
+
+app.UseCors("AllowFrontend");
+app.UseRateLimiter();
+
+// JWT Blacklist kontrolü Authentication'dan önce olmalı
+app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseMiddleware<JwtBlacklistMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// ─────────────────────────────────────────
+// AUTO MIGRATE
+// ─────────────────────────────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<BeachDbContext>();
+    await db.Database.MigrateAsync();
+
+    // Seed data
+    if (!await db.Beaches.AnyAsync())
+    {
+        var beach = new BeachRehberi.API.Models.Beach("Test Plajı", "Test açıklaması", "Test Adresi", 36.8785, 30.6657);
+        db.Beaches.Add(beach);
+        await db.SaveChangesAsync();
+        Console.WriteLine("Seed data: Test beach created with ID: " + beach.Id);
+    }
+}
 
 app.Run();

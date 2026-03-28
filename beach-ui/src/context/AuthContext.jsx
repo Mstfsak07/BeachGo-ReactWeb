@@ -21,18 +21,25 @@ export const AuthProvider = ({ children }) => {
         }
     }, []);
 
-    // Login: Kimlik doðrulama isteði
+    // Login: Kimlik doÄŸrulama isteÄŸi
     const login = async (email, password) => {
         try {
             setLoading(true);
-            const response = await api.post('/auth/login', { email, password });
-            
-            // AccessToken bellekte (axios.js setAccessToken ile)
-            setAccessToken(response.data.data.token);
-            
-            // User bilgisini kaydet
-            setUser({ email: response.data.data.email, role: response.data.data.role });
-            return response.data;
+
+            const res = await api.post("/auth/login", { email, password });
+
+            console.log(res.data);
+
+            // âœ… SENDE TOKEN BU
+            setAccessToken(res.data.data.token);
+
+            setUser({
+                email: res.data.data.email,
+                role: res.data.data.role
+            });
+
+            return res.data;
+
         } catch (error) {
             throw error.response?.data || error.message;
         } finally {
@@ -40,14 +47,14 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Silent Refresh: Uygulama ilk açýldýðýnda cookie üzerinden oturum canlandýrma
+    // Silent Refresh: Uygulama ilk aÃ§Ä±ldÄ±ÄŸÄ±nda cookie Ã¼zerinden oturum canlandÄ±rma
     const silentRefresh = useCallback(async () => {
         try {
             const response = await api.post('/auth/refresh', {});
             setAccessToken(response.data.data.token);
             setUser({ email: response.data.data.email, role: response.data.data.role });
         } catch (error) {
-            // Eðer cookie yoksa sessizce çýkýþ yap
+            // EÄŸer cookie yoksa sessizce Ã§Ä±kÄ±ÅŸ yap
             console.log('No active session found.');
             logout();
         } finally {
@@ -57,13 +64,13 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         silentRefresh();
-        
-        // Axios'tan gelen auth-failure event'ini dinle (Örn: Refresh failed)
+
+        // Axios'tan gelen auth-failure event'ini dinle (Ã¶rn: Refresh failed)
         const handleAuthFailure = () => {
             logout();
-            toast.error('Oturum süreniz doldu, lütfen tekrar giriþ yapýn.');
+            toast.error('Oturum sÃ¼reniz doldu, lÃ¼tfen tekrar giriÅŸ yapÄ±n.');
         };
-        
+
         window.addEventListener('auth-failure', handleAuthFailure);
         return () => window.removeEventListener('auth-failure', handleAuthFailure);
     }, [silentRefresh, logout]);

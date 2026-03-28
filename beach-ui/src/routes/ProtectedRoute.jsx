@@ -6,18 +6,18 @@ const ProtectedRoute = ({ children }) => {
     const { user, loading } = useAuth();
     const location = useLocation();
 
-    // Uygulama hala yükleniyorsa (Silent Refresh bitmediyse)
+    // Uygulama hala yÃ¼kleniyorsa (Silent Refresh bitmediyse)
     if (loading) {
         return (
-            <div className=\"min-h-screen flex items-center justify-center bg-slate-50\">
-                <div className=\"animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600\"></div>
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
         );
     }
 
-    // Kullanýcý yoksa login'e yönlendir (bulunduðu yolu hafýzada tut)
+    // KullanÄ±cÄ± yoksa login'e yÃ¶nlendir (bulunduÄŸu yolu hafÄ±zada tut)
     if (!user) {
-        return <Navigate to=\"/login\" state={{ from: location }} replace />;
+        return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
     return children;

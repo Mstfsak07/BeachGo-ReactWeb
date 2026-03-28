@@ -17,7 +17,7 @@ const api = axios.create({
     }
 });
 
-// Refresh token i�lemi s�ras�nda gelen di�er istekleri kuyru�a alal�m
+// Refresh token işlemi sırasında gelen diğer istekleri kuyruğa alalım
 let isRefreshing = false;
 let failedQueue = [];
 
@@ -43,17 +43,17 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response Interceptor: 401 hatalar�n� (Expired Token) yakalar
+// Response Interceptor: 401 hatalarını (Expired Token) yakalar
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
 
-        // 401 Unauthorized ve istek daha �nce tekrar edilmemi�se
+        // 401 Unauthorized ve istek daha önce tekrar edilmemişse
         if (error.response?.status === 401 && !originalRequest._retry) {
 
             if (isRefreshing) {
-                // E�er �u an bir refresh i�lemi yap�l�yorsa, bu iste�i kuyru�a ekle
+                // Eğer şu an bir refresh işlemi yapılıyorsa, bu isteği kuyruğa ekle
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject });
                 })
@@ -78,7 +78,7 @@ api.interceptors.response.use(
                     })
                     .catch((err) => {
                         processQueue(err, null);
-                        // Refresh fail olursa (cookie expire vs) kullan�c�y� logout'a zorla
+                        // Refresh fail olursa (cookie expire vs) kullanıcıyı logout'a zorla
                         window.dispatchEvent(new Event('auth-failure'));
                         reject(err);
                     })

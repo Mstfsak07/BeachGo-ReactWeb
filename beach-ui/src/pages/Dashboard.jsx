@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import api from '../api/axios';
-import toast from 'react-hot-toast';
+import React, { useEffect, useState } from "react";
+import api from "../api/axios";
+import toast from "react-hot-toast";
 
 const Dashboard = () => {
     const [beaches, setBeaches] = useState([]);
@@ -9,12 +9,11 @@ const Dashboard = () => {
     useEffect(() => {
         const fetchBeaches = async () => {
             try {
-                // Bu istek interceptor tarafýndan otomatik olarak Authorization header alýr
-                const response = await api.get('/beaches');
+                const response = await api.get("/beaches");
                 setBeaches(response.data.data);
             } catch (err) {
                 console.error(err);
-                toast.error('Veriler yüklenirken hata oluþtu.');
+                toast.error("Veriler yÃ¼klenirken hata oluÅŸtu.");
             } finally {
                 setLoading(false);
             }
@@ -23,17 +22,27 @@ const Dashboard = () => {
         fetchBeaches();
     }, []);
 
-    if (loading) return <p>Yükleniyor...</p>;
+    if (loading) return <p>YÃ¼kleniyor...</p>;
 
     return (
-        <div className=\"p-8 pt-24\">
-            <h1 className=\"text-3xl font-black mb-8\">Plajlar Listesi (Korumalý)</h1>
-            <div className=\"grid grid-cols-1 md:grid-cols-3 gap-6\">
-                {beaches?.map(beach => (
-                    <div key={beach.id} className=\"p-6 bg-white rounded-2xl shadow-sm border border-slate-100\">
-                        <h3 className=\"text-xl font-bold text-slate-800\">{beach.name}</h3>
-                        <p className=\"text-slate-500\">{beach.address}</p>
-                        <div className=\"mt-4 text-blue-600 font-bold\">{beach.rating} / 5</div>
+        <div className="p-8 pt-24">
+            <h1 className="text-3xl font-black mb-8">
+                Plajlar Listesi (KorumalÄ±)
+            </h1>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {beaches?.map((beach) => (
+                    <div
+                        key={beach.id}
+                        className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100"
+                    >
+                        <h3 className="text-xl font-bold text-slate-800">
+                            {beach.name}
+                        </h3>
+                        <p className="text-slate-500">{beach.address}</p>
+                        <div className="mt-4 text-blue-600 font-bold">
+                            {beach.rating} / 5
+                        </div>
                     </div>
                 ))}
             </div>

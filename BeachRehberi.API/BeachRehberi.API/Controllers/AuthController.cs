@@ -4,6 +4,8 @@ using BeachRehberi.API.Models;
 using BeachRehberi.API.Services;
 using BeachRehberi.API.Extensions;
 using Microsoft.AspNetCore.RateLimiting;
+using FluentValidation;
+using Microsoft.Extensions.Configuration;
 
 namespace BeachRehberi.API.Controllers
 {
@@ -13,10 +15,12 @@ namespace BeachRehberi.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IConfiguration configuration)
         {
             _authService = authService;
+            _configuration = configuration;
         }
 
         [HttpPost("login")]
@@ -24,7 +28,7 @@ namespace BeachRehberi.API.Controllers
         {
             var ipAddress = GetIpAddress();
             var userAgent = Request.Headers["User-Agent"].ToString();
-            
+
             var result = await _authService.LoginAsync(request.Email, request.Password, ipAddress, userAgent);
             return result.ToActionResult();
         }
@@ -34,7 +38,7 @@ namespace BeachRehberi.API.Controllers
         {
             var ipAddress = GetIpAddress();
             var userAgent = Request.Headers["User-Agent"].ToString();
-            
+
             var result = await _authService.RefreshTokenAsync(request.RefreshToken, ipAddress, userAgent);
             return result.ToActionResult();
         }
@@ -57,8 +61,37 @@ namespace BeachRehberi.API.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            var result = await _authService.RegisterAsync(request);
-            return result.ToActionResult();
+            try
+            {
+                var result = await _authService.RegisterAsync(request);
+                return result.ToActionResult();
+            }
+            catch (FluentValidation.ValidationException ex)
+            {
+                return UnprocessableEntity(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = _configuration["Auth:ValidationErrorMessage"] ?? "Doğrulama hataları var.",
+                    Errors = ex.Errors.Select(e => e.ErrorMessage).ToList()
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+            catch (Exception)
+            {
+                // Log the exception here if needed
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = _configuration["Auth:ServerErrorMessage"] ?? "Sunucu hatası oluştu."
+                });
+            }
         }
 
         private string GetIpAddress()
@@ -66,7 +99,7 @@ namespace BeachRehberi.API.Controllers
             // Check X-Forwarded-For for proxy/load balancer
             if (Request.Headers.ContainsKey("X-Forwarded-For"))
                 return Request.Headers["X-Forwarded-For"].ToString();
-            
+
             return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
         }
     }

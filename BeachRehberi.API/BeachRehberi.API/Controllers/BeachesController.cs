@@ -1,7 +1,10 @@
-﻿using BeachRehberi.API.Models;
+using BeachRehberi.API.Models;
 using BeachRehberi.API.Services;
 using BeachRehberi.API.Extensions;
 using Microsoft.AspNetCore.Mvc;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using BeachRehberi.API.DTOs;
 
 namespace BeachRehberi.API.Controllers;
 
@@ -11,15 +14,18 @@ public class BeachesController : ControllerBase
 {
     private readonly IBeachService _beachService;
     private readonly IWeatherService _weatherService;
+    private readonly IMediator _mediator;
 
-    public BeachesController(IBeachService beachService, IWeatherService weatherService)
+    public BeachesController(IBeachService beachService, IWeatherService weatherService, IMediator mediator)
     {
         _beachService = beachService;
         _weatherService = weatherService;
+        _mediator = mediator;
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll() => (await _beachService.GetAllAsync()).ToOkApiResponse();
+    public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        => (await _beachService.GetAllAsync(page, pageSize)).ToPagedApiResponse();
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
@@ -53,4 +59,13 @@ public class BeachesController : ControllerBase
         var sea = await _weatherService.GetSeaDataAsync(36.8785, 30.6657);
         return new { weather, sea }.ToOkApiResponse();
     }
+
+    [HttpPost]
+    [Authorize(Roles = "Admin,Business")]
+    public async Task<IActionResult> CreateBeach([FromBody] CreateBeachRequest request)
+    {
+        var result = await _mediator.Send(new CreateBeachCommand(request));
+        return result.ToActionResult();
+    }
 }
+

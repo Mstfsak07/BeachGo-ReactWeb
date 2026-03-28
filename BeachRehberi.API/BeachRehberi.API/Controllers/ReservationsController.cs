@@ -1,55 +1,46 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Services;
+using BeachRehberi.API.DTOs;
 using BeachRehberi.API.Extensions;
 using Microsoft.AspNetCore.RateLimiting;
-using System.Security.Claims;
+using MediatR;
 
 namespace BeachRehberi.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [EnableRateLimiting("fixed")]
-[Authorize] // Requirement 3: Minimum "User" role for basic operations
-public class ReservationsController : ControllerBase 
+[Authorize]
+public class ReservationsController : ControllerBase
 {
-    private readonly IReservationService _reservationService;
+    private readonly IMediator _mediator;
 
-    public ReservationsController(IReservationService reservationService) 
+    public ReservationsController(IMediator mediator)
     {
-        _reservationService = reservationService;
+        _mediator = mediator;
     }
 
     [HttpGet("my")]
-    public async Task<IActionResult> GetMyReservations() 
+    public async Task<IActionResult> GetMyReservations()
     {
-        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdStr, out int userId)) 
-            return "Kullanıcı kimliği doğrulanamadı.".ToUnauthorizedApiResponse();
-
-        var res = await _reservationService.GetByUserAsync(userId);
-        return res.ToOkApiResponse();
+        var result = await _mediator.Send(new GetMyReservationsQuery());
+        return result.ToActionResult();
     }
 
     [HttpDelete("{code}")]
-    public async Task<IActionResult> Cancel(string code) 
+    public async Task<IActionResult> Cancel(string code)
     {
-        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (!int.TryParse(userIdStr, out int userId)) 
-            return "Kullanıcı kimliği doğrulanamadı.".ToUnauthorizedApiResponse();
-
-        var success = await _reservationService.CancelAsync(code, userId);
-        return success ? "Rezervasyon iptal edildi.".ToOkApiResponse() : "Rezervasyon iptal edilemedi veya yetkiniz yok.".ToBadRequestApiResponse();
+        var result = await _mediator.Send(new CancelReservationCommand(code));
+        return result.ToActionResult();
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] Reservation reservation) 
+    public async Task<IActionResult> Create([FromBody] CreateReservationDto dto)
     {
-        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        reservation.UserId = int.TryParse(userIdStr, out int userId) ? userId : null;
-        
-        var result = await _reservationService.CreateAsync(reservation);
-        return result.ToActionResult(); // Use mapper
+        var result = await _mediator.Send(new CreateReservationCommand(dto));
+        return result.ToActionResult();
     }
 }
+

@@ -1,8 +1,10 @@
-﻿using BeachRehberi.API.Data;
+using Mapster;
+using MapsterMapper;
+using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
+using BeachRehberi.API.DTOs;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
 
 namespace BeachRehberi.API.Services;
 
@@ -10,25 +12,17 @@ public class ReservationService : IReservationService
 {
     private readonly BeachDbContext _db;
     private readonly INotificationService _notification;
+    private readonly IConfirmationCodeGenerator _codeGenerator;
+    private readonly MapsterMapper.IMapper _mapper;
     private readonly ILogger<ReservationService> _logger;
 
-    public ReservationService(BeachDbContext db, INotificationService notification, ILogger<ReservationService> logger)
+    public ReservationService(BeachDbContext db, INotificationService notification, IConfirmationCodeGenerator codeGenerator, MapsterMapper.IMapper mapper, ILogger<ReservationService> logger)
     {
         _db = db;
         _notification = notification;
+        _codeGenerator = codeGenerator;
+        _mapper = mapper;
         _logger = logger;
-    }
-
-    private static readonly char[] ConfirmationChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".ToCharArray();
-
-    private string GenerateAlphanumericCode(int length = 8)
-    {
-        var codeChars = new char[length];
-        for (int i = 0; i < length; i++)
-        {
-            codeChars[i] = ConfirmationChars[RandomNumberGenerator.GetInt32(ConfirmationChars.Length)];
-        }
-        return new string(codeChars);
     }
 
     private static bool IsUniqueConstraintViolation(DbUpdateException ex)
@@ -36,31 +30,31 @@ public class ReservationService : IReservationService
         return ex.InnerException is SqliteException sqliteEx && sqliteEx.SqliteErrorCode == 19;
     }
 
-    public async Task<ServiceResult<Reservation>> CreateAsync(Reservation reservation)
+    public async Task<ServiceResult<Reservation>> CreateAsync(CreateReservationDto dto, int userId)
     {
-        // Requirement 1 & 2: Transaction implementation
         using var transaction = await _db.Database.BeginTransactionAsync();
 
         try
         {
-            var beach = await _db.Beaches.AsNoTracking().FirstOrDefaultAsync(x => x.Id == reservation.BeachId);
+            var beach = await _db.Beaches.AsNoTracking().FirstOrDefaultAsync(x => x.Id == dto.BeachId);
             if (beach == null)
             {
                 return ServiceResult<Reservation>.FailureResult("Plaj bulunamadı.");
             }
 
-            reservation.TotalPrice = (beach.EntryFee + beach.SunbedPrice) * reservation.PersonCount;
-            reservation.Status = ReservationStatus.Confirmed;
-            reservation.CreatedAt = DateTime.UtcNow;
+            var reservation = dto.Adapt<Reservation>();
+            reservation.AssignUser(userId);
+            reservation.CalculatePrice(beach.EntryFee, beach.SunbedPrice);
+            reservation.Confirm();
 
             int maxRetries = 10;
             bool success = false;
-            
+
             while (maxRetries > 0)
             {
                 try
                 {
-                    reservation.ConfirmationCode = GenerateAlphanumericCode(8);
+                    reservation.SetConfirmationCode(_codeGenerator.Generate(8));
                     _db.Reservations.Add(reservation);
                     await _db.SaveChangesAsync();
                     success = true;
@@ -81,12 +75,16 @@ public class ReservationService : IReservationService
 
             await transaction.CommitAsync();
 
-            // Notify asynchronously (outside transaction scope)
             _ = _notification.SendToBusinessAsync(
                 reservation.BeachId,
                 $"Yeni Rezervasyon: {reservation.UserName} ({reservation.PersonCount} Kişi)");
 
             return ServiceResult<Reservation>.SuccessResult(reservation, "Rezervasyon başarıyla oluşturuldu.");
+        }
+        catch (DomainException ex)
+        {
+            await transaction.RollbackAsync();
+            return ServiceResult<Reservation>.FailureResult(ex.Message);
         }
         catch (Exception ex)
         {
@@ -96,12 +94,12 @@ public class ReservationService : IReservationService
         }
     }
 
-    public async Task<List<Reservation>> GetByUserAsync(int userId) =>
+    public async Task<List<ReservationListItemDto>> GetByUserAsync(int userId) =>
         await _db.Reservations
             .AsNoTracking()
-            .Include(r => r.Beach)
             .Where(r => r.UserId == userId)
             .OrderByDescending(r => r.ReservationDate)
+            .ProjectToType<ReservationListItemDto>()
             .ToListAsync();
 
     public async Task<Reservation?> GetByCodeAsync(string code) =>
@@ -115,8 +113,16 @@ public class ReservationService : IReservationService
         var res = await _db.Reservations.FirstOrDefaultAsync(r => r.ConfirmationCode == code);
         if (res == null || res.UserId != userId) return false;
 
-        res.Status = ReservationStatus.Cancelled;
-        await _db.SaveChangesAsync();
-        return true;
+        try
+        {
+            res.Cancel();
+            await _db.SaveChangesAsync();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
+

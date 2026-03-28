@@ -4,3 +4,14 @@ GET {{BeachRehberi.API_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+POST {{BeachRehberi.API_HostAddress}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "Test123!",
+  "role": "BusinessUser"
+}
+
+###

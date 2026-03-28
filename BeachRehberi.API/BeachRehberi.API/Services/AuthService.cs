@@ -1,4 +1,4 @@
-﻿using BeachRehberi.API.Data;
+using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
@@ -23,9 +23,9 @@ public class AuthService : IAuthService
     public async Task<ServiceResult<AuthResponse>> LoginAsync(string email, string password, string ipAddress, string userAgent)
     {
         _logger.LogInformation("Login attempt for email: {Email} from IP: {IP}", email, ipAddress);
-        
+
         var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == email);
-        
+
         if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
         {
             _logger.LogWarning("Invalid login attempt for email: {Email} from IP: {IP}", email, ipAddress);
@@ -44,20 +44,17 @@ public class AuthService : IAuthService
             var accessToken = _tokenService.GenerateAccessToken(user);
             var refreshTokenStr = _tokenService.GenerateRefreshToken();
 
-            var refreshToken = new RefreshToken
-            {
-                UserId = user.Id,
-                Token = refreshTokenStr,
-                ExpiryDate = DateTime.UtcNow.AddDays(7),
-                IsRevoked = false,
-                CreatedAt = DateTime.UtcNow,
-                CreatedByIp = ipAddress,
-                CreatedByUserAgent = userAgent
-            };
+            var refreshToken = new RefreshToken(
+                user.Id,
+                refreshTokenStr,
+                DateTime.UtcNow.AddDays(7),
+                ipAddress,
+                userAgent
+            );
 
             _db.RefreshTokens.Add(refreshToken);
-            
-            user.LastLoginAt = DateTime.UtcNow;
+
+            user.RecordLogin();
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
 
@@ -94,12 +91,12 @@ public class AuthService : IAuthService
             if (refreshToken.IsRevoked)
             {
                 _logger.LogCritical("SECURITY BREACH: Refresh token reuse detected! User: {UserId}, IP: {IP}", refreshToken.UserId, ipAddress);
-                
+
                 await _db.RefreshTokens
                     .Where(rt => rt.UserId == refreshToken.UserId)
                     .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.IsRevoked, true)
                                              .SetProperty(rt => rt.ReasonRevoked, "Compromised: Refresh token reused"));
-                                             
+
                 await transaction.CommitAsync();
                 return ServiceResult<AuthResponse>.FailureResult("Güvenlik ihlali nedeniyle tüm oturumlar sonlandırıldı.");
             }
@@ -107,11 +104,6 @@ public class AuthService : IAuthService
             if (refreshToken.IsExpired)
             {
                 return ServiceResult<AuthResponse>.FailureResult("Refresh token süresi dolmuş.");
-            }
-
-            if (refreshToken.CreatedByIp != ipAddress)
-            {
-                _logger.LogWarning("Suspicious IP change on refresh: Original {OldIP}, New {NewIP}", refreshToken.CreatedByIp, ipAddress);
             }
 
             var user = await _db.BusinessUsers.FindAsync(refreshToken.UserId);
@@ -123,20 +115,15 @@ public class AuthService : IAuthService
             var newAccessToken = _tokenService.GenerateAccessToken(user);
             var newRefreshTokenStr = _tokenService.GenerateRefreshToken();
 
-            var newRefreshToken = new RefreshToken
-            {
-                UserId = user.Id,
-                Token = newRefreshTokenStr,
-                ExpiryDate = DateTime.UtcNow.AddDays(7),
-                IsRevoked = false,
-                CreatedAt = DateTime.UtcNow,
-                CreatedByIp = ipAddress,
-                CreatedByUserAgent = userAgent
-            };
+            var newRefreshToken = new RefreshToken(
+                user.Id,
+                newRefreshTokenStr,
+                DateTime.UtcNow.AddDays(7),
+                ipAddress,
+                userAgent
+            );
 
-            refreshToken.IsRevoked = true;
-            refreshToken.ReplacedByToken = newRefreshTokenStr;
-            refreshToken.ReasonRevoked = "Replaced by rotation";
+            refreshToken.Revoke("Replaced by rotation", newRefreshTokenStr);
 
             _db.RefreshTokens.Add(newRefreshToken);
             await _db.SaveChangesAsync();
@@ -186,8 +173,7 @@ public class AuthService : IAuthService
                 var rt = await _db.RefreshTokens.FirstOrDefaultAsync(t => t.Token == refreshTokenStr);
                 if (rt != null)
                 {
-                    rt.IsRevoked = true;
-                    rt.ReasonRevoked = "User logout";
+                    rt.Revoke("User logout");
                     userId ??= rt.UserId;
                 }
             }
@@ -205,10 +191,16 @@ public class AuthService : IAuthService
 
     public async Task<ServiceResult<BusinessUser>> RegisterAsync(RegisterRequest request)
     {
+        if (request == null)
+            return ServiceResult<BusinessUser>.FailureResult("Geçersiz kayıt verisi.");
+
         using var transaction = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-        
+
         try
         {
+            if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+                return ServiceResult<BusinessUser>.FailureResult("Email ve şifre zorunludur.");
+
             if (await _db.BusinessUsers.AnyAsync(u => u.Email == request.Email))
             {
                 return ServiceResult<BusinessUser>.FailureResult("Bu e-posta adresi zaten kullanımda.");
@@ -217,12 +209,27 @@ public class AuthService : IAuthService
             int? beachId = request.BeachId;
             if (beachId == 0) beachId = null;
 
-            // Simple security: Registration defaults to User role, Admin/Business can be granted later or through specific logic
+            var normalizedRole = string.IsNullOrWhiteSpace(request.Role) ? UserRoles.User : request.Role.Trim();
             string userRole = UserRoles.User;
-            if (request.Role == UserRoles.Business && beachId.HasValue) 
+
+            if (normalizedRole == UserRoles.Business)
             {
+                if (!beachId.HasValue)
+                    return ServiceResult<BusinessUser>.FailureResult("Business kullanıcı kaydı için BeachId gereklidir.");
+
                 userRole = UserRoles.Business;
             }
+            else if (normalizedRole == UserRoles.Admin)
+            {
+                // Sunucudan dışarıya admin kaydı verilmesin, test/belirli şartlara göre kontrol edilebilir
+                return ServiceResult<BusinessUser>.FailureResult("Admin rolü ile kayıt yapılamaz.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.BusinessName) && request.BusinessName.Length > 120)
+                return ServiceResult<BusinessUser>.FailureResult("BusinessName çok uzun.");
+
+            if (!string.IsNullOrWhiteSpace(request.ContactName) && request.ContactName.Length > 100)
+                return ServiceResult<BusinessUser>.FailureResult("ContactName çok uzun.");
 
             if (beachId.HasValue)
             {
@@ -233,31 +240,34 @@ public class AuthService : IAuthService
                 }
             }
 
-            var user = new BusinessUser
-            {
-                Email = request.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                BusinessName = request.BusinessName,
-                BeachId = beachId,
-                ContactName = request.ContactName,
-                CreatedAt = DateTime.UtcNow,
-                IsActive = true,
-                Role = userRole // Use mapped role
-            };
+            var user = new BusinessUser(
+                request.Email.Trim(),
+                BCrypt.Net.BCrypt.HashPassword(request.Password),
+                userRole
+            );
+
+            user.AssignToBeach(beachId);
+            user.UpdateProfile(request.ContactName?.Trim(), string.IsNullOrWhiteSpace(request.BusinessName) ? null : request.BusinessName.Trim());
 
             _db.BusinessUsers.Add(user);
             await _db.SaveChangesAsync();
-            
+
             await transaction.CommitAsync();
-            
-            _logger.LogInformation("New user registered: {Email} (Role: {Role})", user.Email, userRole);
+
+            _logger.LogInformation("New user registered: {Email} (Role: {Role}, BeachId: {BeachId})", user.Email, userRole, user.BeachId);
             return ServiceResult<BusinessUser>.SuccessResult(user, "Kayıt başarıyla tamamlandı.");
+        }
+        catch (DomainException ex)
+        {
+            await transaction.RollbackAsync();
+            _logger.LogWarning(ex, "Domain validation failed during registration for {Email}", request.Email);
+            return ServiceResult<BusinessUser>.FailureResult(ex.Message);
         }
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
-            _logger.LogError(ex, "Error during registration for {Email}", request.Email);
-            return ServiceResult<BusinessUser>.FailureResult("Kayıt sırasında bir hata oluştu.");
+            _logger.LogError(ex, "Unhandled error during registration for {Email} (role={Role}, beachId={BeachId})", request.Email, request.Role, request.BeachId);
+            return ServiceResult<BusinessUser>.FailureResult($"Kayıt sırasında bir hata oluştu: {ex.Message}");
         }
     }
 }

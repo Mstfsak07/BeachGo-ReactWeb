@@ -1,26 +1,66 @@
-﻿using System;
+using System;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace BeachRehberi.API.Models;   
 
 public class BusinessUser
 {
-    public int Id { get; set; }      
-    public int? BeachId { get; set; }
+    public int Id { get; private set; }      
+    public int? BeachId { get; private set; }
     [JsonIgnore]
-    public Beach? Beach { get; set; }
+    public Beach? Beach { get; private set; }
 
-    public required string Email { get; set; }
+    public string Email { get; private set; } = string.Empty;
     [JsonIgnore]
-    public required string PasswordHash { get; set; }
+    public string PasswordHash { get; private set; } = string.Empty;
 
-    public string? ContactName { get; set; }
-    public string? BusinessName { get; set; }
+    public string? ContactName { get; private set; }
+    public string? BusinessName { get; private set; }
 
-    public string Role { get; set; } = UserRoles.User; // Updated default role
-    public DateTime? LastLoginAt { get; set; }
+    public string Role { get; private set; } = string.Empty;
+    public DateTime? LastLoginAt { get; private set; }
 
-    public bool IsActive { get; set; } = true;
-    public bool IsDeleted { get; set; } = false;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public bool IsActive { get; private set; }
+    public bool IsDeleted { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+
+    // EF Core constructor
+    private BusinessUser() { }
+
+    public BusinessUser(string email, string passwordHash, string role = UserRoles.User)
+    {
+        SetEmail(email);
+        PasswordHash = passwordHash ?? throw new ArgumentNullException(nameof(passwordHash));
+        Role = role;
+        IsActive = true;
+        CreatedAt = DateTime.UtcNow;
+    }
+
+    public void SetEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) throw new DomainException("Email adresi boş olamaz.");
+        if (!Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$")) throw new DomainException("Geçersiz email formatı.");
+        Email = email;
+    }
+
+    public void AssignToBeach(int? beachId)
+    {
+        BeachId = beachId;
+    }
+
+    public void UpdateProfile(string? contactName, string? businessName)
+    {
+        ContactName = contactName;
+        BusinessName = businessName;
+    }
+
+    public void RecordLogin()
+    {
+        LastLoginAt = DateTime.UtcNow;
+    }
+
+    public void Deactivate() => IsActive = false;
+    public void Activate() => IsActive = true;
+    public void SoftDelete() => IsDeleted = true;
 }

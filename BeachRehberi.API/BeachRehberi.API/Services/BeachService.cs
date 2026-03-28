@@ -1,4 +1,4 @@
-﻿using BeachRehberi.API.Data;
+using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,15 +7,25 @@ namespace BeachRehberi.API.Services;
 public class BeachService : IBeachService
 {
     private readonly BeachDbContext _db;
+    private readonly IGeoCalculator _geoCalculator;
 
-    public BeachService(BeachDbContext db) => _db = db;
+    public BeachService(BeachDbContext db, IGeoCalculator geoCalculator)
+    {
+        _db = db;
+        _geoCalculator = geoCalculator;
+    }
 
-    public async Task<List<Beach>> GetAllAsync() =>
-        await _db.Beaches
+    public async Task<PagedResponse<Beach>> GetAllAsync(int page, int pageSize)
+    {
+        var query = _db.Beaches
             .Include(b => b.Events.Where(e => e.IsActive && e.StartDate >= DateTime.UtcNow))
             .Include(b => b.Photos)
-            .OrderByDescending(b => b.Rating)
-            .ToListAsync();
+            .OrderByDescending(b => b.Rating);
+
+        var total = await query.CountAsync();
+        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        return new PagedResponse<Beach>(items, total, page, pageSize);
+    }
 
     public async Task<Beach?> GetByIdAsync(int id) =>
         await _db.Beaches
@@ -53,7 +63,7 @@ public class BeachService : IBeachService
         var list = await query.ToListAsync();
 
         if (filter.SortBy == "distance" && filter.UserLat.HasValue && filter.UserLng.HasValue)
-            list = list.OrderBy(b => GetDistance(
+            list = list.OrderBy(b => _geoCalculator.GetDistance(
                 filter.UserLat.Value, filter.UserLng.Value,
                 b.Latitude, b.Longitude)).ToList();
         else if (filter.SortBy == "occupancy")
@@ -76,19 +86,19 @@ public class BeachService : IBeachService
         var existing = await _db.Beaches.FindAsync(id);
         if (existing == null) return null;
 
-        existing.Name = beach.Name;
-        existing.Description = beach.Description;
-        existing.Phone = beach.Phone;
-        existing.OpenTime = beach.OpenTime;
-        existing.CloseTime = beach.CloseTime;
-        existing.EntryFee = beach.EntryFee;
-        existing.SunbedPrice = beach.SunbedPrice;
-        existing.HasBar = beach.HasBar;
-        existing.HasRestaurant = beach.HasRestaurant;
-        existing.LastUpdated = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
-        return existing;
+        try 
+        {
+            existing.UpdateDetails(beach.Name, beach.Description, beach.Address);
+            existing.UpdateFees(beach.HasEntryFee, beach.EntryFee, beach.SunbedPrice);
+            // ... other updates could be moved to entity methods too
+            
+            await _db.SaveChangesAsync();
+            return existing;
+        }
+        catch (DomainException)
+        {
+            return null;
+        }
     }
 
     public async Task<bool> UpdateOccupancyAsync(int id, int percent, OccupancyLevel level)
@@ -96,12 +106,16 @@ public class BeachService : IBeachService
         var beach = await _db.Beaches.FindAsync(id);
         if (beach == null) return false;
 
-        beach.OccupancyPercent = Math.Clamp(percent, 0, 100);
-        beach.OccupancyLevel = level;
-        beach.LastUpdated = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
-        return true;
+        try 
+        {
+            beach.UpdateOccupancy(percent, level);
+            await _db.SaveChangesAsync();
+            return true;
+        }
+        catch 
+        {
+            return false;
+        }
     }
 
     public async Task<bool> UpdateTodaySpecialAsync(int id, string special)
@@ -109,21 +123,9 @@ public class BeachService : IBeachService
         var beach = await _db.Beaches.FindAsync(id);
         if (beach == null) return false;
 
-        beach.TodaySpecial = special;
-        beach.LastUpdated = DateTime.UtcNow;
-
+        beach.SetTodaySpecial(special);
         await _db.SaveChangesAsync();
         return true;
     }
-
-    private static double GetDistance(double lat1, double lon1, double lat2, double lon2)
-    {
-        var d1 = lat1 * Math.PI / 180.0;
-        var d2 = lat2 * Math.PI / 180.0;
-        var d3 = (lat2 - lat1) * Math.PI / 180.0;
-        var d4 = (lon2 - lon1) * Math.PI / 180.0;
-        var a = Math.Sin(d3 / 2) * Math.Sin(d3 / 2) +
-                Math.Cos(d1) * Math.Cos(d2) * Math.Sin(d4 / 2) * Math.Sin(d4 / 2);
-        return 6371 * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-    }
 }
+

@@ -10,10 +10,19 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- MediatR: CQRS pipeline -->
     <PackageReference Include="MediatR" Version="12.2.0" />
+
+    <!-- FluentValidation: input doğrulama -->
     <PackageReference Include="FluentValidation" Version="11.9.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.9.0" />
+
+    <!-- Microsoft Extensions: DI, Logging, Configuration soyutlamaları -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+
+    <!-- EF Core: sadece IQueryable/LINQ için (DbContext Infrastructure'da) -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
   </ItemGroup>
 </Project>

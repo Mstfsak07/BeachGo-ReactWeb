@@ -15,7 +15,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // ─── Veritabanı ───────────────────────────────────────────
+        // ─── Veritabanı (PostgreSQL) ───────────────────────────────
         var connectionString =
             Environment.GetEnvironmentVariable("BEACHGO_DB_CONN")
             ?? configuration.GetConnectionString("DefaultConnection")

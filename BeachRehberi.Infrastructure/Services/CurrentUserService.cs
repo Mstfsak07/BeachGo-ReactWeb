@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using BeachRehberi.Application.Common.Interfaces;
 using BeachRehberi.Domain.Enums;
@@ -21,7 +22,7 @@ public class CurrentUserService : ICurrentUserService
         get
         {
             var value = User?.FindFirstValue(ClaimTypes.NameIdentifier)
-                        ?? User?.FindFirstValue("sub");
+                        ?? User?.FindFirstValue(JwtRegisteredClaimNames.Sub);
             return int.TryParse(value, out var id) ? id : null;
         }
     }
@@ -36,7 +37,7 @@ public class CurrentUserService : ICurrentUserService
     }
 
     public string? Email => User?.FindFirstValue(ClaimTypes.Email)
-                           ?? User?.FindFirstValue("email");
+                            ?? User?.FindFirstValue(JwtRegisteredClaimNames.Email);
 
     public UserRole? Role
     {

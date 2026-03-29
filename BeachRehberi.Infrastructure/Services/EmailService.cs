@@ -1,4 +1,4 @@
-using BeachRehberi.Application.Common.Interfaces;
+using BeachRehberi.Domain.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -55,30 +55,7 @@ public class EmailService : IEmailService
         await SendEmailAsync(toEmail, subject, body, cancellationToken);
     }
 
-    public async Task SendReservationStatusUpdateAsync(
-        string toEmail, string fullName, string beachName,
-        string status, CancellationToken cancellationToken = default)
-    {
-        var statusText = status switch
-        {
-            "Approved"  => "onaylandı ✅",
-            "Rejected"  => "reddedildi ❌",
-            "Cancelled" => "iptal edildi",
-            _           => "güncellendi"
-        };
-
-        var subject = $"Rezervasyon Durumu Güncellendi — {beachName}";
-        var body = $"""
-            Merhaba {fullName},
-
-            {beachName} için rezervasyonunuz {statusText}.
-            Detaylar için uygulamayı ziyaret edebilirsiniz.
-            """;
-
-        await SendEmailAsync(toEmail, subject, body, cancellationToken);
-    }
-
-    public async Task SendPasswordResetEmailAsync(
+    public async Task SendPasswordResetAsync(
         string toEmail, string resetToken, CancellationToken cancellationToken = default)
     {
         var subject = "Şifre Sıfırlama Talebi";
@@ -94,7 +71,7 @@ public class EmailService : IEmailService
         await SendEmailAsync(toEmail, subject, body, cancellationToken);
     }
 
-    public async Task SendEmailAsync(
+    private async Task SendEmailAsync(
         string toEmail, string subject, string body,
         CancellationToken cancellationToken = default)
     {

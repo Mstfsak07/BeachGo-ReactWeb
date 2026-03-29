@@ -5,20 +5,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BeachRehberi.API.Services;
 
+// test için yorum satırı - BusinessService sınıfı
 public class BusinessService : IBusinessService
 {
     // test için yorum satırı
     private readonly BeachDbContext _db;       
 
+    // test için yorum satırı - constructor
     public BusinessService(BeachDbContext db) => _db = db;
 
     // Test yorum satırı
+    // test için yorum satırı - GetEventsAsync metodu
     public async Task<List<BeachEvent>> GetEventsAsync(int beachId) =>
         await _db.Events
             .Where(e => e.BeachId == beachId && e.StartDate >= DateTime.UtcNow)
             .OrderBy(e => e.StartDate)
             .ToListAsync();
 
+    // test için yorum satırı - AddEventAsync metodu
     public async Task<BeachEvent> AddEventAsync(BeachEvent ev)
     {
         _db.Events.Add(ev);
@@ -26,6 +30,7 @@ public class BusinessService : IBusinessService
         return ev;
     }
 
+    // test için yorum satırı - DeleteEventAsync metodu
     public async Task<bool> DeleteEventAsync(int eventId, int beachId)
     {
         var ev = await _db.Events
@@ -38,6 +43,7 @@ public class BusinessService : IBusinessService
         return true;
     }
 
+    // test için yorum satırı - GetReservationsAsync metodu
     public async Task<List<Reservation>> GetReservationsAsync(int beachId, DateTime date) =>
         await _db.Reservations
             .Where(r => r.BeachId == beachId &&
@@ -46,12 +52,14 @@ public class BusinessService : IBusinessService
             .OrderBy(r => r.ReservationDate)
             .ToListAsync();
 
+    // test için yorum satırı - GetAllReservationsAsync metodu
     public async Task<List<Reservation>> GetAllReservationsAsync(int beachId) =>
         await _db.Reservations
                 .Where(r => r.BeachId == beachId)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
 
+    // test için yorum satırı - UpdateReservationStatusAsync metodu
     public async Task<ServiceResult<object>> UpdateReservationStatusAsync(int id, int beachId, ReservationStatus status, string? comment = null)
     {
         var res = await _db.Reservations.FirstOrDefaultAsync(r => r.Id == id && r.BeachId == beachId);
@@ -61,6 +69,7 @@ public class BusinessService : IBusinessService
 
         try 
         {
+            // test için yorum satırı - switch case
             switch (status)
             {
                 case ReservationStatus.Approved:
@@ -87,6 +96,7 @@ public class BusinessService : IBusinessService
         }
         catch (Exception ex)
         {
+            // test için yorum satırı - hata yakalama
             return ServiceResult<object>.FailureResult(ex.Message);
         }
     }

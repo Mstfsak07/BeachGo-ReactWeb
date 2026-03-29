@@ -1,4 +1,6 @@
 using BeachRehberi.Application.Features.Beaches.Commands.CreateBeach;
+using BeachRehberi.Application.Features.Beaches.Commands.DeleteBeach;
+using BeachRehberi.Application.Features.Beaches.Commands.UpdateBeach;
 using BeachRehberi.Application.Features.Beaches.Queries.GetBeachById;
 using BeachRehberi.Application.Features.Beaches.Queries.GetBeaches;
 using MediatR;
@@ -8,8 +10,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace BeachRehberi.API.Controllers;
 
 [ApiController]
-[Route("api/beaches")]
-public class BeachesController : ControllerBase
+[Route("api/[controller]")]
+public class BeachesController : BaseController
 {
     private readonly IMediator _mediator;
 
@@ -18,69 +20,84 @@ public class BeachesController : ControllerBase
         _mediator = mediator;
     }
 
-    /// <summary>Beach listesini getir — filtreli, sıralı, sayfalı</summary>
+    /// <summary>Plajları listele — filtre ve sayfalama destekli</summary>
     [HttpGet]
-    [AllowAnonymous]
+    [ProducesResponseType(200)]
     public async Task<IActionResult> GetBeaches(
-        [FromQuery] string? search,
         [FromQuery] string? city,
+        [FromQuery] string? search,
         [FromQuery] decimal? minPrice,
         [FromQuery] decimal? maxPrice,
         [FromQuery] bool? hasParking,
         [FromQuery] bool? hasRestaurant,
         [FromQuery] bool? hasWaterSports,
-        [FromQuery] bool? hasLifeguard,
-        [FromQuery] bool? isPetFriendly,
-        [FromQuery] string sortBy = "rating",
-        [FromQuery] bool sortDesc = true,
+        [FromQuery] string? sortBy,
+        [FromQuery] bool sortDesc = false,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
         var query = new GetBeachesQuery(
-            Search: search,
-            City: city,
-            MinPrice: minPrice,
-            MaxPrice: maxPrice,
-            HasParking: hasParking,
-            HasRestaurant: hasRestaurant,
-            HasWaterSports: hasWaterSports,
-            HasLifeguard: hasLifeguard,
-            IsPetFriendly: isPetFriendly,
-            SortBy: sortBy,
-            SortDescending: sortDesc,
-            PageNumber: page,
-            PageSize: Math.Clamp(pageSize, 1, 50)
-        );
+            city, search, minPrice, maxPrice,
+            hasParking, hasRestaurant, hasWaterSports,
+            sortBy, sortDesc, page,
+            Math.Clamp(pageSize, 1, 50));
 
         var result = await _mediator.Send(query, cancellationToken);
-        return Ok(result);
+        return Ok(new { isSuccess = true, data = result });
     }
 
-    /// <summary>Beach detayını getir</summary>
-    [HttpGet("{id:int}")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetBeachById(int id, CancellationToken cancellationToken)
+    /// <summary>Plaj detayı</summary>
+    [HttpGet("{id:int}", Name = "GetBeachById")]
+    [ProducesResponseType(typeof(BeachDetailDto), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
     {
         var result = await _mediator.Send(new GetBeachByIdQuery(id), cancellationToken);
-        return Ok(result);
+        return Ok(new { isSuccess = true, data = result });
     }
 
-    /// <summary>Yeni beach oluştur — BusinessOwner veya Admin</summary>
+    /// <summary>Yeni plaj oluştur — BusinessOwner veya Admin</summary>
     [HttpPost]
     [Authorize(Policy = "BusinessOnly")]
-    public async Task<IActionResult> CreateBeach(
-        [FromBody] CreateBeachCommand command, CancellationToken cancellationToken)
+    [ProducesResponseType(201)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(403)]
+    public async Task<IActionResult> Create(
+        [FromBody] CreateBeachCommand command,
+        CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(command, cancellationToken);
+        var id = await _mediator.Send(command, cancellationToken);
+        return CreatedAtRoute(
+            "GetBeachById",
+            new { id },
+            new { isSuccess = true, data = new { id } });
+    }
 
-        return result.StatusCode switch
-        {
-            201 => CreatedAtAction(
-                nameof(GetBeachById),
-                new { id = result.Data?.Id },
-                result),
-            _ => BadRequest(result)
-        };
+    /// <summary>Plaj güncelle</summary>
+    [HttpPut("{id:int}")]
+    [Authorize(Policy = "BusinessOnly")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> Update(
+        int id,
+        [FromBody] UpdateBeachCommand command,
+        CancellationToken cancellationToken)
+    {
+        await _mediator.Send(command with { Id = id }, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>Plaj sil — soft delete</summary>
+    [HttpDelete("{id:int}")]
+    [Authorize(Policy = "BusinessOnly")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
+    {
+        await _mediator.Send(new DeleteBeachCommand(id), cancellationToken);
+        return NoContent();
     }
 }

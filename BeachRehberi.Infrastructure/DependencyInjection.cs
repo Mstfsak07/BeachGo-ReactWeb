@@ -60,13 +60,13 @@ public static class DependencyInjection
         }
 
         // ─── Repository + UnitOfWork ──────────────────────────────
+        services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        // ─── Application Servisleri ───────────────────────────────
-        services.AddScoped<ITokenService, TokenService>();
+        // ─── Uygulama Servisleri ──────────────────────────────────
+        services.AddScoped<IJwtService, JwtService>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<ICacheService, CacheService>();
-        services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<ITenantService, TenantService>();

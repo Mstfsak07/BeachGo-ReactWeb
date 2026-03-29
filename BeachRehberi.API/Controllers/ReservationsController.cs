@@ -1,6 +1,6 @@
+using BeachRehberi.Application.Features.Reservations.Commands.CancelReservation;
 using BeachRehberi.Application.Features.Reservations.Commands.CreateReservation;
 using BeachRehberi.Application.Features.Reservations.Queries.GetMyReservations;
-using BeachRehberi.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,9 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace BeachRehberi.API.Controllers;
 
 [ApiController]
-[Route("api/reservations")]
+[Route("api/[controller]")]
 [Authorize]
-public class ReservationsController : ControllerBase
+public class ReservationsController : BaseController
 {
     private readonly IMediator _mediator;
 
@@ -19,32 +19,50 @@ public class ReservationsController : ControllerBase
         _mediator = mediator;
     }
 
-    /// <summary>Kendi rezervasyonlarımı listele</summary>
+    /// <summary>Rezervasyon oluştur</summary>
+    [HttpPost]
+    [ProducesResponseType(201)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    public async Task<IActionResult> Create(
+        [FromBody] CreateReservationCommand command,
+        CancellationToken cancellationToken)
+    {
+        var id = await _mediator.Send(command, cancellationToken);
+        return StatusCode(201, new { isSuccess = true, data = new { id } });
+    }
+
+    /// <summary>Kendi rezervasyonlarımı getir</summary>
     [HttpGet("my")]
+    [ProducesResponseType(200)]
     public async Task<IActionResult> GetMyReservations(
-        [FromQuery] ReservationStatus? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
     {
         var result = await _mediator.Send(
-            new GetMyReservationsQuery(status, page, Math.Clamp(pageSize, 1, 50)),
+            new GetMyReservationsQuery(page, Math.Clamp(pageSize, 1, 50)),
             cancellationToken);
 
-        return Ok(result);
+        return Ok(new { isSuccess = true, data = result });
     }
 
-    /// <summary>Rezervasyon oluştur</summary>
-    [HttpPost]
-    public async Task<IActionResult> CreateReservation(
-        [FromBody] CreateReservationCommand command, CancellationToken cancellationToken)
+    /// <summary>Rezervasyonu iptal et</summary>
+    [HttpPost("{id:int}/cancel")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> Cancel(
+        int id,
+        [FromBody] CancelReservationRequest? body,
+        CancellationToken cancellationToken)
     {
-        var result = await _mediator.Send(command, cancellationToken);
+        await _mediator.Send(
+            new CancelReservationCommand(id, body?.Reason),
+            cancellationToken);
 
-        return result.StatusCode switch
-        {
-            201 => StatusCode(201, result),
-            _   => BadRequest(result)
-        };
+        return Ok(new { isSuccess = true, message = "Rezervasyon başarıyla iptal edildi." });
     }
 }
+
+public record CancelReservationRequest(string? Reason);

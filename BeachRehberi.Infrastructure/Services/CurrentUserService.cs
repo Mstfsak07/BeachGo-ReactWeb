@@ -1,4 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using BeachRehberi.Application.Common.Interfaces;
 using BeachRehberi.Domain.Enums;
@@ -22,8 +21,22 @@ public class CurrentUserService : ICurrentUserService
         get
         {
             var value = User?.FindFirstValue(ClaimTypes.NameIdentifier)
-                        ?? User?.FindFirstValue(JwtRegisteredClaimNames.Sub);
+                        ?? User?.FindFirstValue("sub");
             return int.TryParse(value, out var id) ? id : null;
+        }
+    }
+
+    public string? Email =>
+        User?.FindFirstValue(ClaimTypes.Email)
+        ?? User?.FindFirstValue("email");
+
+    public UserRole? Role
+    {
+        get
+        {
+            var value = User?.FindFirstValue(ClaimTypes.Role)
+                        ?? User?.FindFirstValue("role");
+            return Enum.TryParse<UserRole>(value, out var role) ? role : null;
         }
     }
 
@@ -36,19 +49,12 @@ public class CurrentUserService : ICurrentUserService
         }
     }
 
-    public string? Email => User?.FindFirstValue(ClaimTypes.Email)
-                            ?? User?.FindFirstValue(JwtRegisteredClaimNames.Email);
+    public bool IsAuthenticated =>
+        User?.Identity?.IsAuthenticated == true;
 
-    public UserRole? Role
-    {
-        get
-        {
-            var value = User?.FindFirstValue(ClaimTypes.Role);
-            return Enum.TryParse<UserRole>(value, out var role) ? role : null;
-        }
-    }
+    public bool IsAdmin =>
+        Role == UserRole.Admin;
 
-    public bool IsAuthenticated => User?.Identity?.IsAuthenticated ?? false;
-    public bool IsAdmin => Role == UserRole.Admin;
-    public bool IsBusinessOwner => Role == UserRole.BusinessOwner || IsAdmin;
+    public bool IsBusinessOwner =>
+        Role == UserRole.BusinessOwner || IsAdmin;
 }

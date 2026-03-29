@@ -1,13 +1,13 @@
 using BeachRehberi.Application.Common.Interfaces;
-using BeachRehberi.Domain.Entities;
 using BeachRehberi.Domain.Exceptions;
 using BeachRehberi.Domain.Interfaces;
 using MediatR;
 
-namespace BeachRehberi.Application.Features.Beaches.Commands.CreateBeach;
+namespace BeachRehberi.Application.Features.Beaches.Commands.UpdateBeach;
 
 // ── Command ───────────────────────────────────────────────────────────────────
-public record CreateBeachCommand(
+public record UpdateBeachCommand(
+    int Id,
     string Name,
     string Description,
     string Location,
@@ -28,15 +28,15 @@ public record CreateBeachCommand(
     bool HasLifeguard,
     bool IsWheelchairAccessible,
     bool AllowsPets
-) : IRequest<int>;
+) : IRequest;
 
 // ── Handler ───────────────────────────────────────────────────────────────────
-public class CreateBeachCommandHandler : IRequestHandler<CreateBeachCommand, int>
+public class UpdateBeachCommandHandler : IRequestHandler<UpdateBeachCommand>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
 
-    public CreateBeachCommandHandler(
+    public UpdateBeachCommandHandler(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUserService)
     {
@@ -44,37 +44,17 @@ public class CreateBeachCommandHandler : IRequestHandler<CreateBeachCommand, int
         _currentUserService = currentUserService;
     }
 
-    public async Task<int> Handle(CreateBeachCommand request, CancellationToken cancellationToken)
+    public async Task Handle(UpdateBeachCommand request, CancellationToken cancellationToken)
     {
-        var tenantId = _currentUserService.TenantId
-            ?? throw new ForbiddenException(
-                "Bu işlem için bir işletmeye bağlı olmanız gerekmektedir.");
+        var beach = await _unitOfWork.Beaches.GetByIdAsync(request.Id, cancellationToken);
 
-        // Tenant limit kontrolü
-        var tenant = await _unitOfWork.Tenants.GetByIdAsync(tenantId, cancellationToken);
+        if (beach is null || beach.IsDeleted)
+            throw new NotFoundException("Plaj", request.Id);
 
-        if (tenant is null || tenant.IsDeleted)
-            throw new NotFoundException("İşletme", tenantId);
-
-        var beachCount = await _unitOfWork.Beaches.CountAsync(
-            b => b.TenantId == tenantId && !b.IsDeleted, cancellationToken);
-
-        if (beachCount >= tenant.MaxBeaches)
-            throw new TenantLimitExceededException(
-                $"Maksimum plaj sayısına ({tenant.MaxBeaches}) ulaşıldı. " +
-                "Daha fazla plaj eklemek için planınızı yükseltin.");
-
-        // Beach oluştur
-        var beach = new Beach(
-            request.Name,
-            request.Description,
-            request.Location,
-            request.City,
-            request.Latitude,
-            request.Longitude,
-            request.PricePerPerson,
-            request.Capacity,
-            tenantId);
+        // Admin her plajı düzenleyebilir; BusinessOwner sadece kendi tenant'ının plajını
+        if (!_currentUserService.IsAdmin &&
+            beach.TenantId != _currentUserService.TenantId)
+            throw new ForbiddenException("Bu plajı düzenleme yetkiniz yok.");
 
         beach.UpdateDetails(
             request.Name,
@@ -98,9 +78,6 @@ public class CreateBeachCommandHandler : IRequestHandler<CreateBeachCommand, int
             request.IsWheelchairAccessible,
             request.AllowsPets);
 
-        await _unitOfWork.Beaches.AddAsync(beach, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return beach.Id;
     }
 }

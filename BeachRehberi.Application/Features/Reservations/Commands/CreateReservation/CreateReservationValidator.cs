@@ -7,20 +7,19 @@ public class CreateReservationValidator : AbstractValidator<CreateReservationCom
     public CreateReservationValidator()
     {
         RuleFor(x => x.BeachId)
-            .GreaterThan(0).WithMessage("Geçerli bir beach seçiniz.");
+            .GreaterThan(0).WithMessage("Geçerli bir plaj seçiniz.");
 
         RuleFor(x => x.ReservationDate)
-            .GreaterThanOrEqualTo(DateTime.Today)
-            .WithMessage("Rezervasyon tarihi bugün veya sonrası olmalıdır.")
-            .LessThanOrEqualTo(DateTime.Today.AddYears(1))
-            .WithMessage("Rezervasyon 1 yıldan fazla ileri bir tarih için yapılamaz.");
+            .NotEmpty().WithMessage("Rezervasyon tarihi boş olamaz.")
+            .GreaterThanOrEqualTo(DateTime.UtcNow.Date)
+            .WithMessage("Geçmiş tarihli rezervasyon yapılamaz.");
 
         RuleFor(x => x.GuestCount)
             .GreaterThan(0).WithMessage("Misafir sayısı en az 1 olmalıdır.")
-            .LessThanOrEqualTo(100).WithMessage("Misafir sayısı en fazla 100 olabilir.");
+            .LessThanOrEqualTo(50).WithMessage("Tek rezervasyonda en fazla 50 misafir olabilir.");
 
         RuleFor(x => x.Notes)
-            .MaximumLength(500).WithMessage("Notlar 500 karakterden uzun olamaz.")
-            .When(x => x.Notes is not null);
+            .MaximumLength(500).WithMessage("Notlar en fazla 500 karakter olabilir.")
+            .When(x => x.Notes != null);
     }
 }

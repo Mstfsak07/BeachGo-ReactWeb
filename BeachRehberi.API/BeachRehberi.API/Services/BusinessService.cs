@@ -1,28 +1,80 @@
 using BeachRehberi.API.Data;
+using BeachRehberi.API.DTOs;
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeachRehberi.API.Services;
 
-// test için yorum satırı - BusinessService sınıfı
 public class BusinessService : IBusinessService
 {
-    // test için yorum satırı
-    private readonly BeachDbContext _db;       
+    private readonly BeachDbContext _db;
 
-    // test için yorum satırı - constructor
     public BusinessService(BeachDbContext db) => _db = db;
 
-    // Test yorum satırı
-    // test için yorum satırı - GetEventsAsync metodu
+    public async Task<Beach?> GetBeachByIdAsync(int beachId) =>
+        await _db.Beaches
+            .Include(b => b.Photos)
+            .Include(b => b.Reviews)
+            .FirstOrDefaultAsync(b => b.Id == beachId && !b.IsDeleted);
+
+    public async Task<ServiceResult<object>> UpdateBeachDetailsAsync(int beachId, UpdateBeachDto dto)
+    {
+        var beach = await _db.Beaches
+            .FirstOrDefaultAsync(b => b.Id == beachId && !b.IsDeleted);
+
+        if (beach == null)
+            return ServiceResult<object>.FailureResult("Plaj bulunamadı.");
+
+        try
+        {
+            beach.Name            = dto.Name;
+            beach.Description     = dto.Description;
+            beach.Address         = dto.Address;
+            beach.Phone           = dto.Phone;
+            beach.Website         = dto.Website;
+            beach.Instagram       = dto.Instagram;
+            beach.OpenTime        = dto.OpenTime;
+            beach.CloseTime       = dto.CloseTime;
+            beach.HasEntryFee     = dto.HasEntryFee;
+            beach.EntryFee        = dto.EntryFee;
+            beach.SunbedPrice     = dto.SunbedPrice;
+            beach.Latitude        = dto.Latitude;
+            beach.Longitude       = dto.Longitude;
+            beach.Capacity        = dto.Capacity;
+
+            // Olanaklar
+            beach.HasSunbeds       = dto.HasSunbeds;
+            beach.HasShower        = dto.HasShower;
+            beach.HasParking       = dto.HasParking;
+            beach.HasRestaurant    = dto.HasRestaurant;
+            beach.HasBar           = dto.HasBar;
+            beach.HasAlcohol       = dto.HasAlcohol;
+            beach.IsChildFriendly  = dto.IsChildFriendly;
+            beach.HasWaterSports   = dto.HasWaterSports;
+            beach.HasWifi          = dto.HasWifi;
+            beach.HasPool          = dto.HasPool;
+            beach.HasDJ            = dto.HasDJ;
+            beach.HasAccessibility = dto.HasAccessibility;
+
+            beach.TodaySpecial     = dto.TodaySpecial;
+            beach.LastUpdated      = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync();
+            return ServiceResult<object>.SuccessResult(null!, "Plaj bilgileri güncellendi.");
+        }
+        catch (Exception ex)
+        {
+            return ServiceResult<object>.FailureResult(ex.Message);
+        }
+    }
+
     public async Task<List<BeachEvent>> GetEventsAsync(int beachId) =>
         await _db.Events
             .Where(e => e.BeachId == beachId && e.StartDate >= DateTime.UtcNow)
             .OrderBy(e => e.StartDate)
             .ToListAsync();
 
-    // test için yorum satırı - AddEventAsync metodu
     public async Task<BeachEvent> AddEventAsync(BeachEvent ev)
     {
         _db.Events.Add(ev);
@@ -30,20 +82,18 @@ public class BusinessService : IBusinessService
         return ev;
     }
 
-    // test için yorum satırı - DeleteEventAsync metodu
     public async Task<bool> DeleteEventAsync(int eventId, int beachId)
     {
         var ev = await _db.Events
             .FirstOrDefaultAsync(e => e.Id == eventId && e.BeachId == beachId);
+
         if (ev == null) return false;
-        
-        // BeachEvent modelinde de Cancel metodu olduğu varsayılıyor
-        ev.SoftDelete(); 
+
+        ev.SoftDelete();
         await _db.SaveChangesAsync();
         return true;
     }
 
-    // test için yorum satırı - GetReservationsAsync metodu
     public async Task<List<Reservation>> GetReservationsAsync(int beachId, DateTime date) =>
         await _db.Reservations
             .Where(r => r.BeachId == beachId &&
@@ -52,24 +102,22 @@ public class BusinessService : IBusinessService
             .OrderBy(r => r.ReservationDate)
             .ToListAsync();
 
-    // test için yorum satırı - GetAllReservationsAsync metodu
     public async Task<List<Reservation>> GetAllReservationsAsync(int beachId) =>
         await _db.Reservations
-                .Where(r => r.BeachId == beachId)
-                .OrderByDescending(r => r.CreatedAt)
-                .ToListAsync();
+            .Where(r => r.BeachId == beachId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
 
-    // test için yorum satırı - UpdateReservationStatusAsync metodu
     public async Task<ServiceResult<object>> UpdateReservationStatusAsync(int id, int beachId, ReservationStatus status, string? comment = null)
     {
-        var res = await _db.Reservations.FirstOrDefaultAsync(r => r.Id == id && r.BeachId == beachId);
+        var res = await _db.Reservations
+            .FirstOrDefaultAsync(r => r.Id == id && r.BeachId == beachId);
 
         if (res == null)
             return ServiceResult<object>.FailureResult("Rezervasyon bulunamadı.");
 
-        try 
+        try
         {
-            // test için yorum satırı - switch case
             switch (status)
             {
                 case ReservationStatus.Approved:
@@ -96,7 +144,6 @@ public class BusinessService : IBusinessService
         }
         catch (Exception ex)
         {
-            // test için yorum satırı - hata yakalama
             return ServiceResult<object>.FailureResult(ex.Message);
         }
     }

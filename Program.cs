@@ -1,96 +1,172 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using BeachRehberi.API.Middleware;
+using BeachRehberi.Application;
+using BeachRehberi.Infrastructure;
+using BeachRehberi.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.AspNetCore.RateLimiting;
-using BeachRehberi.API.Data;
-using BeachRehberi.API.Middlewares;
-using BeachRehberi.API.Mappings;
-using BeachRehberi.API.Services;
+using Serilog;
+using Serilog.Events;
 
-var builder = WebApplication.CreateBuilder(args);
+// ─── Serilog ─────────────────────────────────────────────
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .Enrich.WithMachineName()
+    .Enrich.WithEnvironmentName()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File("logs/beachrehberi-.log",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30)
+    .CreateLogger();
 
-// ─── Environment Variables ───────────────────────────
-var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET") 
-                ?? builder.Configuration["Jwt:SecretKey"] 
-                ?? "Development_Secret_Key_Do_Not_Use_In_Production_2026!";
+try
+{
+    Log.Information("🏖️ BeachRehberi API başlatılıyor...");
 
-var dbConn = Environment.GetEnvironmentVariable("BEACHGO_DB_CONN") 
-             ?? builder.Configuration.GetConnectionString("DefaultConnection") 
-             ?? "Data Source=beachrehberi.db";
+    var builder = WebApplication.CreateBuilder(args);
+    builder.Host.UseSerilog();
 
-// ─── Veritabanı ───────────────────────────────────────────
-builder.Services.AddDbContext<BeachDbContext>(options => options.UseSqlite(dbConn));
+    // ─── JWT Config ──────────────────────────────────────
+    var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET")
+                    ?? builder.Configuration["Jwt:SecretKey"]
+                    ?? throw new InvalidOperationException("JWT Secret Key tanımlı değil!");
 
-// ─── Rate Limiting ───────────────────────────────────────
-builder.Services.AddRateLimiter(options => {
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddFixedWindowLimiter("fixed", opt => {
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.PermitLimit = 100;
+    // ─── Katman DI ───────────────────────────────────────
+    builder.Services.AddApplication();
+    builder.Services.AddInfrastructure(builder.Configuration);
+
+    // ─── Controllers ─────────────────────────────────────
+    builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(c =>
+    {
+        c.SwaggerDoc("v1", new() { Title = "BeachRehberi API", Version = "v1" });
+        c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Description = "JWT Authorization header. Örn: 'Bearer {token}'",
+            Name = "Authorization",
+            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+            Scheme = "Bearer"
+        });
+        c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+        {
+            {
+                new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+                {
+                    Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                    {
+                        Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
     });
-    options.AddFixedWindowLimiter("auth", opt => {
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.PermitLimit = 5;
+
+    // ─── Rate Limiting ───────────────────────────────────
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.AddFixedWindowLimiter("fixed", opt =>
+        {
+            opt.Window = TimeSpan.FromMinutes(1);
+            opt.PermitLimit = 100;
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.QueueLimit = 5;
+        });
+        options.AddFixedWindowLimiter("auth", opt =>
+        {
+            opt.Window = TimeSpan.FromMinutes(1);
+            opt.PermitLimit = 10;
+            opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            opt.QueueLimit = 2;
+        });
     });
-});
 
-// ─── Services ─────────────────────────────────────────────
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddHttpClient();
-builder.Services.AddScoped<IBeachService, BeachService>();
-builder.Services.AddScoped<IWeatherService, WeatherService>();
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+    // ─── CORS ────────────────────────────────────────────
+    var allowedOrigins = Environment.GetEnvironmentVariable("BEACHGO_ALLOWED_ORIGINS")?.Split(',')
+                         ?? new[] { "http://localhost:3000", "http://localhost:3001" };
 
-// ─── CORS ─────────────────────────────────────────────────
-var allowedOrigins = Environment.GetEnvironmentVariable("BEACHGO_ALLOWED_ORIGINS")?.Split(',') 
-                    ?? new[] { "http://localhost:3000" };
-
-builder.Services.AddCors(options => {
-    options.AddPolicy("BeachGoPolicy", policy => {
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("BeachGoPolicy", policy =>
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
     });
-});
 
-// ─── Authentication ─────────────────────────────────────
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-.AddJwtBearer(options => {
-    options.TokenValidationParameters = new TokenValidationParameters {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "BeachRehberi.API",
-        ValidAudience = builder.Configuration["Jwt:Audience"] ?? "BeachRehberi.App",
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
-    };
-});
+    // ─── Authentication ──────────────────────────────────
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "BeachRehberi.API",
+                ValidAudience = builder.Configuration["Jwt:Audience"] ?? "BeachRehberi.App",
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+                ClockSkew = TimeSpan.Zero
+            };
+        });
 
-builder.Services.AddAuthorization(options => {
-    options.AddPolicy("BusinessOnly", policy => policy.RequireRole("BusinessOwner", "Admin"));
-});
+    builder.Services.AddAuthorization(options =>
+    {
+        options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+        options.AddPolicy("BusinessOnly", policy => policy.RequireRole("BusinessOwner", "Admin"));
+        options.AddPolicy("AuthenticatedUser", policy => policy.RequireAuthenticatedUser());
+    });
 
-var app = builder.Build();
+    // ─── Build ───────────────────────────────────────────
+    var app = builder.Build();
 
-// ─── Pipeline ─────────────────────────────────────────────
-app.UseMiddleware<ExceptionMiddleware>();
-app.UseRateLimiter();
+    // ─── Auto Migration ──────────────────────────────────
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync();
+        Log.Information("✓ Veritabanı migration tamamlandı.");
+    }
 
-if (app.Environment.IsDevelopment()) {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    // ─── Pipeline ────────────────────────────────────────
+    app.UseMiddleware<ExceptionMiddleware>();
+    app.UseMiddleware<TenantMiddleware>();
+    app.UseSerilogRequestLogging();
+    app.UseRateLimiter();
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "BeachRehberi API v1"));
+    }
+
+    app.UseHttpsRedirection();
+    app.UseCors("BeachGoPolicy");
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.MapControllers().RequireRateLimiter("fixed");
+
+    Log.Information("✓ BeachRehberi API hazır.");
+    app.Run();
 }
-
-app.UseHttpsRedirection();
-app.UseCors("BeachGoPolicy");
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapControllers().RequireRateLimiter("fixed");
-app.Run();
+catch (Exception ex)
+{
+    Log.Fatal(ex, "❌ API başlatılamadı.");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

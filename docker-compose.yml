@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Database (PostgreSQL)
+  # ── PostgreSQL ─────────────────────────────────────────
   db:
     image: postgres:15-alpine
     container_name: beachgo-db
@@ -9,34 +9,83 @@ services:
     environment:
       POSTGRES_DB: beachgo_db
       POSTGRES_USER: beach_admin
-      POSTGRES_PASSWORD: SecretPassword123!
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-SecretPassword123!}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beach_admin -d beachgo_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Backend (API)
+  # ── Redis (Cache) ──────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: beachgo-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-RedisSecret123!}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend API ────────────────────────────────────────
   api:
-    build: ./BeachRehberi.API/BeachRehberi.API
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: beachgo-api
     restart: always
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Host=db;Database=beachgo_db;Username=beach_admin;Password=SecretPassword123!
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - BEACHGO_JWT_SECRET=${BEACHGO_JWT_SECRET}
+      - BEACHGO_DB_CONN=Host=db;Database=beachgo_db;Username=beach_admin;Password=${DB_PASSWORD:-SecretPassword123!}
+      - BEACHGO_REDIS_CONN=redis:6379,password=${REDIS_PASSWORD:-RedisSecret123!}
+      - BEACHGO_ALLOWED_ORIGINS=${BEACHGO_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
     ports:
       - "5143:80"
+    volumes:
+      - api_logs:/app/logs
 
-  # Frontend (UI)
+  # ── Frontend (Web) ─────────────────────────────────────
   ui:
-    build: ./beach-ui
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: beachgo-ui
     restart: always
     depends_on:
       - api
     ports:
       - "3000:80"
+    environment:
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:5143}
+
+  # ── Admin Panel ────────────────────────────────────────
+  admin:
+    build:
+      context: ./admin-panel
+      dockerfile: Dockerfile
+    container_name: beachgo-admin
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - "3001:80"
+    environment:
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:5143}
 
 networks:
   default:
@@ -44,3 +93,5 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
+  api_logs:

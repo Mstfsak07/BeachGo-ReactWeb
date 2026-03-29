@@ -1,11 +1,17 @@
 namespace BeachRehberi.Domain.Common;
 
-public abstract class BaseEntity
+public interface ITenantEntity
+{
+    int? TenantId { get; set; }
+}
+
+public abstract class BaseEntity : ITenantEntity
 {
     public int Id { get; protected set; }
-    public DateTime CreatedAt { get; protected set; } = DateTime.UtcNow;
-    public DateTime? UpdatedAt { get; protected set; }
-    public bool IsDeleted { get; protected set; } = false;
+    public int? TenantId { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+    public bool IsDeleted { get; set; } = false;
 
     public void SoftDelete()
     {

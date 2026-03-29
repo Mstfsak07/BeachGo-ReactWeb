@@ -9,77 +9,82 @@ public class User : BaseEntity
     public string PasswordHash { get; private set; } = string.Empty;
     public string FirstName { get; private set; } = string.Empty;
     public string LastName { get; private set; } = string.Empty;
-    public string Phone { get; private set; } = string.Empty;
+    public string? Phone { get; private set; }
+    public string? ProfileImageUrl { get; private set; }
+
     public UserRole Role { get; private set; } = UserRole.User;
-    public bool IsEmailVerified { get; private set; } = false;
     public bool IsActive { get; private set; } = true;
+    public bool EmailVerified { get; private set; } = false;
+
+    public string? RefreshToken { get; private set; }
+    public DateTime? RefreshTokenExpiry { get; private set; }
 
     public int? TenantId { get; private set; }
     public Tenant? Tenant { get; private set; }
 
-    public string? RefreshToken { get; private set; }
-    public DateTime? RefreshTokenExpiresAt { get; private set; }
-
-    public string? PasswordResetToken { get; private set; }
-    public DateTime? PasswordResetTokenExpiresAt { get; private set; }
-
-    public string FullName => $"{FirstName} {LastName}".Trim();
-
     public ICollection<Reservation> Reservations { get; private set; } = new List<Reservation>();
+    public ICollection<Review> Reviews { get; private set; } = new List<Review>();
 
     // EF Core constructor
     private User() { }
 
-    public User(string email, string passwordHash, string firstName, string lastName, UserRole role = UserRole.User)
+    public User(string email, string passwordHash, string firstName, string lastName,
+                UserRole role = UserRole.User, string? phone = null)
     {
         Email = email?.ToLowerInvariant() ?? throw new ArgumentNullException(nameof(email));
         PasswordHash = passwordHash ?? throw new ArgumentNullException(nameof(passwordHash));
-        FirstName = firstName ?? string.Empty;
-        LastName = lastName ?? string.Empty;
+        FirstName = firstName ?? throw new ArgumentNullException(nameof(firstName));
+        LastName = lastName ?? throw new ArgumentNullException(nameof(lastName));
         Role = role;
+        Phone = phone;
+        IsActive = true;
     }
 
-    public void SetRefreshToken(string token, DateTime expiresAt)
+    public string FullName => $"{FirstName} {LastName}".Trim();
+
+    public void SetRefreshToken(string token, DateTime expiry)
     {
         RefreshToken = token;
-        RefreshTokenExpiresAt = expiresAt;
+        RefreshTokenExpiry = expiry;
         SetUpdated();
     }
 
     public void RevokeRefreshToken()
     {
         RefreshToken = null;
-        RefreshTokenExpiresAt = null;
+        RefreshTokenExpiry = null;
         SetUpdated();
     }
 
     public bool IsRefreshTokenValid(string token)
-    {
-        return RefreshToken == token
-            && RefreshTokenExpiresAt.HasValue
-            && RefreshTokenExpiresAt.Value > DateTime.UtcNow;
-    }
+        => RefreshToken == token
+           && RefreshTokenExpiry.HasValue
+           && RefreshTokenExpiry.Value > DateTime.UtcNow;
 
-    public void SetPasswordResetToken(string token, DateTime expiresAt)
+    public void UpdateProfile(string firstName, string lastName, string? phone, string? profileImageUrl = null)
     {
-        PasswordResetToken = token;
-        PasswordResetTokenExpiresAt = expiresAt;
+        FirstName = firstName ?? FirstName;
+        LastName = lastName ?? LastName;
+        Phone = phone;
+        ProfileImageUrl = profileImageUrl;
         SetUpdated();
     }
 
     public void ChangePassword(string newPasswordHash)
     {
         PasswordHash = newPasswordHash;
-        PasswordResetToken = null;
-        PasswordResetTokenExpiresAt = null;
+        RevokeRefreshToken();
         SetUpdated();
     }
 
     public void VerifyEmail()
     {
-        IsEmailVerified = true;
+        EmailVerified = true;
         SetUpdated();
     }
+
+    public void Activate() { IsActive = true; SetUpdated(); }
+    public void Deactivate() { IsActive = false; SetUpdated(); }
 
     public void AssignToTenant(int tenantId)
     {
@@ -87,23 +92,9 @@ public class User : BaseEntity
         SetUpdated();
     }
 
-    public void UpdateProfile(string firstName, string lastName, string phone)
-    {
-        FirstName = firstName ?? FirstName;
-        LastName = lastName ?? LastName;
-        Phone = phone ?? Phone;
-        SetUpdated();
-    }
-
     public void ChangeRole(UserRole newRole)
     {
         Role = newRole;
-        SetUpdated();
-    }
-
-    public void Deactivate()
-    {
-        IsActive = false;
         SetUpdated();
     }
 }

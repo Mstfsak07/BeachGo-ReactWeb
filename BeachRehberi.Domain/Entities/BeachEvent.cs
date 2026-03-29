@@ -9,34 +9,48 @@ public class BeachEvent : BaseEntity
 
     public string Title { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
-    public DateTime EventDate { get; private set; }
-    public string ImageUrl { get; private set; } = string.Empty;
+    public DateTime StartDate { get; private set; }
+    public DateTime EndDate { get; private set; }
+    public decimal? TicketPrice { get; private set; }
+    public int? MaxAttendees { get; private set; }
     public bool IsActive { get; private set; } = true;
 
     // EF Core constructor
     private BeachEvent() { }
 
-    public BeachEvent(int beachId, string title, string description, DateTime eventDate, string imageUrl = "")
+    public BeachEvent(int beachId, string title, string description,
+                      DateTime startDate, DateTime endDate,
+                      decimal? ticketPrice = null, int? maxAttendees = null)
     {
         BeachId = beachId;
         Title = title ?? throw new ArgumentNullException(nameof(title));
-        Description = description ?? string.Empty;
-        EventDate = eventDate;
-        ImageUrl = imageUrl ?? string.Empty;
+        Description = description ?? throw new ArgumentNullException(nameof(description));
+
+        if (endDate <= startDate)
+            throw new ArgumentException("Bitiş tarihi başlangıç tarihinden sonra olmalıdır.");
+
+        StartDate = startDate;
+        EndDate = endDate;
+        TicketPrice = ticketPrice;
+        MaxAttendees = maxAttendees;
     }
 
-    public void Update(string title, string description, DateTime eventDate, string imageUrl)
+    public void Update(string title, string description, DateTime startDate,
+                       DateTime endDate, decimal? ticketPrice, int? maxAttendees)
     {
         Title = title ?? Title;
         Description = description ?? Description;
-        EventDate = eventDate;
-        ImageUrl = imageUrl ?? ImageUrl;
+
+        if (endDate <= startDate)
+            throw new ArgumentException("Bitiş tarihi başlangıç tarihinden sonra olmalıdır.");
+
+        StartDate = startDate;
+        EndDate = endDate;
+        TicketPrice = ticketPrice;
+        MaxAttendees = maxAttendees;
         SetUpdated();
     }
 
-    public void Deactivate()
-    {
-        IsActive = false;
-        SetUpdated();
-    }
+    public void Activate() { IsActive = true; SetUpdated(); }
+    public void Deactivate() { IsActive = false; SetUpdated(); }
 }

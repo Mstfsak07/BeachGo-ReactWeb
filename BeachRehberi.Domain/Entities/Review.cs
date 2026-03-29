@@ -24,22 +24,19 @@ public class Review : BaseEntity
         Rating = rating is >= 1 and <= 5
             ? rating
             : throw new ArgumentException("Puan 1 ile 5 arasında olmalıdır.");
-        Comment = comment ?? string.Empty;
+        Comment = comment ?? throw new ArgumentNullException(nameof(comment));
     }
 
-    public void Approve()
-    {
-        IsApproved = true;
-        SetUpdated();
-    }
+    public void Approve() { IsApproved = true; SetUpdated(); }
+    public void Reject() { IsApproved = false; SetUpdated(); }
 
     public void Update(int rating, string comment)
     {
         Rating = rating is >= 1 and <= 5
             ? rating
             : throw new ArgumentException("Puan 1 ile 5 arasında olmalıdır.");
-        Comment = comment ?? string.Empty;
-        IsApproved = false;
+        Comment = comment ?? Comment;
+        IsApproved = false; // Güncelleme sonrası tekrar onay beklesin
         SetUpdated();
     }
 }

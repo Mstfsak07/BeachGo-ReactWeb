@@ -1,43 +1,52 @@
+using BeachRehberi.Application.Common.Behaviors;
 using BeachRehberi.Domain.Common;
 using MediatR;
 
 namespace BeachRehberi.Application.Features.Beaches.Queries.GetBeaches;
 
 public record GetBeachesQuery(
-    int Page = 1,
-    int PageSize = 10,
     string? Search = null,
-    double? Lat = null,
-    double? Lng = null,
-    double? RadiusKm = null,
+    string? City = null,
+    decimal? MinPrice = null,
+    decimal? MaxPrice = null,
     bool? HasParking = null,
     bool? HasRestaurant = null,
-    bool? HasWifi = null,
-    bool? IsChildFriendly = null,
-    bool? HasPool = null,
-    decimal? MaxEntryFee = null,
-    double? MinRating = null,
-    string? SortBy = null,
-    bool SortDesc = false
-) : IRequest<Result<PagedResult<BeachListItemDto>>>;
+    bool? HasWaterSports = null,
+    bool? HasLifeguard = null,
+    bool? IsPetFriendly = null,
+    double? Latitude = null,
+    double? Longitude = null,
+    double? RadiusKm = null,
+    string SortBy = "rating",
+    bool SortDescending = true,
+    int PageNumber = 1,
+    int PageSize = 20
+) : IRequest<Result<PagedResult<BeachListItemDto>>>, ICacheable
+{
+    public string CacheKey =>
+        $"beaches:{City}:{Search}:{MinPrice}:{MaxPrice}:{HasParking}:{HasRestaurant}:" +
+        $"{HasWaterSports}:{HasLifeguard}:{IsPetFriendly}:{SortBy}:{SortDescending}:" +
+        $"{PageNumber}:{PageSize}";
+
+    public TimeSpan? CacheExpiry => TimeSpan.FromMinutes(5);
+    public bool BypassCache => false;
+}
 
 public record BeachListItemDto(
     int Id,
     string Name,
-    string Address,
-    string CoverImageUrl,
-    double Rating,
-    int ReviewCount,
-    bool HasEntryFee,
-    decimal EntryFee,
-    bool IsOpen,
-    int OccupancyPercent,
-    string OccupancyLevel,
-    double Latitude,
-    double Longitude,
-    double? DistanceKm,
+    string City,
+    string? District,
+    string? CoverImageUrl,
+    decimal PricePerPerson,
+    double AverageRating,
+    int TotalReviews,
+    bool IsVerified,
     bool HasParking,
-    bool HasWifi,
-    bool HasPool,
-    bool IsChildFriendly
+    bool HasRestaurant,
+    bool HasWaterSports,
+    bool HasLifeguard,
+    bool IsPetFriendly,
+    double Latitude,
+    double Longitude
 );

@@ -1,10 +1,13 @@
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Models.Enums;
+using BeachRehberi.API.DTOs;
 
 namespace BeachRehberi.API.Services;
 
 public interface IBusinessService
 {
+    Task<Beach?> GetBeachByIdAsync(int beachId);
+    Task<ServiceResult<object>> UpdateBeachDetailsAsync(int beachId, UpdateBeachDto dto);
     Task<List<BeachEvent>> GetEventsAsync(int beachId);
     Task<BeachEvent> AddEventAsync(BeachEvent ev);
     Task<bool> DeleteEventAsync(int eventId, int beachId);

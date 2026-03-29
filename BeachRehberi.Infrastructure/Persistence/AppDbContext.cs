@@ -1,3 +1,5 @@
+using BeachRehberi.Application.Common.Interfaces;
+using BeachRehberi.Domain.Common;
 using BeachRehberi.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -5,7 +7,15 @@ namespace BeachRehberi.Infrastructure.Persistence;
 
 public class AppDbContext : DbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    private readonly ICurrentUserService? _currentUserService;
+
+    // ICurrentUserService migration atarken (design-time) null gelebileceği için opsiyonel yapıldı
+    public AppDbContext(
+        DbContextOptions<AppDbContext> options,
+        ICurrentUserService? currentUserService = null) : base(options)
+    {
+        _currentUserService = currentUserService;
+    }
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Beach> Beaches => Set<Beach>();
@@ -16,19 +26,57 @@ public class AppDbContext : DbContext
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Subscription> Subscriptions => Set<Subscription>();
 
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+        {
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    entry.Entity.CreatedAt = DateTime.UtcNow;
+                    // Eğer sisteme eklenen varlığın TenantId'si yoksa ve oturum açan kişinin varsa otomatik ata
+                    if (!entry.Entity.TenantId.HasValue && _currentUserService?.TenantId != null)
+                    {
+                        entry.Entity.TenantId = _currentUserService.TenantId;
+                    }
+                    break;
+
+                case EntityState.Modified:
+                    // Silinmiş olarak işaretlenmiyorsa (SoftDelete fonksiyonu bunu yapar) normal Updated ataması
+                    if (!entry.Entity.IsDeleted)
+                    {
+                        entry.Entity.SetUpdated();
+                    }
+                    break;
+
+                case EntityState.Deleted:
+                    // EF Core Hard-Delete yakalandığında işlemi iptal edip Soft-Delete olarak değiştiriyoruz
+                    entry.State = EntityState.Modified;
+                    entry.Entity.SoftDelete();
+                    break;
+            }
+        }
+
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // ─── Global Soft-Delete Filtreleri ────────────────────────
-        modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Beach>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Reservation>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Review>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<BeachPhoto>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<BeachEvent>().HasQueryFilter(e => !e.IsDeleted);
+        // ─── Global Soft-Delete ve Multi-Tenant Filtreleri ────────────────────────
+        // Filtrede TenantId denetimi oturum açmış kullanıcı null DEĞİLSE ve bir TenantId'ye SAHİPSE devreye girer.
+        // Bu sayede Super-Adminler (_currentUserService.TenantId null olanlar) tüm datayı görebilir.
+        modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
+        modelBuilder.Entity<Beach>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
+        modelBuilder.Entity<Reservation>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
+        modelBuilder.Entity<Review>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
+        modelBuilder.Entity<BeachPhoto>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
+        modelBuilder.Entity<BeachEvent>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
+        modelBuilder.Entity<Subscription>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
+
+        // Tenant Entity'sinin kendisi merkeze ait ana yönetim tablosudur, sadece Soft-Delete filtresi uygulandı.
         modelBuilder.Entity<Tenant>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Subscription>().HasQueryFilter(e => !e.IsDeleted);
 
         // ─── User ─────────────────────────────────────────────────
         modelBuilder.Entity<User>(entity =>

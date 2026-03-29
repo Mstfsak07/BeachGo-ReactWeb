@@ -7,6 +7,7 @@ namespace BeachRehberi.API.Services;
 
 public class BusinessService : IBusinessService
 {
+    // test için yorum satırı
     private readonly BeachDbContext _db;       
 
     public BusinessService(BeachDbContext db) => _db = db;

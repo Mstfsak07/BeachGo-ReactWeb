@@ -11,6 +11,7 @@ public class BusinessService : IBusinessService
 
     public BusinessService(BeachDbContext db) => _db = db;
 
+    // Test yorum satırı
     public async Task<List<BeachEvent>> GetEventsAsync(int beachId) =>
         await _db.Events
             .Where(e => e.BeachId == beachId && e.StartDate >= DateTime.UtcNow)

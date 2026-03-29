@@ -1,4 +1,5 @@
 using BeachRehberi.API.Models;
+using BeachRehberi.API.Models.Enums;
 
 namespace BeachRehberi.API.Services;
 

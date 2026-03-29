@@ -60,7 +60,6 @@ builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddScoped<IConfirmationCodeGenerator, ConfirmationCodeGenerator>();
 
 // WeatherService – typed HttpClient
 builder.Services.AddHttpClient<IWeatherService, WeatherService>();

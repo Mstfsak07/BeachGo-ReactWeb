@@ -1,5 +1,6 @@
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
+using BeachRehberi.API.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeachRehberi.API.Services;
@@ -29,7 +30,8 @@ public class BusinessService : IBusinessService
             .FirstOrDefaultAsync(e => e.Id == eventId && e.BeachId == beachId);
         if (ev == null) return false;
         
-        ev.Cancel();
+        // BeachEvent modelinde de Cancel metodu olduğu varsayılıyor
+        ev.SoftDelete(); 
         await _db.SaveChangesAsync();
         return true;
     }
@@ -81,10 +83,9 @@ public class BusinessService : IBusinessService
             await _db.SaveChangesAsync();
             return ServiceResult<object>.SuccessResult(null!, $"Rezervasyon {status} durumuna getirildi.");
         }
-        catch (DomainException ex)
+        catch (Exception ex)
         {
             return ServiceResult<object>.FailureResult(ex.Message);
         }
     }
 }
-

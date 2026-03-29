@@ -20,8 +20,8 @@ const Login = () => {
       await login(email, password);
       toast.success("Başarıyla giriş yapıldı!");
 
-      // Geldiği sayfaya veya beaches'a yönlendir
-      const from = location.state?.from?.pathname || "/beaches";
+      // Geldiği sayfaya veya ana sayfaya yönlendir
+      const from = location.state?.from?.pathname || "/";
       navigate(from, { replace: true });
 
     } catch (err) {

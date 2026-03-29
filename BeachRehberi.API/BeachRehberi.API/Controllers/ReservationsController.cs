@@ -1,46 +1,59 @@
-using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using BeachRehberi.API.Models;
+using Microsoft.AspNetCore.Mvc;
+using BeachRehberi.API.DTOs.Reservation;
 using BeachRehberi.API.Services;
-using BeachRehberi.API.DTOs;
 using BeachRehberi.API.Extensions;
-using Microsoft.AspNetCore.RateLimiting;
-using MediatR;
 
 namespace BeachRehberi.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[EnableRateLimiting("fixed")]
-[Authorize(Roles = "User,Business,Admin")]
+[Authorize]
 public class ReservationsController : ControllerBase
 {
-    private readonly IMediator _mediator;
+    private readonly IReservationService _reservationService;
 
-    public ReservationsController(IMediator mediator)
+    public ReservationsController(IReservationService reservationService)
     {
-        _mediator = mediator;
-    }
-
-    [HttpGet("my")]
-    public async Task<IActionResult> GetMyReservations()
-    {
-        var result = await _mediator.Send(new GetMyReservationsQuery());
-        return result.ToActionResult();
-    }
-
-    [HttpDelete("{code}")]
-    public async Task<IActionResult> Cancel(string code)
-    {
-        var result = await _mediator.Send(new CancelReservationCommand(code));
-        return result.ToActionResult();
+        _reservationService = reservationService;
     }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateReservationDto dto)
     {
-        var result = await _mediator.Send(new CreateReservationCommand(dto));
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdStr == null) return Unauthorized();
+        
+        var userId = int.Parse(userIdStr);
+        var result = await _reservationService.CreateAsync(dto, userId);
         return result.ToActionResult();
     }
-}
 
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMyReservations()
+    {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdStr == null) return Unauthorized();
+
+        var userId = int.Parse(userIdStr);
+        var reservations = await _reservationService.GetByUserAsync(userId);
+        return Ok(new { success = true, data = reservations });
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userIdStr == null) return Unauthorized();
+
+        var userId = int.Parse(userIdStr);
+        var success = await _reservationService.CancelAsync(id, userId);
+        return success 
+            ? Ok(new { success = true, message = "Rezervasyon iptal edildi." }) 
+            : BadRequest(new { success = false, message = "Rezervasyon iptal edilemedi." });
+    }
+}

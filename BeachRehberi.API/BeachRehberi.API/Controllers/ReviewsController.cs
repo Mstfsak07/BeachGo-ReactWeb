@@ -18,6 +18,7 @@ public class ReviewsController : ControllerBase
 
     public ReviewsController(IReviewService reviewService) => _reviewService = reviewService;
 
+    [AllowAnonymous]
     [HttpGet("beach/{beachId}")]
     public async Task<IActionResult> GetByBeach(int beachId)
     {

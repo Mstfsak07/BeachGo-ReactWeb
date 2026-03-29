@@ -52,8 +52,6 @@ public class BeachDbContext : DbContext
         modelBuilder.Entity<Reservation>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.ConfirmationCode).IsUnique();
-            entity.Property(e => e.TotalPrice).HasColumnType("decimal(18,2)");
 
             entity.HasOne(d => d.Beach)
                 .WithMany(p => p.Reservations)

@@ -1,128 +1,84 @@
-using Mapster;
-using MapsterMapper;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
-using BeachRehberi.API.DTOs;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
+using BeachRehberi.API.DTOs.Reservation;
+using BeachRehberi.API.Models.Enums;
 
 namespace BeachRehberi.API.Services;
 
 public class ReservationService : IReservationService
 {
-    private readonly BeachDbContext _db;
-    private readonly INotificationService _notification;
-    private readonly IConfirmationCodeGenerator _codeGenerator;
-    private readonly MapsterMapper.IMapper _mapper;
-    private readonly ILogger<ReservationService> _logger;
+    private readonly BeachDbContext _context;
 
-    public ReservationService(BeachDbContext db, INotificationService notification, IConfirmationCodeGenerator codeGenerator, MapsterMapper.IMapper mapper, ILogger<ReservationService> logger)
+    public ReservationService(BeachDbContext context)
     {
-        _db = db;
-        _notification = notification;
-        _codeGenerator = codeGenerator;
-        _mapper = mapper;
-        _logger = logger;
-    }
-
-    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
-    {
-        return ex.InnerException is SqliteException sqliteEx && sqliteEx.SqliteErrorCode == 19;
+        _context = context;
     }
 
     public async Task<ServiceResult<Reservation>> CreateAsync(CreateReservationDto dto, int userId)
     {
-        using var transaction = await _db.Database.BeginTransactionAsync();
+        if (dto.ReservationDate.Date < DateTime.UtcNow.Date)
+            return ServiceResult<Reservation>.FailureResult("Geçmiş bir tarih için rezervasyon yapılamaz.");
 
-        try
+        var beach = await _context.Beaches.FirstOrDefaultAsync(b => b.Id == dto.BeachId && !b.IsDeleted);
+        if (beach == null)
+            return ServiceResult<Reservation>.FailureResult("Plaj bulunamadı.");
+
+        var exists = await _context.Reservations.AnyAsync(r => 
+            r.UserId == userId && 
+            r.BeachId == dto.BeachId && 
+            r.ReservationDate.Date == dto.ReservationDate.Date &&
+            !r.IsDeleted &&
+            r.Status != ReservationStatus.Cancelled &&
+            r.Status != ReservationStatus.Rejected);
+
+        if (exists)
+            return ServiceResult<Reservation>.FailureResult("Bu plaj için bu tarihte zaten aktif bir rezervasyonunuz bulunmaktadır.");
+
+        var reservation = new Reservation
         {
-            var beach = await _db.Beaches.AsNoTracking().FirstOrDefaultAsync(x => x.Id == dto.BeachId);
-            if (beach == null)
-            {
-                return ServiceResult<Reservation>.FailureResult("Plaj bulunamadı.");
-            }
+            UserId = userId,
+            BeachId = dto.BeachId,
+            ReservationDate = dto.ReservationDate.Date,
+            CreatedAt = DateTime.UtcNow,
+            Status = ReservationStatus.Pending
+        };
 
-            var reservation = dto.Adapt<Reservation>();
-            reservation.AssignUser(userId);
-            reservation.CalculatePrice(beach.EntryFee, beach.SunbedPrice);
-            reservation.Confirm();
+        _context.Reservations.Add(reservation);
+        await _context.SaveChangesAsync();
 
-            int maxRetries = 10;
-            bool success = false;
-
-            while (maxRetries > 0)
-            {
-                try
-                {
-                    reservation.SetConfirmationCode(_codeGenerator.Generate(8));
-                    _db.Reservations.Add(reservation);
-                    await _db.SaveChangesAsync();
-                    success = true;
-                    break;
-                }
-                catch (DbUpdateException ex) when (maxRetries-- > 0 && IsUniqueConstraintViolation(ex))
-                {
-                    _db.Entry(reservation).State = EntityState.Detached;
-                    _logger.LogWarning("Confirmation code collision. Retrying... Code: {Code}", reservation.ConfirmationCode);
-                }
-            }
-
-            if (!success)
-            {
-                await transaction.RollbackAsync();
-                return ServiceResult<Reservation>.FailureResult("Rezervasyon kodu oluşturulamadı, lütfen tekrar deneyin.");
-            }
-
-            await transaction.CommitAsync();
-
-            _ = _notification.SendToBusinessAsync(
-                reservation.BeachId,
-                $"Yeni Rezervasyon: {reservation.UserName} ({reservation.PersonCount} Kişi)");
-
-            return ServiceResult<Reservation>.SuccessResult(reservation, "Rezervasyon başarıyla oluşturuldu.");
-        }
-        catch (DomainException ex)
-        {
-            await transaction.RollbackAsync();
-            return ServiceResult<Reservation>.FailureResult(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync();
-            _logger.LogError(ex, "Error creating reservation");
-            return ServiceResult<Reservation>.FailureResult("Rezervasyon sırasında bir hata oluştu.");
-        }
+        return ServiceResult<Reservation>.SuccessResult(reservation, "Rezervasyon başarıyla oluşturuldu.");
     }
 
-    public async Task<List<ReservationListItemDto>> GetByUserAsync(int userId) =>
-        await _db.Reservations
-            .AsNoTracking()
-            .Where(r => r.UserId == userId)
-            .OrderByDescending(r => r.ReservationDate)
-            .ProjectToType<ReservationListItemDto>()
-            .ToListAsync();
-
-    public async Task<Reservation?> GetByCodeAsync(string code) =>
-        await _db.Reservations
-            .AsNoTracking()
-            .Include(r => r.Beach)
-            .FirstOrDefaultAsync(r => r.ConfirmationCode == code);
-
-    public async Task<bool> CancelAsync(string code, int userId)
+    public async Task<List<ReservationListItemDto>> GetByUserAsync(int userId)
     {
-        var res = await _db.Reservations.FirstOrDefaultAsync(r => r.ConfirmationCode == code);
-        if (res == null || res.UserId != userId) return false;
+        return await _context.Reservations
+            .Include(r => r.Beach)
+            .Where(r => r.UserId == userId && !r.IsDeleted)
+            .OrderByDescending(r => r.ReservationDate)
+            .Select(r => new ReservationListItemDto
+            {
+                Id = r.Id,
+                BeachName = r.Beach.Name,
+                ReservationDate = r.ReservationDate
+            })
+            .ToListAsync();
+    }
 
-        try
-        {
-            res.Cancel();
-            await _db.SaveChangesAsync();
-            return true;
-        }
-        catch
-        {
+    public async Task<bool> CancelAsync(int id, int userId)
+    {
+        var reservation = await _context.Reservations.FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
+        
+        if (reservation == null || reservation.UserId != userId)
             return false;
-        }
+
+        reservation.Cancel();
+        await _context.SaveChangesAsync();
+
+        return true;
     }
 }
-

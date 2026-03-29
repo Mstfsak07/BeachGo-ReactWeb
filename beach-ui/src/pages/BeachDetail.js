@@ -1,150 +1,239 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getBeachById } from '../services/api';
+import reservationService from '../services/reservationService';
+import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
-import { MapPin, Calendar, Users, Thermometer, Wind, CheckCircle, Info } from 'lucide-react';
-import apiClient from '../api/client';
-import { useAuthStore } from '../store/useAuthStore';
+import { BeachDetailSkeleton } from '../components/ui/Skeleton';
+import {
+  MapPin,
+  Calendar,
+  Users,
+  Star,
+  Flag,
+  Wifi,
+  Umbrella,
+  Heart,
+  Share2,
+  AlertCircle,
+  Loader,
+  Clock,
+  TrendingUp,
+  ShieldCheck,
+  ChevronRight
+} from 'lucide-react';
 
 const BeachDetail = () => {
   const { id } = useParams();
-  const { user, isAuthenticated } = useAuthStore();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, user } = useAuth();
+
   const [beach, setBeach] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [resLoading, setResLoading] = useState(false);
+  const [resDate, setResDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isFavorite, setIsFavorite] = useState(false);
 
-  // Rezervasyon Form State
-  const [resData, setResData] = useState({
-    name: user?.contactName || "",
-    phone: "",
-    pax: 2,
-    date: new Date().toISOString().split('T')[0]
-  });
+  const fetchBeach = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await getBeachById(id);
+      if (res.data?.success) {
+        setBeach(res.data.data);
+      } else {
+        setError('Plaj bilgileri şu an yüklenemiyor.');
+      }
+    } catch (err) {
+      console.error('Beach detail fetch error:', err);
+      setError('Sistemsel bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await apiClient.get(`/Beaches/${id}`);
-        setBeach(res.data.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [id, user]);
+    fetchBeach();
+  }, [fetchBeach]);
 
   const handleReservation = async (e) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      toast.error('Rezervasyon yapmak için giriş yapmalısınız.');
+      navigate('/login', { state: { from: location.pathname } });
+      return;
+    }
+    setResLoading(true);
     try {
-      const payload = {
-        beachId: parseInt(id),
-        customerName: resData.name,
-        phone: resData.phone,
-        pax: parseInt(resData.pax),
-        reservationDate: resData.date
-      };
-
-      const res = await apiClient.post('/Reservations', payload);
-      toast.success(`Rezervasyon Başarılı! Takip Kodunuz: ${res.data.data.code}`);
-
-      // Formu temizle veya yönlendir
+      const result = await reservationService.create(parseInt(id), resDate);
+      if (result.success) {
+        toast.success('✅ Rezervasyonunuz başarıyla oluşturuldu!');
+      }
     } catch (err) {
-      // Hata zaten interceptor tarafÄąndan gĂśsteriliyor
+      toast.error('❌ Rezervasyon oluşturulamadı. Lütfen tekrar deneyin.');
+    } finally {
+      setResLoading(false);
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center animate-pulse"><div className="text-primary-500 font-black tracking-widest uppercase">Plaj YĂźkleniyor...</div></div>;
-  if (!beach) return <div className="text-center py-20 italic">Plaj bulunamadı.</div>;
+  if (loading) return <BeachDetailSkeleton />;
+
+  if (error || !beach) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-[2.5rem] p-12 max-w-md w-full shadow-2xl text-center border border-slate-100"
+        >
+          <div className="bg-rose-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-10 h-10 text-rose-500" />
+          </div>
+          <h2 className="text-3xl font-bold text-slate-900 mb-3">Terslik Var!</h2>
+          <p className="text-slate-500 font-medium mb-8 leading-relaxed">
+            {error || 'Aradığınız plaj şu an ulaşılamıyor veya kaldırılmış olabilir.'}
+          </p>
+          <button 
+            onClick={() => navigate('/beaches')} 
+            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-600 transition-all shadow-xl active:scale-95"
+          >
+            Plajları Keşfet
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  const rating = beach.rating || 4.8;
+  const reviewCount = beach.reviewCount || 342;
+  const facilities = beach.facilities || ['WiFi', 'Şemsiye', 'Havlu', 'Duş', 'Otopark', 'Kabin'];
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      {/* Mobile Friendly Header */}
-      <div className="relative h-[40vh] md:h-[60vh] overflow-hidden">
-        <img src={beach.imageUrl || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e"} alt={beach.name} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent"></div>
-        <div className="absolute bottom-6 left-0 right-0 p-6">
-          <div className="container mx-auto">
-            <span className="bg-primary-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest mb-3 inline-block shadow-lg shadow-primary-900/30">{beach.type || 'Halk PlajÄą'}</span>
-            <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter leading-none">{beach.name}</h1>
-            <div className="flex items-center gap-2 text-slate-200 mt-2 font-medium"><MapPin size={16} className="text-primary-400" /> {beach.location || 'Antalya'}</div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} className="min-h-screen bg-white pb-10 lg:pb-20 font-sans">
+      {/* Hero Section */}
+      <div className="relative h-[50vh] md:h-[75vh] w-full overflow-hidden">
+        <motion.img initial={{ scale: 1.1 }} animate={{ scale: 1 }} transition={{ duration: 1.5 }} src={beach.imageUrl || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e'} className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+        
+        {/* Top Actions */}
+        <div className="absolute top-24 left-0 right-0 z-30 px-4 md:px-12">
+          <div className="max-w-7xl mx-auto flex justify-between items-center">
+            <motion.button whileHover={{ scale: 1.1, x: -5 }} whileTap={{ scale: 0.9 }} onClick={() => navigate(-1)} className="bg-white/10 backdrop-blur-xl p-3 rounded-2xl text-white border border-white/20"><ChevronRight size={24} className="rotate-180" /></motion.button>
+            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsFavorite(!isFavorite)} className="bg-white/10 backdrop-blur-xl p-3 rounded-2xl text-white border border-white/20"><Heart size={22} className={isFavorite ? 'fill-rose-500 text-rose-500' : ''} /></motion.button>
+          </div>
+        </div>
+
+        {/* Hero Info */}
+        <div className="absolute bottom-0 left-0 right-0 pb-10 px-4 md:px-12 z-20">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-6 text-white">
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="space-y-2">
+              <h1 className="text-5xl md:text-8xl font-bold tracking-tight leading-none drop-shadow-2xl">{beach.name}</h1>
+              <div className="flex items-center gap-2 text-white/80 font-medium text-lg"><MapPin size={20} className="text-blue-400" /> {beach.address || beach.location || 'Antalya, TR'}</div>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="bg-white rounded-[2rem] p-6 shadow-3xl flex items-center gap-6 text-slate-900 border border-slate-100">
+              <div className="flex items-center gap-2 border-r pr-6"><span className="text-4xl font-bold">{rating}</span> <Star size={28} className="fill-amber-400 text-amber-400 mb-1" /></div>
+              <div className="text-xs font-black uppercase tracking-widest text-slate-400">{reviewCount} Değerlendirme</div>
+            </motion.div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 md:px-6 -mt-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* Main Info */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[
-                { label: 'Hava', val: '28Â°C', sub: 'GĂźneĹąli', icon: Thermometer, color: 'text-primary-500' },
-                { label: 'Doluluk', val: `%${beach.occupancyRate}`, sub: 'Canlı Durum', icon: Users, color: beach.occupancyRate > 80 ? 'text-red-500' : 'text-green-500' },
-                { label: 'Su Sıcaklığı', val: '24Â°C', sub: 'Ä°deal', icon: Wind, color: 'text-blue-500' },
-                { label: 'Hizmetler', val: 'Tam', sub: 'Mavi Bayrak', icon: CheckCircle, color: 'text-amber-500' }
-              ].map((stat, i) => (
-                <div key={i} className="card p-4 flex flex-col items-center justify-center text-center hover:scale-105 transition-transform group">
-                  <stat.icon className={`mb-2 ${stat.color} group-hover:scale-110 transition-transform`} size={24} />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</span>
-                  <div className="text-xl font-black text-slate-800 tracking-tight">{stat.val}</div>
-                  <span className="text-[10px] text-slate-500 italic">{stat.sub}</span>
-                </div>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 md:px-12 -mt-10 relative z-40">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
+          
+          <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="lg:col-span-8 space-y-12 order-1">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6">
+              {[{ icon: Users, label: 'Kapasite', val: beach.capacity || 500, bg: 'bg-blue-50', c: 'text-blue-600' },
+                { icon: TrendingUp, label: 'Doluluk', val: `%${beach.occupancyRate || 45}`, bg: 'bg-rose-50', c: 'text-rose-600' },
+                { icon: Clock, label: 'Açılış', val: '08:00', bg: 'bg-amber-50', c: 'text-amber-600' },
+                { icon: Umbrella, label: 'Hizmet', val: 'Full Set', bg: 'bg-emerald-50', c: 'text-emerald-600' }
+              ].map((s, i) => (
+                <motion.div key={i} whileHover={{ y: -5 }} className="bg-white rounded-3xl p-6 shadow-xl border border-slate-50">
+                  <div className={`${s.bg} ${s.c} p-4 rounded-2xl w-fit mb-4`}><s.icon size={24} /></div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{s.label}</p>
+                  <p className="text-2xl font-bold text-slate-900">{s.val}</p>
+                </motion.div>
               ))}
             </div>
 
-            <div className="card p-8">
-              <h3 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-3 tracking-tighter"><Info className="text-primary-500" /> Plaj HakkÄąnda</h3>
-              <p className="text-slate-600 leading-relaxed text-lg italic">{beach.description || "Antalya'nÄąn en huzurlu kĂśĹąelerinden biri..."}</p>
+            <div className="border-b border-slate-100 pb-12">
+              <h2 className="text-4xl font-bold text-slate-900 mb-6 tracking-tight">Hakkında</h2>
+              <p className="text-slate-500 text-xl leading-relaxed font-medium">{beach.description || 'Akdeniz\'in kalbinde, eşsiz denizi ve ince kumuyla büyüleyici bir tatil deneyimi sunan tesisimiz sizleri bekliyor.'}</p>
             </div>
-          </div>
 
-          {/* Mobile Optimized Reservation Form */}
-          <div className="space-y-6">
-            <div className="card p-8 border-primary-50 ring-8 ring-primary-50/50 shadow-2xl">
-              <h3 className="text-2xl font-black text-slate-800 mb-8 tracking-tighter">Hemen Yerini Ayırt</h3>
-              <form onSubmit={handleReservation} className="space-y-6">
-                <div>
-                  <label className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">Özellikler</label>
-                  <div className="grid grid-cols-1 gap-4">
-                    <input
-                      type="text" className="input-field py-4 text-base" placeholder="İsim Soyisim" required
-                      value={resData.name} onChange={(e) => setResData({ ...resData, name: e.target.value })}
-                    />
-                    <input
-                      type="tel" className="input-field py-4 text-base" placeholder="Telefon (05XX XXX XX XX)" required
-                      value={resData.phone} onChange={(e) => setResData({ ...resData, phone: e.target.value })}
-                    />
-                    <div className="grid grid-cols-2 gap-4">
-                      <input
-                        type="date" className="input-field py-4 text-sm" required
-                        value={resData.date} onChange={(e) => setResData({ ...resData, date: e.target.value })}
-                      />
-                      <select
-                        className="input-field py-4 text-sm bg-white"
-                        value={resData.pax} onChange={(e) => setResData({ ...resData, pax: e.target.value })}
-                      >
-                        {[1, 2, 3, 4, 5, 6, 10].map(n => <option key={n} value={n}>{n} KiĹąi</option>)}
-                      </select>
+            <div className="space-y-8 pb-12">
+              <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3"><div className="w-1.5 h-8 bg-blue-600 rounded-full" /> Tesis Olanakları</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {facilities.map((f, i) => (
+                  <motion.div key={i} whileHover={{ scale: 1.03, backgroundColor: "#f8fafc" }} className="flex items-center gap-4 p-5 rounded-2xl border border-slate-100 transition-all bg-slate-50/20">
+                    <div className="bg-white p-3 rounded-xl shadow-sm text-blue-500"><Umbrella size={20} /></div>
+                    <span className="text-lg font-bold text-slate-700 tracking-tight">{f}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Reservation Card */}
+          <div className="lg:col-span-4 order-2 lg:order-none">
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }} className="lg:sticky lg:top-32 mb-10">
+              <div className="bg-white/80 backdrop-blur-2xl rounded-[2.5rem] p-8 shadow-3xl border border-white/50 relative overflow-hidden">
+                <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl" />
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-8">
+                    <div>
+                      <h2 className="text-3xl font-black text-slate-900 tracking-tight">Rezervasyon</h2>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Premium Yer Ayırt</p>
+                    </div>
+                    <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-4 rounded-2xl shadow-xl shadow-blue-200/50"><Calendar size={24} strokeWidth={2.5} /></div>
+                  </div>
+
+                  {!isAuthenticated ? (
+                    <div className="space-y-6">
+                      <div className="bg-white/50 border border-dashed border-slate-200 rounded-[2rem] p-8 text-center backdrop-blur-sm">
+                        <Users className="mx-auto text-blue-400 mb-4" size={40} strokeWidth={1.5} />
+                        <p className="text-slate-600 font-bold leading-snug text-sm">Hemen giriş yapın ve bu eşsiz deneyim için yerinizi şimdiden ayırtın.</p>
+                      </div>
+                      <button onClick={() => navigate('/login')} className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-blue-600 transition-all shadow-xl active:scale-95 uppercase tracking-widest text-xs">Giriş Yap</button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleReservation} className="space-y-8">
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Ziyaret Tarihiniz</label>
+                        <input type="date" value={resDate} onChange={(e) => setResDate(e.target.value)} min={new Date().toISOString().split('T')[0]} disabled={resLoading} required className="w-full px-6 py-5 rounded-[1.5rem] border-2 border-slate-100 bg-white/50 focus:bg-white focus:border-blue-500 outline-none transition-all text-slate-800 font-bold text-lg" />
+                      </div>
+                      <motion.button type="submit" disabled={resLoading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`w-full py-6 font-black text-lg rounded-[1.5rem] uppercase tracking-widest shadow-2xl transition-all flex items-center justify-center gap-3 ${!resLoading ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-blue-500/30' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}>
+                        {resLoading ? <Loader className="animate-spin" size={24} /> : <>ŞİMDİ REZERVE ET <TrendingUp size={20} /></>}
+                      </motion.button>
+                    </form>
+                  )}
+
+                  <div className="mt-10 pt-8 border-t border-slate-100 space-y-5">
+                    <div className="flex items-center gap-4 group/item cursor-default">
+                      <div className="bg-blue-50 p-2.5 rounded-xl group-hover/item:bg-blue-600 transition-all"><Clock size={18} className="text-blue-600 group-hover/item:text-white" /></div>
+                      <div><p className="text-sm text-slate-800 font-black">Anında Onay</p></div>
+                    </div>
+                    <div className="flex items-center gap-4 group/item cursor-default">
+                      <div className="bg-rose-50 p-2.5 rounded-xl group-hover/item:bg-rose-600 transition-all"><AlertCircle size={18} className="text-rose-600 group-hover/item:text-white" /></div>
+                      <div><p className="text-sm text-slate-800 font-black">Esnek İptal</p></div>
+                    </div>
+                    <div className="flex items-center gap-4 group/item cursor-default">
+                      <div className="bg-emerald-50 p-2.5 rounded-xl group-hover/item:bg-emerald-600 transition-all"><ShieldCheck size={18} className="text-emerald-600 group-hover/item:text-white" /></div>
+                      <div><p className="text-sm text-slate-800 font-black">Güvenli İşlem</p></div>
                     </div>
                   </div>
                 </div>
-
-                <button
-                  type="submit"
-                  className="btn-primary w-full py-5 text-base font-black tracking-widest uppercase flex items-center justify-center gap-3 group"
-                >
-                  Rezervasyon Yap <Calendar className="group-hover:translate-x-1 transition-transform" />
-                </button>
-              </form>
-              <p className="text-[10px] text-slate-400 mt-6 text-center font-medium italic">
-                Onay bekleyen talepler işletmeci tarafından incelenmektedir.
-              </p>
-            </div>
+              </div>
+            </motion.div>
           </div>
+
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

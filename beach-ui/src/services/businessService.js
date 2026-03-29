@@ -1,56 +1,24 @@
-import apiClient from '../api/client';
+import axios from '../api/axios';
 
-const businessService = {
-    // ── BUSINESS REGISTER ─────────────────────────────────────────────────────
-    register: async (contactName, email, password, beachId = null) => {
-        const response = await apiClient.post('/Auth/register', {
-            businessName: contactName,
-            email,
-            password,
-            beachId,
-            role: 'Business'
-        });
-
-        const data = response.data?.data;
-
-        if (!data) {
-            throw new Error('Sunucudan veri alınamadı.');
-        }
-
-        localStorage.setItem('user', JSON.stringify({
-            email: data.email,
-            role: data.role,
-            contactName: data.contactName,
-        }));
-
-        return {
-            user: {
-                email: data.email,
-                role: data.role,
-                contactName: data.contactName
-            },
-        };
-    },
-
-    // ── LOGIN AFTER REGISTER ──────────────────────────────────────────────────
-    loginAfterRegister: async (email, password) => {
-        const response = await apiClient.post('/Auth/login', { email, password });
-        const data = response.data?.data;
-
-        if (!data?.accessToken) {
-            throw new Error('Sunucudan token alınamadı.');
-        }
-
-        localStorage.setItem('beach_token', data.accessToken);
-        if (data.refreshToken) {
-            localStorage.setItem('refreshToken', data.refreshToken);
-        }
-
-        return {
-            user: { email: data.email, role: data.role },
-            accessToken: data.accessToken,
-        };
-    },
+export const getBusinessReservations = async () => {
+  return await axios.get('/business/reservations');
 };
 
-export default businessService;
+export const getBusinessStats = async () => {
+  return await axios.get('/business/stats');
+};
+
+export const updateReservationStatus = async (id, status) => {
+  return await axios.put(`/business/reservations/${id}/status`, { status });
+};
+
+export const getBusinessBeach = async () => {
+  return await axios.get('/business/beach');
+};
+
+export default {
+  getBusinessReservations,
+  getBusinessStats,
+  updateReservationStatus,
+  getBusinessBeach
+};

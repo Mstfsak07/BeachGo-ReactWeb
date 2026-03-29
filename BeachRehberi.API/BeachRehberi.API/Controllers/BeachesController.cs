@@ -10,7 +10,6 @@ namespace BeachRehberi.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "User,Business,Admin,BusinessOwner")]
 public class BeachesController : ControllerBase
 {
     private readonly IBeachService _beachService;
@@ -24,10 +23,12 @@ public class BeachesController : ControllerBase
         _mediator = mediator;
     }
 
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         => (await _beachService.GetAllAsync(page, pageSize)).ToPagedApiResponse();
 
+    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
@@ -35,12 +36,15 @@ public class BeachesController : ControllerBase
         return beach != null ? beach.ToOkApiResponse() : "Plaj bulunamadı.".ToNotFoundApiResponse();
     }
 
+    [AllowAnonymous]
     [HttpGet("search")]
     public async Task<IActionResult> Search([FromQuery] string q) => (await _beachService.SearchAsync(q)).ToOkApiResponse();
 
+    [AllowAnonymous]
     [HttpPost("filter")]
     public async Task<IActionResult> Filter([FromBody] BeachFilter filter) => (await _beachService.FilterAsync(filter)).ToOkApiResponse();
 
+    [AllowAnonymous]
     [HttpGet("{id}/weather")]
     public async Task<IActionResult> GetWeather(int id)
     {
@@ -53,6 +57,7 @@ public class BeachesController : ControllerBase
         return new { weather, sea }.ToOkApiResponse();
     }
 
+    [AllowAnonymous]
     [HttpGet("weather/konyaalti")]
     public async Task<IActionResult> GetKonyaaltiWeather()
     {
@@ -69,4 +74,3 @@ public class BeachesController : ControllerBase
         return result.ToActionResult();
     }
 }
-

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import businessService from '../services/businessService';
-import { useAuthStore } from '../store/useAuthStore';
+import { useAuth } from '../context/AuthContext';
 
 const BusinessRegister = () => {
     const [formData, setFormData] = useState({
@@ -15,7 +15,7 @@ const BusinessRegister = () => {
 
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    const setLogin = useAuthStore(state => state.setLogin);
+    const { login } = useAuth(); // AuthContext'ten login metodunu al
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -41,23 +41,18 @@ const BusinessRegister = () => {
 
             toast.success('İşletme kaydı başarılı! Giriş yapılıyor...');
 
-            // 2. Otomatik login yap
-            const loginData = await businessService.loginAfterRegister(
-                formData.email,
-                formData.password
-            );
+            // 2. Otomatik login yap (AuthContext üzerinden)
+            await login(formData.email, formData.password);
 
-            // 3. Zustand store'u güncelle
-            setLogin({ email: loginData.user.email, role: loginData.user.role }, loginData.accessToken);
+            toast.success('Giriş başarılı! Hoşgeldiniz.');
 
-            toast.success('Giriş başarılı!');
-
-            // 4. /beaches'e yönlendir
+            // 3. /beaches'e yönlendir
             navigate('/beaches');
 
         } catch (err) {
             console.error('Business Register error:', err);
-            toast.error(err.response?.data?.message || err.message || 'İşletme kaydı başarısız oldu.');
+            const errorMsg = err.response?.data?.message || err.message || 'İşletme kaydı başarısız oldu.';
+            toast.error(errorMsg);
         } finally {
             setLoading(false);
         }
@@ -68,21 +63,21 @@ const BusinessRegister = () => {
             <div className="max-w-md w-full">
                 <div className="text-center mb-8">
                     <Link to="/" className="inline-flex items-center space-x-2 group mb-6">
-                        <div className="bg-primary-500 p-2 rounded-xl group-hover:rotate-12 transition-transform">
+                        <div className="bg-blue-500 p-2 rounded-xl group-hover:rotate-12 transition-transform">
                             <span className="text-white text-xl font-black">B</span>
                         </div>
                         <span className="text-2xl font-black tracking-tighter text-slate-800">
-                            Beach<span className="text-primary-500">Go</span>
+                            Beach<span className="text-blue-500">Go</span>
                         </span>
                     </Link>
                     <h2 className="text-3xl font-black text-slate-800 tracking-tight">İşletme Kaydı</h2>
                 </div>
 
-                <div className="card p-8 bg-white shadow-2xl border-white ring-1 ring-slate-100">
+                <div className="card p-8 bg-white shadow-2xl border-white ring-1 ring-slate-100 rounded-2xl">
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <input
                             type="text"
-                            className="input-field"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
                             placeholder="İletişim Kişisi"
                             required
                             value={formData.contactName}
@@ -91,7 +86,7 @@ const BusinessRegister = () => {
 
                         <input
                             type="email"
-                            className="input-field"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
                             placeholder="E-posta"
                             required
                             value={formData.email}
@@ -100,7 +95,7 @@ const BusinessRegister = () => {
 
                         <input
                             type="password"
-                            className="input-field"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
                             placeholder="Şifre"
                             required
                             value={formData.password}
@@ -109,7 +104,7 @@ const BusinessRegister = () => {
 
                         <input
                             type="password"
-                            className="input-field"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
                             placeholder="Şifre Tekrar"
                             required
                             value={formData.confirmPassword}
@@ -118,7 +113,7 @@ const BusinessRegister = () => {
 
                         <input
                             type="number"
-                            className="input-field"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
                             placeholder="Plaj ID (opsiyonel)"
                             value={formData.beachId || ''}
                             onChange={(e) => setFormData({ ...formData, beachId: e.target.value ? parseInt(e.target.value) : null })}
@@ -127,22 +122,22 @@ const BusinessRegister = () => {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="btn-primary w-full py-4 text-sm font-black uppercase tracking-widest"
+                            className="w-full py-4 bg-blue-600 text-white rounded-xl text-sm font-black uppercase tracking-widest hover:bg-blue-700 transition"
                         >
                             {loading ? "Kaydediliyor..." : "İşletme Kaydı Yap"}
                         </button>
                     </form>
 
                     <div className="mt-6 text-center space-y-2">
-                        <p className="text-slate-600 text-sm">
+                        <p className="text-slate-600 text-sm italic font-medium">
                             Zaten hesabınız var mı?{' '}
-                            <Link to="/login" className="text-primary-500 font-bold">
+                            <Link to="/login" className="text-blue-500 font-bold hover:underline">
                                 Giriş Yap
                             </Link>
                         </p>
-                        <p className="text-slate-600 text-sm">
+                        <p className="text-slate-600 text-sm italic font-medium">
                             Normal hesap mı açmak istiyorsunuz?{' '}
-                            <Link to="/register" className="text-primary-500 font-bold">
+                            <Link to="/register" className="text-blue-500 font-bold hover:underline">
                                 Kayıt Ol
                             </Link>
                         </p>

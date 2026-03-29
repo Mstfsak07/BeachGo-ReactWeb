@@ -4,13 +4,20 @@ import { Toaster } from "react-hot-toast";
 
 import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 import Home from "./pages/Home";
 import Beaches from "./pages/Beaches";
+import BeachDetail from "./pages/BeachDetail";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import BusinessRegister from "./pages/BusinessRegister";
+import MyReservations from "./pages/MyReservations";
+import ReservationCheck from "./pages/ReservationCheck";
+import Dashboard from "./pages/Dashboard";
+import AdminPanel from "./pages/AdminPanel";
+import BeachSettings from "./pages/BeachSettings";
 
 function App() {
   return (
@@ -25,15 +32,60 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/business-register" element={<BusinessRegister />} />
 
+          <Route path="/beaches" element={<Beaches />} />
+          <Route path="/beaches/:id" element={<BeachDetail />} />
+
           <Route
-            path="/beaches"
+            path="/reservation"
             element={
               <ProtectedRoute>
-                <Beaches />
+                <MyReservations />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/my-reservations"
+            element={
+              <ProtectedRoute>
+                <MyReservations />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/reservation-check"
+            element={<ReservationCheck />}
+          />
+
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["Business", "Admin"]}>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/beach-settings"
+            element={
+              <ProtectedRoute allowedRoles={["Business", "Admin"]}>
+                <BeachSettings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={["Admin"]}>
+                <AdminPanel />
               </ProtectedRoute>
             }
           />
         </Routes>
+        <Footer />
       </Router>
     </AuthProvider>
   );

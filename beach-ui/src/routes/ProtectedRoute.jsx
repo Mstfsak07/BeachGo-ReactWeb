@@ -2,8 +2,8 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = ({ children }) => {
-    const { user, loading } = useAuth();
+const ProtectedRoute = ({ children, allowedRoles }) => {
+    const { user, loading, isAuthenticated } = useAuth();
     const location = useLocation();
 
     // Uygulama hala yükleniyorsa (Silent Refresh bitmediyse)
@@ -15,9 +15,14 @@ const ProtectedRoute = ({ children }) => {
         );
     }
 
-    // Kullanıcı yoksa login'e yönlendir (bulunduğu yolu hafızada tut)
-    if (!user) {
+    // Kullanıcı yoksa login'e yönlendir
+    if (!isAuthenticated) {
         return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    // Rol kontrolü
+    if (allowedRoles && !allowedRoles.includes(user?.role)) {
+        return <Navigate to="/" replace />;
     }
 
     return children;

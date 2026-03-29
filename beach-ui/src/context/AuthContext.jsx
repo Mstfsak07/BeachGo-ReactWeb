@@ -2,8 +2,8 @@ import React, {
     createContext, useContext, useState,
     useEffect, useCallback, useRef
 } from 'react';
+import axios from 'axios';
 import api, { setAccessToken, clearAccessToken } from '../api/axios';
-import authService from '../services/authService';
 
 const AuthContext = createContext(null);
 
@@ -15,8 +15,6 @@ export const AuthProvider = ({ children }) => {
     // ── Session temizleme ───────────────────────────────────────────────────
     const clearSession = useCallback(() => {
         clearAccessToken();
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         setUser(null);
         if (refreshTimerRef.current) {
@@ -26,25 +24,35 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     // ── Proaktif refresh zamanlayıcısı ─────────────────────────────────────
-    // accessTokenExpiry'den 1 dk önce otomatik refresh yapar.
-    // Kullanıcı 401 görmeden token yenilenir.
     const scheduleProactiveRefresh = useCallback((expiryISO) => {
         if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
         if (!expiryISO) return;
 
         const expiry = new Date(expiryISO).getTime();
         const now = Date.now();
-        const delay = expiry - now - 60_000; // 1 dk erken
+        // Expiry'den 1 dk önce veya 30 saniye sonra (hangisi mantıklıysa)
+        // Eğer expiry çok yakınsa hemen yapma, biraz bekle.
+        const delay = Math.max(expiry - now - 60_000, 10_000); 
 
-        if (delay <= 0) return; // Zaten yakın veya geçmiş
+        if (delay > 2147483647) return; // setTimeout sınırı
 
         refreshTimerRef.current = setTimeout(async () => {
             try {
-                const data = await authService.refreshToken();
-                scheduleProactiveRefresh(data.accessTokenExpiry);
-            } catch {
+                // Sadece axios kullanarak interceptor'a takılmadan refresh yap
+                const { data } = await axios.post(
+                    `${api.defaults.baseURL}/Auth/refresh`,
+                    {},
+                    { withCredentials: true }
+                );
+                
+                const result = data.data;
+                setAccessToken(result.accessToken, result.accessTokenExpiry);
+                scheduleProactiveRefresh(result.accessTokenExpiry);
+            } catch (err) {
+                console.error('[AuthContext] Proactive refresh failed:', err);
+                // Sessizce logout yapabiliriz veya bir sonraki 401'i bekleyebiliriz
+                // Burada logout yapmak en güvenlisi
                 clearSession();
-                window.location.href = '/login';
             }
         }, delay);
     }, [clearSession]);
@@ -52,7 +60,9 @@ export const AuthProvider = ({ children }) => {
     // ── Logout ─────────────────────────────────────────────────────────────
     const logout = useCallback(async () => {
         try {
-            await authService.logout();
+            await api.post('/Auth/logout', {});
+        } catch (err) {
+            console.error('[AuthContext] Logout error:', err);
         } finally {
             clearSession();
         }
@@ -62,15 +72,19 @@ export const AuthProvider = ({ children }) => {
     const login = useCallback(async (email, password) => {
         setLoading(true);
         try {
-            const result = await authService.login(email, password);
-            setUser(result.user);
+            const response = await api.post('/Auth/login', { email, password });
+            const data = response.data?.data;
 
-            // Proaktif refresh zamanlayıcısını başlat
-            const storedUser = authService.getUser();
-            const expiryISO = localStorage.getItem('accessTokenExpiry');
-            scheduleProactiveRefresh(expiryISO);
+            if (!data?.accessToken) throw new Error('Sunucudan geçerli bir oturum alınamadı.');
 
-            return result;
+            setAccessToken(data.accessToken, data.accessTokenExpiry);
+            
+            const userData = { email: data.email, role: data.role };
+            localStorage.setItem('user', JSON.stringify(userData));
+            setUser(userData);
+
+            scheduleProactiveRefresh(data.accessTokenExpiry);
+            return data;
         } finally {
             setLoading(false);
         }
@@ -78,44 +92,45 @@ export const AuthProvider = ({ children }) => {
 
     // ── Silent Refresh: sayfa açılışında oturum canlandırma ──────────────
     const silentRefresh = useCallback(async () => {
-        const storedRefreshToken = localStorage.getItem('refreshToken');
-
-        if (!storedRefreshToken) {
-            setLoading(false);
-            return;
-        }
-
         try {
-            const data = await authService.refreshToken();
-            setUser({ email: data.email, role: data.role });
-            localStorage.setItem('user', JSON.stringify({ email: data.email, role: data.role }));
-            scheduleProactiveRefresh(data.accessTokenExpiry);
-        } catch {
-            // Refresh başarısız → session geçersiz
+            // Sadece axios ile direkt çağrı
+            const { data } = await axios.post(
+                `${api.defaults.baseURL}/Auth/refresh`,
+                {},
+                { withCredentials: true }
+            );
+            
+            const result = data.data;
+            setAccessToken(result.accessToken, result.accessTokenExpiry);
+            
+            const userData = { email: result.email, role: result.role };
+            localStorage.setItem('user', JSON.stringify(userData));
+            setUser(userData);
+            
+            scheduleProactiveRefresh(result.accessTokenExpiry);
+        } catch (err) {
+            // Kullanıcı login değilse veya cookie yoksa buraya düşer
+            console.log('[AuthContext] No active session found.');
             clearSession();
         } finally {
             setLoading(false);
         }
     }, [clearSession, scheduleProactiveRefresh]);
 
-    // ── Event listeners ────────────────────────────────────────────────────
     useEffect(() => {
         silentRefresh();
 
-        const handleAuthLogout = (e) => {
-            console.warn('[AuthContext] Auth logout event:', e.detail?.reason);
+        const handleAuthLogout = () => {
             clearSession();
-            window.location.href = '/login';
+            // Sadece login sayfasında değilsek yönlendir
+            if (!window.location.pathname.includes('/login')) {
+                window.location.href = '/login';
+            }
         };
 
-        // axios interceptor bu event'i dispatch eder (refresh başarısız olunca)
         window.addEventListener('auth:logout', handleAuthLogout);
-        // eski event adı için geriye uyumluluk
-        window.addEventListener('logout', handleAuthLogout);
-
         return () => {
             window.removeEventListener('auth:logout', handleAuthLogout);
-            window.removeEventListener('logout', handleAuthLogout);
             if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
         };
     }, [silentRefresh, clearSession]);
@@ -126,7 +141,6 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!user,
         login,
         logout,
-        refreshToken: authService.refreshToken, // direkt erişim
     };
 
     return (

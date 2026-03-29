@@ -11,11 +11,6 @@ export const setAccessToken = (token, expiryDateISO = null) => {
 
 export const getAccessToken = () => accessToken;
 
-export const isAccessTokenExpired = () => {
-  if (!accessToken || !accessTokenExpiry) return true;
-  return new Date() >= accessTokenExpiry;
-};
-
 export const clearAccessToken = () => {
   accessToken = null;
   accessTokenExpiry = null;
@@ -26,6 +21,7 @@ const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5144/api',
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
+  withCredentials: true, // HttpOnly cookie'ler için kritik ayar
 });
 
 // ── Race condition: aynı anda birden fazla refresh request önleme
@@ -43,8 +39,9 @@ const processQueue = (error, token = null) => {
 // ── Request interceptor: her isteğe token ekle
 api.interceptors.request.use(
   (config) => {
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+    const token = getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -60,15 +57,12 @@ api.interceptors.response.use(
     // 401 geldi ve bu istek daha önce retry edilmemişse
     if (error.response?.status === 401 && !originalRequest._retry) {
 
-      // Refresh isteği kendisi 401 döndürdüyse → sonsuz döngüyü önle
-      if (originalRequest.url?.includes('/auth/refresh')) {
-        window.dispatchEvent(new CustomEvent('auth:logout', {
-          detail: { reason: 'refresh_failed' }
-        }));
+      // Refresh isteği kendisi 401 döndürdüyse veya endpoint /Auth/login ise → logout yap
+      if (originalRequest.url?.includes('/Auth/refresh') || originalRequest.url?.includes('/Auth/login')) {
+        window.dispatchEvent(new CustomEvent('auth:logout'));
         return Promise.reject(error);
       }
 
-      // Başka bir refresh zaten çalışıyorsa → queue'ya ekle
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -82,56 +76,28 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const storedRefreshToken = localStorage.getItem('refreshToken');
-        const storedAccessToken = localStorage.getItem('accessToken'); // fallback
-
-        if (!storedRefreshToken) {
-          throw new Error('No refresh token available');
-        }
-
-        // Refresh isteği: axios.create ile değil, doğrudan axios ile
-        // (interceptor loop'unu önlemek için)
-        const refreshResponse = await axios.post(
+        // Refresh isteği: direkt axios kullanarak bu interceptor'ı atlatıyoruz
+        const { data } = await axios.post(
           `${api.defaults.baseURL}/Auth/refresh`,
-          {
-            accessToken: accessToken || storedAccessToken || '',
-            refreshToken: storedRefreshToken,
-          },
-          {
-            headers: { 'Content-Type': 'application/json' },
-            timeout: 10000,
-          }
+          {},
+          { withCredentials: true }
         );
 
-        const { accessToken: newAccessToken, refreshToken: newRefreshToken,
-          accessTokenExpiry: newExpiry } = refreshResponse.data.data;
+        const result = data.data;
+        if (!result?.accessToken) throw new Error('Refresh failed - no access token');
 
-        // Yeni token'ları kaydet
-        setAccessToken(newAccessToken, newExpiry);
-        localStorage.setItem('refreshToken', newRefreshToken);
-        // accessToken'ı da localStorage'a koyuyoruz – yalnızca
-        // sayfa yenilemesi durumunda refresh endpoint'e göndermek için
-        // (access token memory'de kaybolur, ama refresh body'e lazım)
-        localStorage.setItem('accessToken', newAccessToken);
+        setAccessToken(result.accessToken, result.accessTokenExpiry);
 
-        // Queue'daki bekleyen istekleri çalıştır
-        processQueue(null, newAccessToken);
+        // Bundan sonraki tüm requestler için default header'ı güncelle
+        api.defaults.headers.common['Authorization'] = `Bearer ${result.accessToken}`;
 
-        // Orijinal isteği yeni token ile tekrar gönder
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        processQueue(null, result.accessToken);
+        
+        originalRequest.headers.Authorization = `Bearer ${result.accessToken}`;
         return api(originalRequest);
-
       } catch (refreshError) {
         processQueue(refreshError, null);
-        clearAccessToken();
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('user');
-
-        window.dispatchEvent(new CustomEvent('auth:logout', {
-          detail: { reason: 'refresh_failed' }
-        }));
-
+        window.dispatchEvent(new CustomEvent('auth:logout'));
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

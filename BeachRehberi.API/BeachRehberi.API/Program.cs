@@ -251,13 +251,55 @@ if (app.Environment.IsDevelopment())
         {
             var beaches = new List<BeachRehberi.API.Models.Beach>
             {
-                new BeachRehberi.API.Models.Beach("Konyaaltı Plajı", "Antalya'nın en gözde çakıl plajı. Berrak mavi suları ve uzun sahil şeridiyle mükemmel bir tatil deneyimi sunar.", "Konyaaltı, Antalya", 36.8784, 30.6657, 0) { HasSunbeds = true, HasShower = true, HasParking = true, HasWifi = true, HasBar = true, IsChildFriendly = true, OccupancyPercent = 65, Capacity = 2000, IsOpen = true },
-                new BeachRehberi.API.Models.Beach("Lara Plajı", "Antalya'nın incisi Lara Plajı, ince kum ve turkuaz suları ile ziyaretçilerini büyülüyor.", "Lara, Antalya", 36.8469, 30.7843, 0) { HasSunbeds = true, HasRestaurant = true, HasParking = true, HasWaterSports = true, IsChildFriendly = true, OccupancyPercent = 80, Capacity = 3000, IsOpen = true },
-                new BeachRehberi.API.Models.Beach("Mermerli Plajı", "Antalya Kaleiçi'nde tarihi dokularla çevrili, mermer kayalıklarıyla benzersiz bir koy.", "Kaleiçi, Antalya", 36.8825, 30.7056, 0) { HasSunbeds = true, HasBar = true, HasShower = true, OccupancyPercent = 45, Capacity = 500, IsOpen = true },
-                new BeachRehberi.API.Models.Beach("Adrasan Plajı", "Kumluca'ya bağlı sakin ve doğal güzelliğini koruyan eşsiz bir koy.", "Adrasan, Antalya", 36.3451, 30.4712, 0) { HasShower = true, IsChildFriendly = true, OccupancyPercent = 30, Capacity = 800, IsOpen = true },
-                new BeachRehberi.API.Models.Beach("Phaselis Plajı", "Antik liman kalıntıları arasında tarihe dokunan, üç koylu muhteşem plaj.", "Kemer, Antalya", 36.5204, 30.5549, 0) { HasParking = true, IsChildFriendly = true, OccupancyPercent = 55, Capacity = 1200, IsOpen = true },
-                new BeachRehberi.API.Models.Beach("Ölüdeniz Lagünü", "Türkiye'nin en fotoğraflanan noktası, masmavi lagünü ve milli park statüsüyle eşsiz güzellik.", "Ölüdeniz, Fethiye", 36.5500, 29.1167, 0) { HasSunbeds = true, HasBar = true, HasWaterSports = true, HasParking = true, IsChildFriendly = true, OccupancyPercent = 90, Capacity = 5000, IsOpen = true },
+                new("Konyaalti Plaji", "Antalya'nin en gozde cakil plaji. Berrak mavi sulari ve uzun sahil seridiyle mukemmel bir tatil deneyimi sunar.", "Konyaalti, Antalya", 36.8784, 30.6657, 0)
+                {
+                    CoverImageUrl = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+                    OpenTime = "08:00", CloseTime = "20:00",
+                    HasSunbeds = true, HasShower = true, HasParking = true, HasWifi = true, HasBar = true, IsChildFriendly = true,
+                    OccupancyPercent = 65, Capacity = 2000, IsOpen = true, SunbedPrice = 150
+                },
+                new("Lara Plaji", "Antalya'nin incisi Lara Plaji, ince kum ve turkuaz sulari ile ziyaretcilerini buyuluyor.", "Lara, Antalya", 36.8469, 30.7843, 0)
+                {
+                    CoverImageUrl = "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1200&q=80",
+                    OpenTime = "07:30", CloseTime = "21:00",
+                    HasSunbeds = true, HasRestaurant = true, HasParking = true, HasWaterSports = true, IsChildFriendly = true,
+                    OccupancyPercent = 80, Capacity = 3000, IsOpen = true, SunbedPrice = 200, HasEntryFee = true, EntryFee = 50
+                },
+                new("Mermerli Plaji", "Antalya Kaleici'nde tarihi dokularla cevrili, mermer kayaliklariyla benzersiz bir koy.", "Kaleici, Antalya", 36.8825, 30.7056, 0)
+                {
+                    CoverImageUrl = "https://images.unsplash.com/photo-1476673160081-cf065607f449?auto=format&fit=crop&w=1200&q=80",
+                    OpenTime = "09:00", CloseTime = "19:00",
+                    HasSunbeds = true, HasBar = true, HasShower = true,
+                    OccupancyPercent = 45, Capacity = 500, IsOpen = true, SunbedPrice = 250, HasEntryFee = true, EntryFee = 100
+                },
+                new("Adrasan Plaji", "Kumluca'ya bagli sakin ve dogal guzelligini koruyan essiz bir koy.", "Adrasan, Antalya", 36.3451, 30.4712, 0)
+                {
+                    CoverImageUrl = "https://images.unsplash.com/photo-1473116763249-2faaef81ccda?auto=format&fit=crop&w=1200&q=80",
+                    OpenTime = "08:00", CloseTime = "19:30",
+                    HasShower = true, IsChildFriendly = true,
+                    OccupancyPercent = 30, Capacity = 800, IsOpen = true
+                },
+                new("Phaselis Plaji", "Antik liman kalintilari arasinda tarihe dokunan, uc koylu muhtesem plaj.", "Kemer, Antalya", 36.5204, 30.5549, 0)
+                {
+                    CoverImageUrl = "https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?auto=format&fit=crop&w=1200&q=80",
+                    OpenTime = "08:30", CloseTime = "18:30",
+                    HasParking = true, IsChildFriendly = true, HasShower = true,
+                    OccupancyPercent = 55, Capacity = 1200, IsOpen = true, HasEntryFee = true, EntryFee = 120
+                },
+                new("Oludeniz Lagunu", "Turkiye'nin en fotograflanan noktasi, masmavi lagunu ve milli park statusuyle essiz guzellik.", "Oludeniz, Fethiye", 36.5500, 29.1167, 0)
+                {
+                    CoverImageUrl = "https://images.unsplash.com/photo-1520454974749-611b7248ffdb?auto=format&fit=crop&w=1200&q=80",
+                    OpenTime = "07:00", CloseTime = "21:00",
+                    HasSunbeds = true, HasBar = true, HasWaterSports = true, HasParking = true, IsChildFriendly = true, HasRestaurant = true, HasWifi = true,
+                    OccupancyPercent = 90, Capacity = 5000, IsOpen = true, SunbedPrice = 300, HasEntryFee = true, EntryFee = 75
+                },
             };
+
+            // Seed rating'ler (UpdateRating private set oldugundan reflection ile)
+            var ratingsAndCounts = new[] { (4.6, 287), (4.8, 512), (4.3, 94), (4.9, 156), (4.5, 203), (4.7, 1024) };
+            for (int i = 0; i < beaches.Count; i++)
+                beaches[i].UpdateRating(ratingsAndCounts[i].Item1, ratingsAndCounts[i].Item2);
+
             db.Beaches.AddRange(beaches);
             await db.SaveChangesAsync();
             Console.WriteLine("Seed data: 6 beaches created.");

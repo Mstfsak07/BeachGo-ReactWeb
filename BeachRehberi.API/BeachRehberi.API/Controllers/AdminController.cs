@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Extensions;
+using BeachRehberi.API.Models.Enums;
 
 namespace BeachRehberi.API.Controllers
 {
@@ -26,13 +27,17 @@ namespace BeachRehberi.API.Controllers
             var totalUsers = await _context.BusinessUsers.CountAsync();
             var totalReservations = await _context.Reservations.CountAsync();
             var pendingBeaches = await _context.Beaches.CountAsync(b => !b.IsActive);
+            
+            // Ortalama sepet tutarı 500 TRY varsayımı üzerinden genel ciro hesabı 
+            // (gerçek senaryoda veritabanındaki rezervasyon ödemelerinden çekilebilir)
+            var revenue = totalReservations * 500m; 
 
             return Ok(new {
                 totalBeaches,
                 totalUsers,
                 totalReservations,
                 pendingBeaches,
-                revenue = 154200
+                revenue
             });
         }
 
@@ -56,8 +61,39 @@ namespace BeachRehberi.API.Controllers
         [HttpGet("users")]
         public async Task<IActionResult> GetAllUsers()
         {
-            var users = await _context.BusinessUsers.ToListAsync();
+            var users = await _context.BusinessUsers
+                .Select(u => new {
+                    u.Id,
+                    u.Email,
+                    u.ContactName,
+                    u.BusinessName,
+                    u.Role,
+                    u.IsActive,
+                    u.CreatedAt,
+                    u.LastLoginAt
+                })
+                .ToListAsync();
             return Ok(users);
+        }
+
+        [HttpGet("reservations")]
+        public async Task<IActionResult> GetAllReservations()
+        {
+            var reservations = await _context.Reservations
+                .Include(r => r.User)
+                .Include(r => r.Beach)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new {
+                    r.Id,
+                    BeachName = r.Beach.Name,
+                    UserEmail = r.User != null ? r.User.Email : "Bilinmiyor",
+                    r.ReservationDate,
+                    r.CreatedAt,
+                    r.Status
+                })
+                .ToListAsync();
+
+            return Ok(reservations);
         }
 
         [HttpPatch("beaches/{id}/toggle-status")]

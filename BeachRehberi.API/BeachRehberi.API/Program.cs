@@ -35,12 +35,16 @@ if (string.IsNullOrEmpty(jwtSecret) || (builder.Environment.IsProduction() && jw
 if (jwtSecret.Length < 32)
     throw new InvalidOperationException("JWT Secret must be at least 32 characters long.");
 
-// ... (Database section) ...
+// ─────────────────────────────────────────
+// DATABASE CONFIGURATION (PostgreSQL)
+// ─────────────────────────────────────────
 var dbConn = builder.Configuration.GetConnectionString("DefaultConnection")
-             ?? "Data Source=beachrehberi.db";
+             ?? "Host=localhost;Database=BeachGo_Prod;Username=postgres;Password=your_password;";
 
 builder.Services.AddDbContext<BeachDbContext>(options => {
-    options.UseSqlite(dbConn);
+    // PostgreSQL entegrasyonu
+    options.UseNpgsql(dbConn);
+    
     if (builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging();
@@ -267,11 +271,10 @@ app.UseAuthorization();
 app.MapControllers().RequireRateLimiter("fixed");
 
 // ─────────────────────────────────────────
-// AUTO MIGRATE (Development Only)
+// AUTO MIGRATE
 // ─────────────────────────────────────────
-if (app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<BeachDbContext>();
     try 
     {
@@ -351,13 +354,8 @@ if (app.Environment.IsDevelopment())
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"An error occurred during migration: {ex.Message}");
+        Console.WriteLine($"An error occurred during PostgreSQL migration: {ex.Message}");
     }
-}
-else 
-{
-    // Production validation: Check if DB is reachable but don't migrate
-    Console.WriteLine("Production mode: Skipping auto-migrations. Ensure migrations are applied via CI/CD.");
 }
 
 app.Run();

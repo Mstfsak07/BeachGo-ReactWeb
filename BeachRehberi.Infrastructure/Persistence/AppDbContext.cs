@@ -69,13 +69,23 @@ public class AppDbContext : DbContext
         // Tenant Entity'sinin kendisi merkeze ait ana yönetim tablosudur, sadece Soft-Delete filtresi uygulandı.
         modelBuilder.Entity<Tenant>().HasQueryFilter(e => !e.IsDeleted);
 
-        // Ortak ve Dışarıya Açık / Listelenebilir Varlıklar (Müşteriler Hepsini Görebilir)
-        modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
+        // Ortak ve Dışarıya Açık / Listelenebilir Varlıklar (Tüm Müşteriler Hepsini Görebilir)
         modelBuilder.Entity<Beach>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
         modelBuilder.Entity<Review>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
         modelBuilder.Entity<BeachPhoto>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
         modelBuilder.Entity<BeachEvent>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
-        modelBuilder.Entity<Subscription>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
+
+        // ─── GİZLİLİK ONANMIŞ VARLIKLAR (USER VE SUBSCRIPTION RİSKİ GİDERİLDİ) ────────
+        // User (Kullanıcı): Standart bir müşteri SADECE kendini görebilir! Başkasının User datasını çekemez.
+        modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted && 
+            (_currentUserService == null || 
+             (_currentUserService.TenantId != null && e.TenantId == _currentUserService.TenantId) ||
+             (_currentUserService.TenantId == null && _currentUserService.UserId != null && e.Id == _currentUserService.UserId)));
+
+        // Subscription (Abonelik): Standart bir müşteri hiçbir finansal kaydı göremez! Sadece Tenant okuyabilir.
+        modelBuilder.Entity<Subscription>().HasQueryFilter(e => !e.IsDeleted && 
+            (_currentUserService == null || 
+             (_currentUserService.TenantId != null && e.TenantId == _currentUserService.TenantId)));
 
         // ─── OWNER VALIDATION: REZERVASYON (GİZLİ VERİ) ──────────────────────────────────
         // Eğer Tenant ise kendi işletmesinin rezervasyonlarını (TenantId eşleşmesi)

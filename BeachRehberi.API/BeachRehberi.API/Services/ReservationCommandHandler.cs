@@ -63,10 +63,7 @@ public class ReservationCommandHandler :
         if (!userId.HasValue)
             return ServiceResult<bool>.FailureResult("Yetkisiz erişim. Kullanıcı kimliği belirlenemedi.");
 
-        var success = await _reservationService.CancelAsync(request.ReservationId, userId.Value);
-        if (!success)
-            return ServiceResult<bool>.FailureResult("Rezervasyon iptal edilemedi veya yetkiniz yok.");
-
-        return ServiceResult<bool>.SuccessResult(true, "Rezervasyon iptal edildi.");
+        var result = await _reservationService.CancelAsync(request.ReservationId, userId.Value);
+        return result;
     }
 }

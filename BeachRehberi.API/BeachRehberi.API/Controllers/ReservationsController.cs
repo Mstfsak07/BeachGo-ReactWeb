@@ -51,9 +51,9 @@ public class ReservationsController : ControllerBase
         if (userIdStr == null) return Unauthorized();
 
         var userId = int.Parse(userIdStr);
-        var success = await _reservationService.CancelAsync(id, userId);
-        return success 
-            ? Ok(new { success = true, message = "Rezervasyon iptal edildi." }) 
-            : BadRequest(new { success = false, message = "Rezervasyon iptal edilemedi." });
+        
+        // Owner verification is now strictly handled and communicated via ServiceResult
+        var cancelResult = await _reservationService.CancelAsync(id, userId);
+        return cancelResult.ToActionResult();
     }
 }

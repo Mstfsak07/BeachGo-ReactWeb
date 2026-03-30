@@ -65,13 +65,14 @@ public class BeachCommandHandler : IRequestHandler<CreateBeachCommand, ServiceRe
 
         try
         {
+            // OwnerId olarak giriş yapan işletme sahibinin/kullanıcının IDsi atanır. 0 ataması engellendi!
             var beach = new Beach(
                 request.BeachRequest.Name,
                 request.BeachRequest.Description,
                 request.BeachRequest.Location,
                 request.BeachRequest.Latitude,
                 request.BeachRequest.Longitude,
-                0 // ownerId: authenticated user id'ye bakılır ama burada 0 kullanıyoruz
+                userId.Value 
             );
 
             _context.Beaches.Add(beach);

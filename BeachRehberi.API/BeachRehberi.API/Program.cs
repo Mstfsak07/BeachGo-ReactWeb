@@ -16,13 +16,16 @@ using MediatR;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using BCrypt.Net;
+using System.Security.Claims;
+using BeachRehberi.API.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ─────────────────────────────────────────
 // 1. JWT SECRET (Must be provided in production)
 // ─────────────────────────────────────────
-var jwtSecret = builder.Configuration["Jwt:SecretKey"];
+var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET") 
+                ?? builder.Configuration["Jwt:SecretKey"];
 
 if (string.IsNullOrEmpty(jwtSecret) || (builder.Environment.IsProduction() && jwtSecret.Contains("Testing_Secret_Key")))
 {
@@ -110,7 +113,7 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // ─────────────────────────────────────────
-// 9. JWT AUTHENTICATION
+// 9. JWT AUTHENTICATION & AUTHORIZATION POLICIES
 // ─────────────────────────────────────────
 builder.Services.AddAuthentication(options =>
 {
@@ -119,6 +122,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -128,11 +132,22 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = "BeachRehberi.API",
         ValidAudience = "BeachRehberi.App",
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-        ClockSkew = TimeSpan.Zero
+        ClockSkew = TimeSpan.Zero,
+        RoleClaimType = ClaimTypes.Role
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // Global fallback for robust safety
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+
+    // Custom Policies definition that were missing
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole(UserRoles.Admin));
+    options.AddPolicy("BusinessOnly", policy => policy.RequireRole(UserRoles.Business, UserRoles.Admin));
+});
 
 // ─────────────────────────────────────────
 // 10. SWAGGER + JWT AUTHORIZE BUTONU
@@ -207,19 +222,35 @@ var app = builder.Build();
 // ─────────────────────────────────────────
 // MIDDLEWARE PIPELINE (sıralama kritik!)
 // ─────────────────────────────────────────
-// HTTPS redirect: production ortamında enable et
+
+app.UseForwardedHeaders(); // Proxy/Nginx reverse yönlendirmeleri için gerekli
+
+// Security, HTTPS redirect & HSTS: Production korumaları
 if (!app.Environment.IsDevelopment())
 {
+    app.UseHsts();
     app.UseHttpsRedirection();
 }
 
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+app.Use(async (context, next) =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "BeachRehberi API v1");
-    c.RoutePrefix = "swagger";
-    c.DisplayRequestDuration();
+    var headers = context.Response.Headers;
+    headers.Append("X-Content-Type-Options", "nosniff");
+    headers.Append("X-Frame-Options", "DENY");
+    headers.Append("X-XSS-Protection", "1; mode=block");
+    await next();
 });
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "BeachRehberi API v1");
+        c.RoutePrefix = "swagger";
+        c.DisplayRequestDuration();
+    });
+}
 
 // CORS: Authentication'dan ÖNCE olmalı
 app.UseCors("AllowFrontend");
@@ -233,7 +264,7 @@ app.UseMiddleware<JwtBlacklistMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+app.MapControllers().RequireRateLimiter("fixed");
 
 // ─────────────────────────────────────────
 // AUTO MIGRATE (Development Only)
@@ -251,42 +282,42 @@ if (app.Environment.IsDevelopment())
         {
             var beaches = new List<BeachRehberi.API.Models.Beach>
             {
-                new("Konyaalti Plaji", "Antalya'nin en gozde cakil plaji. Berrak mavi sulari ve uzun sahil seridiyle mukemmel bir tatil deneyimi sunar.", "Konyaalti, Antalya", 36.8784, 30.6657, 0)
+                new("Konyaalti Plaji", "Antalya'nin en gozde cakil plaji. Berrak mavi sulari ve uzun sahil seridiyle mukemmel bir tatil deneyimi sunar.", "Konyaalti, Antalya", 36.8784, 30.6657, 1)
                 {
                     CoverImageUrl = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
                     OpenTime = "08:00", CloseTime = "20:00",
                     HasSunbeds = true, HasShower = true, HasParking = true, HasWifi = true, HasBar = true, IsChildFriendly = true,
                     OccupancyPercent = 65, Capacity = 2000, IsOpen = true, SunbedPrice = 150
                 },
-                new("Lara Plaji", "Antalya'nin incisi Lara Plaji, ince kum ve turkuaz sulari ile ziyaretcilerini buyuluyor.", "Lara, Antalya", 36.8469, 30.7843, 0)
+                new("Lara Plaji", "Antalya'nin incisi Lara Plaji, ince kum ve turkuaz sulari ile ziyaretcilerini buyuluyor.", "Lara, Antalya", 36.8469, 30.7843, 1)
                 {
                     CoverImageUrl = "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1200&q=80",
                     OpenTime = "07:30", CloseTime = "21:00",
                     HasSunbeds = true, HasRestaurant = true, HasParking = true, HasWaterSports = true, IsChildFriendly = true,
                     OccupancyPercent = 80, Capacity = 3000, IsOpen = true, SunbedPrice = 200, HasEntryFee = true, EntryFee = 50
                 },
-                new("Mermerli Plaji", "Antalya Kaleici'nde tarihi dokularla cevrili, mermer kayaliklariyla benzersiz bir koy.", "Kaleici, Antalya", 36.8825, 30.7056, 0)
+                new("Mermerli Plaji", "Antalya Kaleici'nde tarihi dokularla cevrili, mermer kayaliklariyla benzersiz bir koy.", "Kaleici, Antalya", 36.8825, 30.7056, 1)
                 {
                     CoverImageUrl = "https://images.unsplash.com/photo-1476673160081-cf065607f449?auto=format&fit=crop&w=1200&q=80",
                     OpenTime = "09:00", CloseTime = "19:00",
                     HasSunbeds = true, HasBar = true, HasShower = true,
                     OccupancyPercent = 45, Capacity = 500, IsOpen = true, SunbedPrice = 250, HasEntryFee = true, EntryFee = 100
                 },
-                new("Adrasan Plaji", "Kumluca'ya bagli sakin ve dogal guzelligini koruyan essiz bir koy.", "Adrasan, Antalya", 36.3451, 30.4712, 0)
+                new("Adrasan Plaji", "Kumluca'ya bagli sakin ve dogal guzelligini koruyan essiz bir koy.", "Adrasan, Antalya", 36.3451, 30.4712, 1)
                 {
                     CoverImageUrl = "https://images.unsplash.com/photo-1473116763249-2faaef81ccda?auto=format&fit=crop&w=1200&q=80",
                     OpenTime = "08:00", CloseTime = "19:30",
                     HasShower = true, IsChildFriendly = true,
                     OccupancyPercent = 30, Capacity = 800, IsOpen = true
                 },
-                new("Phaselis Plaji", "Antik liman kalintilari arasinda tarihe dokunan, uc koylu muhtesem plaj.", "Kemer, Antalya", 36.5204, 30.5549, 0)
+                new("Phaselis Plaji", "Antik liman kalintilari arasinda tarihe dokunan, uc koylu muhtesem plaj.", "Kemer, Antalya", 36.5204, 30.5549, 1)
                 {
                     CoverImageUrl = "https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?auto=format&fit=crop&w=1200&q=80",
                     OpenTime = "08:30", CloseTime = "18:30",
                     HasParking = true, IsChildFriendly = true, HasShower = true,
                     OccupancyPercent = 55, Capacity = 1200, IsOpen = true, HasEntryFee = true, EntryFee = 120
                 },
-                new("Oludeniz Lagunu", "Turkiye'nin en fotograflanan noktasi, masmavi lagunu ve milli park statusuyle essiz guzellik.", "Oludeniz, Fethiye", 36.5500, 29.1167, 0)
+                new("Oludeniz Lagunu", "Turkiye'nin en fotograflanan noktasi, masmavi lagunu ve milli park statusuyle essiz guzellik.", "Oludeniz, Fethiye", 36.5500, 29.1167, 1)
                 {
                     CoverImageUrl = "https://images.unsplash.com/photo-1520454974749-611b7248ffdb?auto=format&fit=crop&w=1200&q=80",
                     OpenTime = "07:00", CloseTime = "21:00",

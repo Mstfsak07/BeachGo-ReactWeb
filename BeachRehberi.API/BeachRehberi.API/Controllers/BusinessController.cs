@@ -24,7 +24,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> GetMyReservations()
         {
             var beachId = GetUserBeachId();
-            if (beachId == -1) return "İşletme yetkiniz bulunamadı.".ToUnauthorizedApiResponse();
+            if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
             var reservations = await _businessService.GetAllReservationsAsync(beachId);
             return reservations.ToOkApiResponse();
@@ -34,7 +34,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> GetMyStats()
         {
             var beachId = GetUserBeachId();
-            if (beachId == -1) return "İşletme yetkiniz bulunamadı.".ToUnauthorizedApiResponse();
+            if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
             // Gerçek projede bu veriler servisten gelmeli
             var stats = new {
@@ -54,7 +54,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> GetMyBeach()
         {
             var beachId = GetUserBeachId();
-            if (beachId == -1) return "İşletme yetkiniz bulunamadı.".ToUnauthorizedApiResponse();
+            if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
             var beach = await _businessService.GetBeachByIdAsync(beachId);
             return beach.ToOkApiResponse();
@@ -64,7 +64,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> UpdateMyBeach([FromBody] UpdateBeachDto beachUpdate)
         {
             var beachId = GetUserBeachId();
-            if (beachId == -1) return "İşletme yetkiniz bulunamadı.".ToUnauthorizedApiResponse();
+            if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
             // Sadece belirli alanların güncellenmesine izin ver
             var result = await _businessService.UpdateBeachDetailsAsync(beachId, beachUpdate);
@@ -75,7 +75,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> Approve(int id)
         {
             var beachId = GetUserBeachId();
-            if (beachId == -1) return "Yetki hatası.".ToUnauthorizedApiResponse();
+            if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
             var result = await _businessService.UpdateReservationStatusAsync(id, beachId, ReservationStatus.Approved);
             return result.ToActionResult();
@@ -85,7 +85,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> Reject(int id, [FromBody] string? comment)
         {
             var beachId = GetUserBeachId();
-            if (beachId == -1) return "Yetki hatası.".ToUnauthorizedApiResponse();
+            if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
             var result = await _businessService.UpdateReservationStatusAsync(id, beachId, ReservationStatus.Rejected, comment);
             return result.ToActionResult();

@@ -10,5 +10,5 @@ public interface IReservationService
 {
     Task<ServiceResult<Reservation>> CreateAsync(CreateReservationDto dto, int userId);
     Task<List<ReservationListItemDto>> GetByUserAsync(int userId);
-    Task<bool> CancelAsync(int id, int userId);
+    Task<ServiceResult<bool>> CancelAsync(int id, int userId);
 }

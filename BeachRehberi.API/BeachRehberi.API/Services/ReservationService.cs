@@ -71,16 +71,20 @@ public class ReservationService : IReservationService
             .ToListAsync();
     }
 
-    public async Task<bool> CancelAsync(int id, int userId)
+    public async Task<ServiceResult<bool>> CancelAsync(int id, int userId)
     {
         var reservation = await _context.Reservations.FirstOrDefaultAsync(r => r.Id == id && !r.IsDeleted);
         
-        if (reservation == null || reservation.UserId != userId)
-            return false;
+        if (reservation == null)
+            return ServiceResult<bool>.FailureResult("Rezervasyon bulunamadı.");
+
+        // Güvenlik Duvarı: Kullanıcı bir başkasının yetki sınırlarını ihlal ederse net 403 mesajı verilecek
+        if (reservation.UserId != userId)
+            return ServiceResult<bool>.FailureResult("Bu rezerve işlemi başkasının adına kayıtlı işlemi silme teşebbüsüdür. Erişim izniniz reddedildi.");
 
         reservation.Cancel();
         await _context.SaveChangesAsync();
 
-        return true;
+        return ServiceResult<bool>.SuccessResult(true, "Rezervasyon iptal edildi.");
     }
 }

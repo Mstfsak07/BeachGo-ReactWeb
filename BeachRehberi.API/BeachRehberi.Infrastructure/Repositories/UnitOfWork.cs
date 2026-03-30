@@ -2,6 +2,8 @@ using BeachRehberi.Domain.Entities;
 using BeachRehberi.Domain.Interfaces;
 using BeachRehberi.Infrastructure.Repositories;
 
+using BeachRehberi.Infrastructure.Persistence;
+
 namespace BeachRehberi.Infrastructure.Repositories;
 
 /// <summary>
@@ -9,7 +11,7 @@ namespace BeachRehberi.Infrastructure.Repositories;
 /// </summary>
 public class UnitOfWork : IUnitOfWork
 {
-    private readonly BeachDbContext _context;
+    private readonly AppDbContext _context;
 
     private IRepository<Beach>? _beaches;
     private IRepository<Reservation>? _reservations;

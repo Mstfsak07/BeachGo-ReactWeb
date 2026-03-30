@@ -18,6 +18,7 @@ import ReservationCheck from "./pages/ReservationCheck";
 import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import BeachSettings from "./pages/BeachSettings";
+import Events from "./pages/Events";
 
 function App() {
   return (
@@ -34,15 +35,6 @@ function App() {
 
           <Route path="/beaches" element={<Beaches />} />
           <Route path="/beaches/:id" element={<BeachDetail />} />
-
-          <Route
-            path="/reservation"
-            element={
-              <ProtectedRoute>
-                <MyReservations />
-              </ProtectedRoute>
-            }
-          />
 
           <Route
             path="/my-reservations"
@@ -75,6 +67,8 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route path="/events" element={<Events />} />
 
           <Route
             path="/admin"

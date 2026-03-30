@@ -16,11 +16,13 @@ namespace BeachRehberi.API.Controllers
     {
         private readonly IAuthService _authService;
         private readonly IConfiguration _configuration;
+        private readonly IWebHostEnvironment _env;
 
-        public AuthController(IAuthService authService, IConfiguration configuration)
+        public AuthController(IAuthService authService, IConfiguration configuration, IWebHostEnvironment env)
         {
             _authService = authService;
             _configuration = configuration;
+            _env = env;
         }
 
         // ===================== LOGIN =====================
@@ -40,7 +42,7 @@ namespace BeachRehberi.API.Controllers
                 Response.Cookies.Append("refreshToken", result.Data.RefreshToken!, new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = false, // 🔥 PROD'DA TRUE YAP
+                    Secure = !_env.IsDevelopment(),
                     SameSite = SameSiteMode.Strict,
                     Expires = DateTime.UtcNow.AddDays(7)
                 });
@@ -79,7 +81,7 @@ namespace BeachRehberi.API.Controllers
                 Response.Cookies.Append("refreshToken", result.Data.RefreshToken!, new CookieOptions
                 {
                     HttpOnly = true,
-                    Secure = false, // 🔥 PROD'DA TRUE YAP
+                    Secure = !_env.IsDevelopment(),
                     SameSite = SameSiteMode.Strict,
                     Expires = DateTime.UtcNow.AddDays(7)
                 });
@@ -147,7 +149,7 @@ namespace BeachRehberi.API.Controllers
                     Response.Cookies.Append("refreshToken", result.Data.RefreshToken!, new CookieOptions
                     {
                         HttpOnly = true,
-                        Secure = false,
+                        Secure = !_env.IsDevelopment(),
                         SameSite = SameSiteMode.Strict,
                         Expires = DateTime.UtcNow.AddDays(7)
                     });
@@ -205,7 +207,7 @@ namespace BeachRehberi.API.Controllers
                     Response.Cookies.Append("refreshToken", result.Data.RefreshToken!, new CookieOptions
                     {
                         HttpOnly = true,
-                        Secure = false,
+                        Secure = !_env.IsDevelopment(),
                         SameSite = SameSiteMode.Strict,
                         Expires = DateTime.UtcNow.AddDays(7)
                     });

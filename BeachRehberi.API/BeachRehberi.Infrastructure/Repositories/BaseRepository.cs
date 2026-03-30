@@ -3,6 +3,8 @@ using BeachRehberi.Domain.Entities;
 using BeachRehberi.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
+using BeachRehberi.Infrastructure.Persistence;
+
 namespace BeachRehberi.Infrastructure.Repositories;
 
 /// <summary>
@@ -10,10 +12,10 @@ namespace BeachRehberi.Infrastructure.Repositories;
 /// </summary>
 public class BaseRepository<T> : IRepository<T> where T : BaseEntity
 {
-    protected readonly BeachDbContext _context;
+    protected readonly AppDbContext _context;
     protected readonly DbSet<T> _dbSet;
 
-    public BaseRepository(BeachDbContext context)
+    public BaseRepository(AppDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _dbSet = context.Set<T>();

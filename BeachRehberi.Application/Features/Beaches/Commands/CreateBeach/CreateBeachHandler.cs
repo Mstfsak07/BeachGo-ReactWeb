@@ -12,18 +12,15 @@ public class CreateBeachHandler : IRequestHandler<CreateBeachCommand, Result<Cre
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUser;
-    private readonly ICacheService _cacheService;
     private readonly ILogger<CreateBeachHandler> _logger;
 
     public CreateBeachHandler(
         IUnitOfWork unitOfWork,
         ICurrentUserService currentUser,
-        ICacheService cacheService,
         ILogger<CreateBeachHandler> logger)
     {
         _unitOfWork = unitOfWork;
         _currentUser = currentUser;
-        _cacheService = cacheService;
         _logger = logger;
     }
 
@@ -47,38 +44,37 @@ public class CreateBeachHandler : IRequestHandler<CreateBeachCommand, Result<Cre
 
         // Plaj oluştur
         var beach = new Beach(
-            request.Name,
-            request.Description,
-            request.Address,
-            request.Latitude,
-            request.Longitude,
-            _currentUser.UserId!.Value,
-            tenantId,
-            request.Capacity
+            tenantId: tenantId,
+            name: request.Name,
+            description: request.Description,
+            location: request.Location,
+            city: request.City,
+            latitude: request.Latitude,
+            longitude: request.Longitude,
+            pricePerPerson: request.PricePerPerson,
+            capacity: request.Capacity
         );
 
+        // Update additional info
         beach.UpdateInfo(
-            request.Name, request.Description, request.Address,
-            request.Phone ?? "", request.Website ?? "", request.Instagram ?? "",
-            request.OpenTime ?? "", request.CloseTime ?? "", "");
+            request.Name, request.Description, request.Location, request.City,
+            request.District, request.Latitude, request.Longitude,
+            request.PricePerPerson, request.Capacity,
+            request.Phone, request.Website, request.Instagram,
+            request.OpenTime, request.CloseTime);
 
-        beach.UpdatePricing(request.HasEntryFee, request.EntryFee, request.SunbedPrice);
-
-        beach.UpdateAmenities(
-            request.HasSunbeds, request.HasShower, request.HasParking,
-            request.HasRestaurant, request.HasBar, request.HasAlcohol,
-            request.IsChildFriendly, request.HasWaterSports, request.HasWifi,
-            request.HasPool, request.HasDJ, request.HasAccessibility);
+        // Set amenities
+        beach.SetAmenities(
+            request.HasParking, request.HasRestaurant, request.HasWaterSports,
+            request.HasLifeguard, request.AllowsPets, hasShower: false,
+            hasBar: false, hasWifi: false, hasPool: false, isChildFriendly: false);
 
         await _unitOfWork.Beaches.AddAsync(beach, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        // Cache temizle
-        await _cacheService.RemoveByPrefixAsync("beaches:", cancellationToken);
-
         _logger.LogInformation("Yeni plaj oluşturuldu: {BeachName}, TenantId: {TenantId}", beach.Name, tenantId);
 
         return Result<CreateBeachResponse>.Created(
-            new CreateBeachResponse(beach.Id, beach.Name, beach.Name.ToLower().Replace(" ", "-")));
+            new CreateBeachResponse(beach.Id, beach.Name, beach.City));
     }
 }

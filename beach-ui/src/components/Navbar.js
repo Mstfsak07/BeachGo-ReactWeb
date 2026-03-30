@@ -27,7 +27,7 @@ const Navbar = () => {
   const navLinks = [
     { name: "Ana Sayfa", path: "/" },
     { name: "Plajlar", path: "/beaches" },
-    { name: "Rezervasyonlarım", path: "/reservation", role: "User" },
+    { name: "Rezervasyonlarım", path: "/my-reservations", role: "User" },
     { name: "Dashboard", path: "/dashboard", role: "Business" },
     { name: "Admin Panel", path: "/admin", role: "Admin" },
   ];

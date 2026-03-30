@@ -1,4 +1,5 @@
 using BeachRehberi.Application.Common.Interfaces;
+using BeachRehberi.Domain.Common;
 using BeachRehberi.Domain.Entities;
 using BeachRehberi.Domain.Enums;
 using BeachRehberi.Domain.Exceptions;
@@ -15,10 +16,10 @@ public record RegisterCommand(
     string Password,
     string PasswordConfirm,
     string? Phone = null
-) : IRequest<RegisterResult>;
+) : IRequest<Result<RegisterResponse>>;
 
-// ── Result ───────────────────────────────────────────────────────────────────
-public record RegisterResult(
+// ── Response ──────────────────────────────────────────────────────────────────
+public record RegisterResponse(
     int UserId,
     string Email,
     string FullName,
@@ -27,7 +28,7 @@ public record RegisterResult(
 );
 
 // ── Handler ──────────────────────────────────────────────────────────────────
-public class RegisterCommandHandler : IRequestHandler<RegisterCommand, RegisterResult>
+public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<RegisterResponse>>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJwtService _jwtService;
@@ -46,14 +47,14 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, RegisterR
         _emailService = emailService;
     }
 
-    public async Task<RegisterResult> Handle(RegisterCommand request, CancellationToken cancellationToken)
+    public async Task<Result<RegisterResponse>> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
         // E-posta benzersizlik kontrolü
         var emailExists = await _unitOfWork.Users.AnyAsync(
             u => u.Email == request.Email.ToLowerInvariant(), cancellationToken);
 
         if (emailExists)
-            throw new ValidationException(new List<string> { "Bu e-posta adresi zaten kullanımda." });
+            return Result<RegisterResponse>.Failure("Bu e-posta adresi zaten kullanılıyor.");
 
         // Şifre hash'leme
         var passwordHash = _passwordHasher.Hash(request.Password);
@@ -87,11 +88,11 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, RegisterR
             // E-posta hatası kaydı engellemez
         }
 
-        return new RegisterResult(
+        return Result<RegisterResponse>.Created(new RegisterResponse(
             user.Id,
             user.Email,
             user.FullName,
             accessToken,
-            refreshToken);
+            refreshToken));
     }
 }

@@ -1,4 +1,5 @@
 using BeachRehberi.Application.Common.Interfaces;
+using BeachRehberi.Domain.Common;
 using BeachRehberi.Domain.Exceptions;
 using BeachRehberi.Domain.Interfaces;
 using MediatR;
@@ -9,21 +10,22 @@ namespace BeachRehberi.Application.Features.Auth.Commands.Login;
 public record LoginCommand(
     string Email,
     string Password
-) : IRequest<LoginResult>;
+) : IRequest<Result<LoginResponse>>;
 
-// ── Result ───────────────────────────────────────────────────────────────────
-public record LoginResult(
+// ── Response ──────────────────────────────────────────────────────────────────
+public record LoginResponse(
     int UserId,
     string Email,
     string FullName,
     string Role,
     string AccessToken,
     string RefreshToken,
+    DateTime AccessTokenExpiry,
     int? TenantId
 );
 
 // ── Handler ──────────────────────────────────────────────────────────────────
-public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
+public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginResponse>>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJwtService _jwtService;
@@ -39,30 +41,32 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, LoginResult>
         _passwordHasher = passwordHasher;
     }
 
-    public async Task<LoginResult> Handle(LoginCommand request, CancellationToken cancellationToken)
+    public async Task<Result<LoginResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         var user = await _unitOfWork.Users.FirstOrDefaultAsync(
             u => u.Email == request.Email.ToLowerInvariant(), cancellationToken);
 
         if (user is null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
-            throw new UnauthorizedException("E-posta veya şifre hatalı.");
+            return Result<LoginResponse>.Failure("E-posta veya şifre hatalı.", 401);
 
         if (user.IsDeleted)
-            throw new UnauthorizedException("Bu hesap silinmiştir.");
+            return Result<LoginResponse>.Failure("Bu hesap silinmiştir.", 401);
 
         var accessToken = _jwtService.GenerateAccessToken(user);
         var refreshToken = _jwtService.GenerateRefreshToken();
+        var accessTokenExpiry = DateTime.UtcNow.AddMinutes(60);
 
         user.SetRefreshToken(refreshToken, DateTime.UtcNow.AddDays(7));
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new LoginResult(
+        return Result<LoginResponse>.Success(new LoginResponse(
             user.Id,
             user.Email,
             user.FullName,
             user.Role.ToString(),
             accessToken,
             refreshToken,
-            user.TenantId);
+            accessTokenExpiry,
+            user.TenantId));
     }
 }

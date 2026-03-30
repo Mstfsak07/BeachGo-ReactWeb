@@ -64,7 +64,9 @@ public class ReservationService : IReservationService
             {
                 Id = r.Id,
                 BeachName = r.Beach.Name,
-                ReservationDate = r.ReservationDate
+                ReservationDate = r.ReservationDate,
+                CreatedAt = r.CreatedAt,
+                Status = r.Status
             })
             .ToListAsync();
     }

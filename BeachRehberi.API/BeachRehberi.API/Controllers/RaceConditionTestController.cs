@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace BeachRehberi.API.Controllers;
 
+#if DEBUG
 [ApiController]
 [Route("api/[controller]")]
 public class RaceConditionTestController : ControllerBase
@@ -36,3 +37,4 @@ public class RaceConditionTestController : ControllerBase
         });
     }
 }
+#endif

@@ -28,18 +28,28 @@ namespace BeachRehberi.API.Controllers
             var pendingBeaches = await _context.Beaches.CountAsync(b => !b.IsActive);
 
             return Ok(new {
-                TotalBeaches = totalBeaches,
-                TotalUsers = totalUsers,
-                TotalReservations = totalReservations,
-                PendingBeaches = pendingBeaches,
-                Revenue = 154200 // Mock revenue
+                totalBeaches,
+                totalUsers,
+                totalReservations,
+                pendingBeaches,
+                revenue = 154200
             });
         }
 
         [HttpGet("beaches")]
         public async Task<IActionResult> GetAllBeaches()
         {
-            var beaches = await _context.Beaches.ToListAsync();
+            var beaches = await _context.Beaches
+                .Select(b => new {
+                    b.Id,
+                    b.Name,
+                    location = b.Address,
+                    imageUrl = b.CoverImageUrl,
+                    b.Capacity,
+                    b.IsActive,
+                    b.Rating
+                })
+                .ToListAsync();
             return Ok(beaches);
         }
 

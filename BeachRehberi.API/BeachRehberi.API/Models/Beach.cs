@@ -85,6 +85,33 @@ public class Beach
         ReviewCount = count;
     }
 
+    public void UpdateDetails(string name, string description, string address)
+    {
+        Name = name;
+        Description = description;
+        Address = address;
+        LastUpdated = DateTime.UtcNow;
+    }
+
+    public void UpdateFees(bool hasEntryFee, decimal entryFee, decimal sunbedPrice)
+    {
+        HasEntryFee = hasEntryFee;
+        EntryFee = entryFee;
+        SunbedPrice = sunbedPrice;
+    }
+
+    public void UpdateOccupancy(int percent, OccupancyLevel level)
+    {
+        OccupancyPercent = percent;
+        OccupancyLevel = level;
+        LastUpdated = DateTime.UtcNow;
+    }
+
+    public void SetTodaySpecial(string special)
+    {
+        TodaySpecial = special;
+    }
+
     public void ToggleOpenStatus() => IsOpen = !IsOpen;
     public void SoftDelete() => IsDeleted = true;
 }

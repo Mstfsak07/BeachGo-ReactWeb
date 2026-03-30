@@ -3,7 +3,7 @@ import api from '../api/axios';
 // Beaches
 export const getBeaches = () => api.get('/Beaches');
 export const getBeachById = (id) => api.get(`/Beaches/${id}`);
-export const searchBeaches = (query) => api.get(`/Beaches/search?query=${encodeURIComponent(query)}`);
+export const searchBeaches = (query) => api.get(`/Beaches/search?q=${encodeURIComponent(query)}`);
 
 // Events
 export const getEvents = () => api.get('/Events');

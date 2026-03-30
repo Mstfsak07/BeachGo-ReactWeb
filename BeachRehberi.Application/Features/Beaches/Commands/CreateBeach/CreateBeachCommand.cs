@@ -1,4 +1,5 @@
 using BeachRehberi.Application.Common.Interfaces;
+using BeachRehberi.Domain.Common;
 using BeachRehberi.Domain.Entities;
 using BeachRehberi.Domain.Exceptions;
 using BeachRehberi.Domain.Interfaces;
@@ -28,79 +29,6 @@ public record CreateBeachCommand(
     bool HasLifeguard,
     bool IsWheelchairAccessible,
     bool AllowsPets
-) : IRequest<int>;
+) : IRequest<Result<CreateBeachResponse>>;
 
-// ── Handler ───────────────────────────────────────────────────────────────────
-public class CreateBeachCommandHandler : IRequestHandler<CreateBeachCommand, int>
-{
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ICurrentUserService _currentUserService;
-
-    public CreateBeachCommandHandler(
-        IUnitOfWork unitOfWork,
-        ICurrentUserService currentUserService)
-    {
-        _unitOfWork = unitOfWork;
-        _currentUserService = currentUserService;
-    }
-
-    public async Task<int> Handle(CreateBeachCommand request, CancellationToken cancellationToken)
-    {
-        var tenantId = _currentUserService.TenantId
-            ?? throw new ForbiddenException(
-                "Bu işlem için bir işletmeye bağlı olmanız gerekmektedir.");
-
-        // Tenant limit kontrolü
-        var tenant = await _unitOfWork.Tenants.GetByIdAsync(tenantId, cancellationToken);
-
-        if (tenant is null || tenant.IsDeleted)
-            throw new NotFoundException("İşletme", tenantId);
-
-        var beachCount = await _unitOfWork.Beaches.CountAsync(
-            b => b.TenantId == tenantId && !b.IsDeleted, cancellationToken);
-
-        if (beachCount >= tenant.MaxBeaches)
-            throw new TenantLimitExceededException(
-                $"Maksimum plaj sayısına ({tenant.MaxBeaches}) ulaşıldı. " +
-                "Daha fazla plaj eklemek için planınızı yükseltin.");
-
-        // Beach oluştur
-        var beach = new Beach(
-            request.Name,
-            request.Description,
-            request.Location,
-            request.City,
-            request.Latitude,
-            request.Longitude,
-            request.PricePerPerson,
-            request.Capacity,
-            tenantId);
-
-        beach.UpdateDetails(
-            request.Name,
-            request.Description,
-            request.Location,
-            request.City,
-            request.District,
-            request.Phone,
-            request.Website,
-            request.Instagram,
-            request.OpenTime,
-            request.CloseTime,
-            request.PricePerPerson,
-            request.Capacity);
-
-        beach.UpdateAmenities(
-            request.HasParking,
-            request.HasRestaurant,
-            request.HasWaterSports,
-            request.HasLifeguard,
-            request.IsWheelchairAccessible,
-            request.AllowsPets);
-
-        await _unitOfWork.Beaches.AddAsync(beach, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        return beach.Id;
-    }
-}
+public record CreateBeachResponse(int Id, string Name, string City);

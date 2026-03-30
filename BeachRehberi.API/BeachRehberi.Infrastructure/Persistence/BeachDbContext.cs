@@ -1,4 +1,5 @@
 using BeachRehberi.Domain.Entities;
+using BeachRehberi.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeachRehberi.Infrastructure.Persistence;

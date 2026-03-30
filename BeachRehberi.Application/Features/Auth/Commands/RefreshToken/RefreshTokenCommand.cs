@@ -1,4 +1,5 @@
 using BeachRehberi.Application.Common.Interfaces;
+using BeachRehberi.Domain.Common;
 using BeachRehberi.Domain.Exceptions;
 using BeachRehberi.Domain.Interfaces;
 using MediatR;
@@ -9,16 +10,16 @@ namespace BeachRehberi.Application.Features.Auth.Commands.RefreshToken;
 public record RefreshTokenCommand(
     string AccessToken,
     string RefreshToken
-) : IRequest<RefreshTokenResult>;
+) : IRequest<Result<RefreshTokenResponse>>;
 
-// ── Result ───────────────────────────────────────────────────────────────────
-public record RefreshTokenResult(
+// ── Response ──────────────────────────────────────────────────────────────────
+public record RefreshTokenResponse(
     string AccessToken,
     string RefreshToken
 );
 
 // ── Handler ──────────────────────────────────────────────────────────────────
-public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, RefreshTokenResult>
+public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, Result<RefreshTokenResponse>>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJwtService _jwtService;
@@ -29,22 +30,22 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         _jwtService = jwtService;
     }
 
-    public async Task<RefreshTokenResult> Handle(
+    public async Task<Result<RefreshTokenResponse>> Handle(
         RefreshTokenCommand request, CancellationToken cancellationToken)
     {
         // Süresi dolmuş token'dan userId al
         var userId = _jwtService.GetUserIdFromToken(request.AccessToken);
 
         if (userId is null)
-            throw new UnauthorizedException("Geçersiz access token.");
+            return Result<RefreshTokenResponse>.Unauthorized("Geçersiz access token.");
 
         var user = await _unitOfWork.Users.GetByIdAsync(userId.Value, cancellationToken);
 
         if (user is null || user.IsDeleted)
-            throw new UnauthorizedException("Kullanıcı bulunamadı.");
+            return Result<RefreshTokenResponse>.NotFound("Kullanıcı bulunamadı.");
 
         if (!user.IsRefreshTokenValid(request.RefreshToken))
-            throw new UnauthorizedException("Geçersiz veya süresi dolmuş refresh token.");
+            return Result<RefreshTokenResponse>.Unauthorized("Refresh token geçersiz veya süresi dolmuş. Lütfen tekrar giriş yapın.");
 
         // Yeni token çifti üret
         var newAccessToken = _jwtService.GenerateAccessToken(user);
@@ -53,6 +54,6 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, R
         user.SetRefreshToken(newRefreshToken, DateTime.UtcNow.AddDays(7));
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new RefreshTokenResult(newAccessToken, newRefreshToken);
+        return Result<RefreshTokenResponse>.Success(new RefreshTokenResponse(newAccessToken, newRefreshToken));
     }
 }

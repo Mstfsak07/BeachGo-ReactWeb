@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { getBeachById } from '../services/api';
 import reservationService from '../services/reservationService';
 import { useAuth } from '../context/AuthContext';
@@ -11,11 +11,8 @@ import {
   Calendar,
   Users,
   Star,
-  Flag,
-  Wifi,
   Umbrella,
   Heart,
-  Share2,
   AlertCircle,
   Loader,
   Clock,
@@ -28,7 +25,7 @@ const BeachDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const [beach, setBeach] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,11 +42,11 @@ const BeachDetail = () => {
       if (res.data?.success) {
         setBeach(res.data.data);
       } else {
-        setError('Plaj bilgileri şu an yüklenemiyor.');
+        setError('Plaj bilgileri su an yuklenemiyor.');
       }
     } catch (err) {
       console.error('Beach detail fetch error:', err);
-      setError('Sistemsel bir hata oluştu. Lütfen daha sonra tekrar deneyin.');
+      setError('Sistemsel bir hata olustu. Lutfen daha sonra tekrar deneyin.');
     } finally {
       setLoading(false);
     }
@@ -62,7 +59,7 @@ const BeachDetail = () => {
   const handleReservation = async (e) => {
     e.preventDefault();
     if (!isAuthenticated) {
-      toast.error('Rezervasyon yapmak için giriş yapmalısınız.');
+      toast.error('Rezervasyon yapmak icin giris yapmalisiniz.');
       navigate('/login', { state: { from: location.pathname } });
       return;
     }
@@ -70,10 +67,10 @@ const BeachDetail = () => {
     try {
       const result = await reservationService.create(parseInt(id), resDate);
       if (result.success) {
-        toast.success('✅ Rezervasyonunuz başarıyla oluşturuldu!');
+        toast.success('Rezervasyonunuz basariyla olusturuldu!');
       }
     } catch (err) {
-      toast.error('❌ Rezervasyon oluşturulamadı. Lütfen tekrar deneyin.');
+      toast.error('Rezervasyon olusturulamadi. Lutfen tekrar deneyin.');
     } finally {
       setResLoading(false);
     }
@@ -94,29 +91,36 @@ const BeachDetail = () => {
           </div>
           <h2 className="text-3xl font-bold text-slate-900 mb-3">Terslik Var!</h2>
           <p className="text-slate-500 font-medium mb-8 leading-relaxed">
-            {error || 'Aradığınız plaj şu an ulaşılamıyor veya kaldırılmış olabilir.'}
+            {error || 'Aradiginiz plaj su an ulasilamiyor veya kaldirilmis olabilir.'}
           </p>
           <button 
             onClick={() => navigate('/beaches')} 
             className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-600 transition-all shadow-xl active:scale-95"
           >
-            Plajları Keşfet
+            Plajlari Kesfet
           </button>
         </motion.div>
       </div>
     );
   }
 
-  const rating = beach.rating || 4.8;
-  const reviewCount = beach.reviewCount || 342;
-  const occupancyRate = beach.occupancyRate ?? beach.occupancyPercent ?? 45;
-  const facilities = beach.facilities || ['WiFi', 'Şemsiye', 'Havlu', 'Duş', 'Otopark', 'Kabin'];
+  const heroImage = beach.imageUrl;
+  const rating = beach.rating || 0;
+  const reviewCount = beach.reviewCount || 0;
+  const occupancy = beach.occupancyPercent ?? 0;
+  const facilities = beach.facilities || [];
+  const openTime = beach.openTime || '';
+  const closeTime = beach.closeTime || '';
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} className="min-h-screen bg-white pb-10 lg:pb-20 font-sans">
       {/* Hero Section */}
       <div className="relative h-[50vh] md:h-[75vh] w-full overflow-hidden">
-        <motion.img initial={{ scale: 1.1 }} animate={{ scale: 1 }} transition={{ duration: 1.5 }} src={beach.imageUrl || beach.coverImageUrl || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e'} className="w-full h-full object-cover" />
+        {heroImage ? (
+          <motion.img initial={{ scale: 1.1 }} animate={{ scale: 1 }} transition={{ duration: 1.5 }} src={heroImage} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-blue-500 to-cyan-400" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
         
         {/* Top Actions */}
@@ -132,12 +136,16 @@ const BeachDetail = () => {
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-6 text-white">
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="space-y-2">
               <h1 className="text-5xl md:text-8xl font-bold tracking-tight leading-none drop-shadow-2xl">{beach.name}</h1>
-              <div className="flex items-center gap-2 text-white/80 font-medium text-lg"><MapPin size={20} className="text-blue-400" /> {beach.address || beach.location || 'Antalya, TR'}</div>
+              {beach.address && (
+                <div className="flex items-center gap-2 text-white/80 font-medium text-lg"><MapPin size={20} className="text-blue-400" /> {beach.address}</div>
+              )}
             </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="bg-white rounded-[2rem] p-6 shadow-3xl flex items-center gap-6 text-slate-900 border border-slate-100">
-              <div className="flex items-center gap-2 border-r pr-6"><span className="text-4xl font-bold">{rating}</span> <Star size={28} className="fill-amber-400 text-amber-400 mb-1" /></div>
-              <div className="text-xs font-black uppercase tracking-widest text-slate-400">{reviewCount} Değerlendirme</div>
-            </motion.div>
+            {rating > 0 && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="bg-white rounded-[2rem] p-6 shadow-3xl flex items-center gap-6 text-slate-900 border border-slate-100">
+                <div className="flex items-center gap-2 border-r pr-6"><span className="text-4xl font-bold">{rating.toFixed(1)}</span> <Star size={28} className="fill-amber-400 text-amber-400 mb-1" /></div>
+                <div className="text-xs font-black uppercase tracking-widest text-slate-400">{reviewCount} Degerlendirme</div>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>
@@ -148,10 +156,11 @@ const BeachDetail = () => {
           
           <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="lg:col-span-8 space-y-12 order-1">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6">
-              {[{ icon: Users, label: 'Kapasite', val: beach.capacity || 500, bg: 'bg-blue-50', c: 'text-blue-600' },
-                { icon: TrendingUp, label: 'Doluluk', val: `%${occupancyRate}`, bg: 'bg-rose-50', c: 'text-rose-600' },
-                { icon: Clock, label: 'Açılış', val: '08:00', bg: 'bg-amber-50', c: 'text-amber-600' },
-                { icon: Umbrella, label: 'Hizmet', val: 'Full Set', bg: 'bg-emerald-50', c: 'text-emerald-600' }
+              {[
+                { icon: Users, label: 'Kapasite', val: beach.capacity > 0 ? beach.capacity : '-', bg: 'bg-blue-50', c: 'text-blue-600' },
+                { icon: TrendingUp, label: 'Doluluk', val: `%${occupancy}`, bg: 'bg-rose-50', c: 'text-rose-600' },
+                { icon: Clock, label: 'Acilis', val: openTime || '-', bg: 'bg-amber-50', c: 'text-amber-600' },
+                { icon: Clock, label: 'Kapanis', val: closeTime || '-', bg: 'bg-orange-50', c: 'text-orange-600' }
               ].map((s, i) => (
                 <motion.div key={i} whileHover={{ y: -5 }} className="bg-white rounded-3xl p-6 shadow-xl border border-slate-50">
                   <div className={`${s.bg} ${s.c} p-4 rounded-2xl w-fit mb-4`}><s.icon size={24} /></div>
@@ -161,22 +170,47 @@ const BeachDetail = () => {
               ))}
             </div>
 
-            <div className="border-b border-slate-100 pb-12">
-              <h2 className="text-4xl font-bold text-slate-900 mb-6 tracking-tight">Hakkında</h2>
-              <p className="text-slate-500 text-xl leading-relaxed font-medium">{beach.description || 'Akdeniz\'in kalbinde, eşsiz denizi ve ince kumuyla büyüleyici bir tatil deneyimi sunan tesisimiz sizleri bekliyor.'}</p>
-            </div>
-
-            <div className="space-y-8 pb-12">
-              <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3"><div className="w-1.5 h-8 bg-blue-600 rounded-full" /> Tesis Olanakları</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {facilities.map((f, i) => (
-                  <motion.div key={i} whileHover={{ scale: 1.03, backgroundColor: "#f8fafc" }} className="flex items-center gap-4 p-5 rounded-2xl border border-slate-100 transition-all bg-slate-50/20">
-                    <div className="bg-white p-3 rounded-xl shadow-sm text-blue-500"><Umbrella size={20} /></div>
-                    <span className="text-lg font-bold text-slate-700 tracking-tight">{f}</span>
-                  </motion.div>
-                ))}
+            {beach.description && (
+              <div className="border-b border-slate-100 pb-12">
+                <h2 className="text-4xl font-bold text-slate-900 mb-6 tracking-tight">Hakkinda</h2>
+                <p className="text-slate-500 text-xl leading-relaxed font-medium">{beach.description}</p>
               </div>
-            </div>
+            )}
+
+            {facilities.length > 0 && (
+              <div className="space-y-8 pb-12">
+                <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3"><div className="w-1.5 h-8 bg-blue-600 rounded-full" /> Tesis Olanaklari</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {facilities.map((f, i) => (
+                    <motion.div key={i} whileHover={{ scale: 1.03, backgroundColor: "#f8fafc" }} className="flex items-center gap-4 p-5 rounded-2xl border border-slate-100 transition-all bg-slate-50/20">
+                      <div className="bg-white p-3 rounded-xl shadow-sm text-blue-500"><Umbrella size={20} /></div>
+                      <span className="text-lg font-bold text-slate-700 tracking-tight">{f}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Price Info */}
+            {(beach.hasEntryFee || beach.sunbedPrice > 0) && (
+              <div className="space-y-4 pb-12">
+                <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3"><div className="w-1.5 h-8 bg-emerald-600 rounded-full" /> Fiyatlar</h3>
+                <div className="flex flex-wrap gap-4">
+                  {beach.hasEntryFee && beach.entryFee > 0 && (
+                    <div className="bg-slate-50 rounded-2xl px-6 py-4 border border-slate-100">
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Giris Ucreti</p>
+                      <p className="text-2xl font-bold text-slate-900">{beach.entryFee} TL</p>
+                    </div>
+                  )}
+                  {beach.sunbedPrice > 0 && (
+                    <div className="bg-slate-50 rounded-2xl px-6 py-4 border border-slate-100">
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Sezlong</p>
+                      <p className="text-2xl font-bold text-slate-900">{beach.sunbedPrice} TL</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </motion.div>
 
           {/* Reservation Card */}
@@ -188,7 +222,7 @@ const BeachDetail = () => {
                   <div className="flex items-center justify-between mb-8">
                     <div>
                       <h2 className="text-3xl font-black text-slate-900 tracking-tight">Rezervasyon</h2>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Premium Yer Ayırt</p>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Yer Ayirt</p>
                     </div>
                     <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-4 rounded-2xl shadow-xl shadow-blue-200/50"><Calendar size={24} strokeWidth={2.5} /></div>
                   </div>
@@ -197,9 +231,9 @@ const BeachDetail = () => {
                     <div className="space-y-6">
                       <div className="bg-white/50 border border-dashed border-slate-200 rounded-[2rem] p-8 text-center backdrop-blur-sm">
                         <Users className="mx-auto text-blue-400 mb-4" size={40} strokeWidth={1.5} />
-                        <p className="text-slate-600 font-bold leading-snug text-sm">Hemen giriş yapın ve bu eşsiz deneyim için yerinizi şimdiden ayırtın.</p>
+                        <p className="text-slate-600 font-bold leading-snug text-sm">Hemen giris yapin ve yerinizi simdiden ayirtin.</p>
                       </div>
-                      <button onClick={() => navigate('/login')} className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-blue-600 transition-all shadow-xl active:scale-95 uppercase tracking-widest text-xs">Giriş Yap</button>
+                      <button onClick={() => navigate('/login')} className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-blue-600 transition-all shadow-xl active:scale-95 uppercase tracking-widest text-xs">Giris Yap</button>
                     </div>
                   ) : (
                     <form onSubmit={handleReservation} className="space-y-8">
@@ -208,7 +242,7 @@ const BeachDetail = () => {
                         <input type="date" value={resDate} onChange={(e) => setResDate(e.target.value)} min={new Date().toISOString().split('T')[0]} disabled={resLoading} required className="w-full px-6 py-5 rounded-[1.5rem] border-2 border-slate-100 bg-white/50 focus:bg-white focus:border-blue-500 outline-none transition-all text-slate-800 font-bold text-lg" />
                       </div>
                       <motion.button type="submit" disabled={resLoading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`w-full py-6 font-black text-lg rounded-[1.5rem] uppercase tracking-widest shadow-2xl transition-all flex items-center justify-center gap-3 ${!resLoading ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-blue-500/30' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}>
-                        {resLoading ? <Loader className="animate-spin" size={24} /> : <>ŞİMDİ REZERVE ET <TrendingUp size={20} /></>}
+                        {resLoading ? <Loader className="animate-spin" size={24} /> : <>SIMDI REZERVE ET <TrendingUp size={20} /></>}
                       </motion.button>
                     </form>
                   )}
@@ -216,15 +250,15 @@ const BeachDetail = () => {
                   <div className="mt-10 pt-8 border-t border-slate-100 space-y-5">
                     <div className="flex items-center gap-4 group/item cursor-default">
                       <div className="bg-blue-50 p-2.5 rounded-xl group-hover/item:bg-blue-600 transition-all"><Clock size={18} className="text-blue-600 group-hover/item:text-white" /></div>
-                      <div><p className="text-sm text-slate-800 font-black">Anında Onay</p></div>
+                      <div><p className="text-sm text-slate-800 font-black">Aninda Onay</p></div>
                     </div>
                     <div className="flex items-center gap-4 group/item cursor-default">
                       <div className="bg-rose-50 p-2.5 rounded-xl group-hover/item:bg-rose-600 transition-all"><AlertCircle size={18} className="text-rose-600 group-hover/item:text-white" /></div>
-                      <div><p className="text-sm text-slate-800 font-black">Esnek İptal</p></div>
+                      <div><p className="text-sm text-slate-800 font-black">Esnek Iptal</p></div>
                     </div>
                     <div className="flex items-center gap-4 group/item cursor-default">
                       <div className="bg-emerald-50 p-2.5 rounded-xl group-hover/item:bg-emerald-600 transition-all"><ShieldCheck size={18} className="text-emerald-600 group-hover/item:text-white" /></div>
-                      <div><p className="text-sm text-slate-800 font-black">Güvenli İşlem</p></div>
+                      <div><p className="text-sm text-slate-800 font-black">Guvenli Islem</p></div>
                     </div>
                   </div>
                 </div>

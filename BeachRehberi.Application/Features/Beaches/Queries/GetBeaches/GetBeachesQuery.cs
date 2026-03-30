@@ -38,7 +38,7 @@ public record BeachListItemDto(
     string Name,
     string City,
     string? District,
-    string? CoverImageUrl,
+    string? ImageUrl,
     decimal PricePerPerson,
     decimal AverageRating,
     int TotalReviews,

@@ -94,4 +94,12 @@ public class BeachResponseDto
     public bool IsActive { get; set; }
     public int Capacity { get; set; }
     public bool IsOpen { get; set; }
+    public string ImageUrl { get; set; } = string.Empty;
+    public int OccupancyPercent { get; set; }
+    public string OpenTime { get; set; } = string.Empty;
+    public string CloseTime { get; set; } = string.Empty;
+    public bool HasEntryFee { get; set; }
+    public decimal EntryFee { get; set; }
+    public decimal SunbedPrice { get; set; }
+    public List<string> Facilities { get; set; } = new();
 }

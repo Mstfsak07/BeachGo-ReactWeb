@@ -33,7 +33,7 @@ public record BeachDetailDto(
     int Capacity,
     decimal AverageRating,
     int ReviewCount,
-    string? CoverImageUrl,
+    string? ImageUrl,
     bool HasParking,
     bool HasRestaurant,
     bool HasWaterSports,
@@ -100,7 +100,7 @@ public class GetBeachByIdQueryHandler : IRequestHandler<GetBeachByIdQuery, Beach
             beach.Capacity,
             beach.AverageRating,
             beach.ReviewCount,
-            beach.CoverImageUrl,
+            beach.CoverImageUrl, // maps to ImageUrl
             beach.HasParking,
             beach.HasRestaurant,
             beach.HasWaterSports,

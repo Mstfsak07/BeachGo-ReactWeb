@@ -79,7 +79,7 @@ public class GetBeachesQueryHandler
                 b.Name,
                 b.City,
                 b.District,
-                b.CoverImageUrl,
+                b.CoverImageUrl, // maps to ImageUrl
                 b.PricePerPerson,
                 b.AverageRating,
                 b.TotalReviews,

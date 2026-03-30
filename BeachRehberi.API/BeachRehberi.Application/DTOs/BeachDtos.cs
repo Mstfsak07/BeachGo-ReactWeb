@@ -28,7 +28,7 @@ public class BeachDto
     public int ReviewCount { get; set; }
 
     public string GooglePlaceId { get; set; } = string.Empty;
-    public string CoverImageUrl { get; set; } = string.Empty;
+    public string ImageUrl { get; set; } = string.Empty;
 
     // Facilities
     public bool HasSunbeds { get; set; }
@@ -73,7 +73,7 @@ public class CreateBeachDto
     public double Longitude { get; set; }
 
     public string GooglePlaceId { get; set; } = string.Empty;
-    public string CoverImageUrl { get; set; } = string.Empty;
+    public string ImageUrl { get; set; } = string.Empty;
 
     // Facilities
     public bool HasSunbeds { get; set; }
@@ -112,7 +112,7 @@ public class UpdateBeachDto
     public double Longitude { get; set; }
 
     public string GooglePlaceId { get; set; } = string.Empty;
-    public string CoverImageUrl { get; set; } = string.Empty;
+    public string ImageUrl { get; set; } = string.Empty;
 
     // Facilities
     public bool HasSunbeds { get; set; }

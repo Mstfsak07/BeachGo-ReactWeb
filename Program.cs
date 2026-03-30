@@ -5,6 +5,7 @@ using BeachRehberi.Application;
 using BeachRehberi.Infrastructure;
 using BeachRehberi.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -135,6 +136,13 @@ try
 
     builder.Services.AddAuthorization(options =>
     {
+        // ─── GÜVENLİK (Varsayılan Olarak Koru) ───────────────
+        // Eğer bir uç noktanın açıkça [AllowAnonymous] özniteliği yoksa,
+        // sistem varsayılan olarak yetkilendirilmiş (giriş yapmış) bir kullanıcı isteyecektir.
+        options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+
         options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
         options.AddPolicy("BusinessOnly", policy => policy.RequireRole("BusinessOwner", "Admin"));
         options.AddPolicy("AuthenticatedUser", policy => policy.RequireAuthenticatedUser());

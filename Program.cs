@@ -43,6 +43,17 @@ try
         options.KnownProxies.Clear();
     });
 
+    // ─── Global Cookie Security Policy (Üretim Ortamı) ───
+    builder.Services.Configure<CookiePolicyOptions>(options =>
+    {
+        // CORS AllowCredentials uyumluluğu için SameSite None (Cross-domain çağrılar için gerekli)
+        options.MinimumSameSitePolicy = SameSiteMode.None;
+        // Çerezlere JavaScript üzerinden asla ulaşılamasın (XSS koruması)
+        options.HttpOnly = Microsoft.AspNetCore.CookiePolicy.HttpOnlyPolicy.Always;
+        // Çerezler sadece ve daima HTTPS üzerinden taşınsın
+        options.Secure = CookieSecurePolicy.Always;
+    });
+
     // ─── JWT Config ──────────────────────────────────────
     var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET")
                     ?? builder.Configuration["Jwt:SecretKey"]
@@ -113,7 +124,7 @@ try
             policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
-                  .AllowCredentials();
+                  .AllowCredentials(); // Cookie policy için gerekli
         });
     });
 
@@ -121,6 +132,10 @@ try
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
+            // Production'da HTTPS zorunluluğunu artırmak
+            options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+            options.SaveToken = true;
+            
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
@@ -197,6 +212,9 @@ try
 
     app.UseHttpsRedirection();
     
+    // Güvenlik: Cookie Policy aktif edildi
+    app.UseCookiePolicy();
+
     // CORS, UseRouting sonrasında fakat Auth mekanizmalarından önce gelmelidir 
     // (MapControllers varsayılan olarak Routing araya ekler)
     app.UseCors("BeachGoPolicy");

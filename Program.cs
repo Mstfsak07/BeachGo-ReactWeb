@@ -5,6 +5,7 @@ using BeachRehberi.Application;
 using BeachRehberi.Infrastructure;
 using BeachRehberi.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -31,6 +32,15 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
     builder.Host.UseSerilog();
+
+    // ─── Dış Proxy/Load Balancer Desteği ─────────────────
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        // Reverse proxy (Nginx, AWS vb.) arkasındaysak gerçek IP'yi ve Port/Şema'yı almayı sağlar.
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
 
     // ─── JWT Config ──────────────────────────────────────
     var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET")
@@ -141,8 +151,32 @@ try
         Log.Information("✓ Veritabanı migration tamamlandı.");
     }
 
-    // ─── Pipeline ────────────────────────────────────────
+    // ─── Pipeline (Middleware Sırası Önemlidir) ──────────
+
+    // 1. IP Yönlendirme (En başta olmalı)
+    app.UseForwardedHeaders();
+
+    // 2. Exception Handling ve HSTS (Canlı Ortam)
     app.UseMiddleware<ExceptionMiddleware>();
+    if (!app.Environment.IsDevelopment())
+    {
+        // Geliştirme dışı ortamlarda tarayıcıyı daima HTTPS kullanmaya zorlar.
+        app.UseHsts();
+    }
+
+    // 3. Özel Güvenlik Başlıkları (Security Headers Middleware)
+    app.Use(async (context, next) =>
+    {
+        var headers = context.Response.Headers;
+        headers.Append("X-Content-Type-Options", "nosniff");
+        headers.Append("X-Frame-Options", "DENY");
+        headers.Append("X-XSS-Protection", "1; mode=block");
+        headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+        headers.Append("Content-Security-Policy", "default-src 'self';");
+        
+        await next();
+    });
+
     app.UseMiddleware<TenantMiddleware>();
     app.UseSerilogRequestLogging();
     app.UseRateLimiter();
@@ -154,9 +188,14 @@ try
     }
 
     app.UseHttpsRedirection();
+    
+    // CORS, UseRouting sonrasında fakat Auth mekanizmalarından önce gelmelidir 
+    // (MapControllers varsayılan olarak Routing araya ekler)
     app.UseCors("BeachGoPolicy");
+    
     app.UseAuthentication();
     app.UseAuthorization();
+    
     app.MapControllers().RequireRateLimiter("fixed");
 
     Log.Information("✓ BeachRehberi API hazır.");

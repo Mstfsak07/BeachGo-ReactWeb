@@ -28,16 +28,78 @@ public class AppDbContext : DbContext
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        var currentUserIdStr = _currentUserService?.UserId?.ToString();
+
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
+            // ─── GÜVENLİK PENCERESİ: MUTASYON VE MANİPÜLASYON KONTROLLERİ ────────────
+            if (entry.State == EntityState.Modified || entry.State == EntityState.Deleted)
+            {
+                // İşletme Sahipleri Koruması
+                if (_currentUserService?.TenantId != null)
+                {
+                    // Farklı kayıtlardaki işlem sınırlarını aşmasını engelle
+                    if (entry.Entity.TenantId.HasValue && entry.Entity.TenantId != _currentUserService.TenantId)
+                    {
+                        throw new UnauthorizedAccessException("Erişim Reddedildi: Başka bir işletmeye ait kayıtlar değiştirilemez veya silinemez.");
+                    }
+                    
+                    if (entry.State == EntityState.Modified)
+                    {
+                        var tenantProp = entry.Metadata.FindProperty("TenantId");
+                        if (tenantProp != null && entry.Property("TenantId").IsModified)
+                            throw new UnauthorizedAccessException("Erişim Reddedildi: Kaydın TenantId bilgisini değiştiremezsiniz (Hak ihlali).");
+                    }
+                }
+                // Standart Müşteri Kullanıcı Sahiplik Koruması
+                else if (_currentUserService?.TenantId == null && currentUserIdStr != null)
+                {
+                    // Rezarvasyon veya Review için UserId kontrolü
+                    var userIdProp = entry.Metadata.FindProperty("UserId");
+                    if (userIdProp != null)
+                    {
+                        var originalOwnerId = entry.Property("UserId").OriginalValue?.ToString();
+                        
+                        if (originalOwnerId != null && originalOwnerId != currentUserIdStr)
+                            throw new UnauthorizedAccessException("Erişim Reddedildi: Yalnızca kendi verilerinizi değiştirebilir ve silebilirsiniz.");
+
+                        // Kötü Niyet Koruması: Kaydını başkasının üstüne yamamayı engelle
+                        if (entry.State == EntityState.Modified && entry.Property("UserId").IsModified)
+                            throw new UnauthorizedAccessException("Sahiplik (UserId) bilgisi sonradan manipüle edilemez.");
+                    }
+                    // Profili düzenlerken Kendi Profilinde mi? (User Entity Kontrolü)
+                    else if (entry.Entity is User userEntity)
+                    {
+                        if (userEntity.Id.ToString() != currentUserIdStr)
+                            throw new UnauthorizedAccessException("Erişim Reddedildi: Sadece kendi kullanıcı profili ayarlarınızı güncelleyebilirsiniz.");
+                        
+                        // YETKİ (Role) YÜKSELTME KORUMASI: Normal üyelerin PUT isteğinde kendilerini Admin'e çekmesi bloklanır.
+                        if (entry.State == EntityState.Modified && entry.Property("Role").IsModified)
+                            throw new UnauthorizedAccessException("Erişim Reddedildi: Kullanıcı rolleri ve yetkileri doğrudan manipüle edilemez (Yetki Yükseltme).");
+                    }
+                }
+            }
+
+            // ─── STANDART DURUM GEÇİŞLERİ ────────────────────────────────────────────
             switch (entry.State)
             {
                 case EntityState.Added:
                     entry.Entity.CreatedAt = DateTime.UtcNow;
-                    // Eğer sisteme eklenen varlığın TenantId'si yoksa ve oturum açan kişinin varsa otomatik ata
-                    if (!entry.Entity.TenantId.HasValue && _currentUserService?.TenantId != null)
+                    
+                    // İşletme sahibi eklerken sahte bir TenantId enjeksiyonunu siler ve zorla kendi TenantId'sini atar
+                    if (_currentUserService?.TenantId != null)
                     {
                         entry.Entity.TenantId = _currentUserService.TenantId;
+                    }
+                    else if (_currentUserService?.TenantId == null && currentUserIdStr != null)
+                    {
+                        // Müşteri sisteme yorum veya rezervasyon ekliyorsa:
+                        // Dışarıdan gelen Fake UserId enjeksiyonunu sileriz
+                        var addUserIdProp = entry.Metadata.FindProperty("UserId");
+                        if (addUserIdProp != null)
+                        {
+                            entry.Property("UserId").CurrentValue = _currentUserService.UserId;
+                        }
                     }
                     break;
 

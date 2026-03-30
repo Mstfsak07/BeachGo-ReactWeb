@@ -1,5 +1,7 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using BeachRehberi.API.Middleware;
 using BeachRehberi.Application;
 using BeachRehberi.Infrastructure;
@@ -54,7 +56,10 @@ try
         options.Secure = CookieSecurePolicy.Always;
     });
 
-    // ─── JWT Config ──────────────────────────────────────
+    // ─── JWT Config & Claims Mapping ─────────────────────
+    // Rol (Role) Eşleşme Problemini Giderir: Modern Token 'role' array'inin .NET Role Claim olarak işlenmesini zorunlu kılar.
+    JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
     var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET")
                     ?? builder.Configuration["Jwt:SecretKey"]
                     ?? throw new InvalidOperationException("JWT Secret Key tanımlı değil!");
@@ -145,7 +150,10 @@ try
                 ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "BeachRehberi.API",
                 ValidAudience = builder.Configuration["Jwt:Audience"] ?? "BeachRehberi.App",
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-                ClockSkew = TimeSpan.Zero
+                ClockSkew = TimeSpan.Zero,
+                // Yetki/Owner kontrollerinin hatasız çalışması için standartlaştırılmış map işlemi:
+                RoleClaimType = "role",
+                NameClaimType = "name"
             };
         });
 

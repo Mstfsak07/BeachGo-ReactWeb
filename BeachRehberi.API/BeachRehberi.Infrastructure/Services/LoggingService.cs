@@ -13,9 +13,9 @@ public static class LoggingService
 {
     public static void ConfigureLogging(IHostBuilder hostBuilder, IConfiguration configuration)
     {
-        hostBuilder.UseSerilog((context, services, configuration) =>
+        hostBuilder.UseSerilog((context, services, logConfig) =>
         {
-            configuration
+            logConfig
                 .MinimumLevel.Information()
                 .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
                 .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Error)

@@ -249,10 +249,18 @@ if (app.Environment.IsDevelopment())
         // Seed data
         if (!await db.Beaches.AnyAsync())
         {
-            var beach = new BeachRehberi.API.Models.Beach("Test Plajı", "Test açıklaması", "Test Adresi", 36.8785, 30.6657, 0);
-            db.Beaches.Add(beach);
+            var beaches = new List<BeachRehberi.API.Models.Beach>
+            {
+                new BeachRehberi.API.Models.Beach("Konyaaltı Plajı", "Antalya'nın en gözde çakıl plajı. Berrak mavi suları ve uzun sahil şeridiyle mükemmel bir tatil deneyimi sunar.", "Konyaaltı, Antalya", 36.8784, 30.6657, 0) { HasSunbeds = true, HasShower = true, HasParking = true, HasWifi = true, HasBar = true, IsChildFriendly = true, OccupancyPercent = 65, Capacity = 2000, IsOpen = true },
+                new BeachRehberi.API.Models.Beach("Lara Plajı", "Antalya'nın incisi Lara Plajı, ince kum ve turkuaz suları ile ziyaretçilerini büyülüyor.", "Lara, Antalya", 36.8469, 30.7843, 0) { HasSunbeds = true, HasRestaurant = true, HasParking = true, HasWaterSports = true, IsChildFriendly = true, OccupancyPercent = 80, Capacity = 3000, IsOpen = true },
+                new BeachRehberi.API.Models.Beach("Mermerli Plajı", "Antalya Kaleiçi'nde tarihi dokularla çevrili, mermer kayalıklarıyla benzersiz bir koy.", "Kaleiçi, Antalya", 36.8825, 30.7056, 0) { HasSunbeds = true, HasBar = true, HasShower = true, OccupancyPercent = 45, Capacity = 500, IsOpen = true },
+                new BeachRehberi.API.Models.Beach("Adrasan Plajı", "Kumluca'ya bağlı sakin ve doğal güzelliğini koruyan eşsiz bir koy.", "Adrasan, Antalya", 36.3451, 30.4712, 0) { HasShower = true, IsChildFriendly = true, OccupancyPercent = 30, Capacity = 800, IsOpen = true },
+                new BeachRehberi.API.Models.Beach("Phaselis Plajı", "Antik liman kalıntıları arasında tarihe dokunan, üç koylu muhteşem plaj.", "Kemer, Antalya", 36.5204, 30.5549, 0) { HasParking = true, IsChildFriendly = true, OccupancyPercent = 55, Capacity = 1200, IsOpen = true },
+                new BeachRehberi.API.Models.Beach("Ölüdeniz Lagünü", "Türkiye'nin en fotoğraflanan noktası, masmavi lagünü ve milli park statüsüyle eşsiz güzellik.", "Ölüdeniz, Fethiye", 36.5500, 29.1167, 0) { HasSunbeds = true, HasBar = true, HasWaterSports = true, HasParking = true, IsChildFriendly = true, OccupancyPercent = 90, Capacity = 5000, IsOpen = true },
+            };
+            db.Beaches.AddRange(beaches);
             await db.SaveChangesAsync();
-            Console.WriteLine("Seed data: Test beach created.");
+            Console.WriteLine("Seed data: 6 beaches created.");
         }
 
         // Admin user seed

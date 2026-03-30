@@ -2,6 +2,26 @@ using System.ComponentModel.DataAnnotations;
 
 namespace BeachRehberi.API.DTOs;
 
+public class CreateBeachRequest
+{
+    [Required]
+    [MaxLength(200)]
+    public string Name { get; set; } = string.Empty;
+
+    public string Description { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
+
+    [Required]
+    [Range(-90, 90)]
+    public double Latitude { get; set; }
+
+    [Required]
+    [Range(-180, 180)]
+    public double Longitude { get; set; }
+
+    public int Capacity { get; set; }
+}
+
 public class CreateBeachDto
 {
     [Required]
@@ -40,6 +60,9 @@ public class UpdateBeachDto
     public decimal EntryFee { get; set; }
     public decimal SunbedPrice { get; set; }
 
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+
     public int Capacity { get; set; }
     
     public bool HasSunbeds { get; set; }
@@ -54,6 +77,8 @@ public class UpdateBeachDto
     public bool HasPool { get; set; }
     public bool HasDJ { get; set; }
     public bool HasAccessibility { get; set; }
+
+    public string TodaySpecial { get; set; } = string.Empty;
 }
 
 public class BeachResponseDto

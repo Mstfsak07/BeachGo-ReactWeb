@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
     const clearSession = useCallback(() => {
         clearAccessToken();
         localStorage.removeItem('user');
+        localStorage.removeItem('accessToken'); // header için tutulan kopya
         setUser(null);
         if (refreshTimerRef.current) {
             clearTimeout(refreshTimerRef.current);
@@ -39,14 +40,19 @@ export const AuthProvider = ({ children }) => {
         refreshTimerRef.current = setTimeout(async () => {
             try {
                 // Sadece axios kullanarak interceptor'a takılmadan refresh yap
+                const storedToken = localStorage.getItem('accessToken');
                 const { data } = await axios.post(
                     `${api.defaults.baseURL}/Auth/refresh`,
                     {},
-                    { withCredentials: true }
+                    {
+                        withCredentials: true,
+                        headers: storedToken ? { 'Authorization': `Bearer ${storedToken}` } : {}
+                    }
                 );
                 
                 const result = data.data;
                 setAccessToken(result.accessToken, result.accessTokenExpiry);
+                localStorage.setItem('accessToken', result.accessToken);
                 scheduleProactiveRefresh(result.accessTokenExpiry);
             } catch (err) {
                 console.error('[AuthContext] Proactive refresh failed:', err);
@@ -78,6 +84,7 @@ export const AuthProvider = ({ children }) => {
             if (!data?.accessToken) throw new Error('Sunucudan geçerli bir oturum alınamadı.');
 
             setAccessToken(data.accessToken, data.accessTokenExpiry);
+            localStorage.setItem('accessToken', data.accessToken);
             
             const userData = { email: data.email, role: data.role };
             localStorage.setItem('user', JSON.stringify(userData));
@@ -93,16 +100,20 @@ export const AuthProvider = ({ children }) => {
     // ── Silent Refresh: sayfa açılışında oturum canlandırma ──────────────
     const silentRefresh = useCallback(async () => {
         try {
-            // Sadece axios ile direkt çağrı
+            // Sayfa yenilenince memory'deki token gider; localStorage'dan kopyayı al
+            const storedToken = localStorage.getItem('accessToken');
             const { data } = await axios.post(
                 `${api.defaults.baseURL}/Auth/refresh`,
                 {},
-                { withCredentials: true }
+                {
+                    withCredentials: true,
+                    headers: storedToken ? { 'Authorization': `Bearer ${storedToken}` } : {}
+                }
             );
             
             const result = data.data;
             setAccessToken(result.accessToken, result.accessTokenExpiry);
-            
+            localStorage.setItem('accessToken', result.accessToken);
             const userData = { email: result.email, role: result.role };
             localStorage.setItem('user', JSON.stringify(userData));
             setUser(userData);

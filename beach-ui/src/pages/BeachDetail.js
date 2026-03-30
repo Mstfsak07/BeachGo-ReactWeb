@@ -109,13 +109,14 @@ const BeachDetail = () => {
 
   const rating = beach.rating || 4.8;
   const reviewCount = beach.reviewCount || 342;
+  const occupancyRate = beach.occupancyRate ?? beach.occupancyPercent ?? 45;
   const facilities = beach.facilities || ['WiFi', 'Şemsiye', 'Havlu', 'Duş', 'Otopark', 'Kabin'];
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} className="min-h-screen bg-white pb-10 lg:pb-20 font-sans">
       {/* Hero Section */}
       <div className="relative h-[50vh] md:h-[75vh] w-full overflow-hidden">
-        <motion.img initial={{ scale: 1.1 }} animate={{ scale: 1 }} transition={{ duration: 1.5 }} src={beach.imageUrl || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e'} className="w-full h-full object-cover" />
+        <motion.img initial={{ scale: 1.1 }} animate={{ scale: 1 }} transition={{ duration: 1.5 }} src={beach.imageUrl || beach.coverImageUrl || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e'} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
         
         {/* Top Actions */}
@@ -148,7 +149,7 @@ const BeachDetail = () => {
           <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="lg:col-span-8 space-y-12 order-1">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6">
               {[{ icon: Users, label: 'Kapasite', val: beach.capacity || 500, bg: 'bg-blue-50', c: 'text-blue-600' },
-                { icon: TrendingUp, label: 'Doluluk', val: `%${beach.occupancyRate || 45}`, bg: 'bg-rose-50', c: 'text-rose-600' },
+                { icon: TrendingUp, label: 'Doluluk', val: `%${occupancyRate}`, bg: 'bg-rose-50', c: 'text-rose-600' },
                 { icon: Clock, label: 'Açılış', val: '08:00', bg: 'bg-amber-50', c: 'text-amber-600' },
                 { icon: Umbrella, label: 'Hizmet', val: 'Full Set', bg: 'bg-emerald-50', c: 'text-emerald-600' }
               ].map((s, i) => (

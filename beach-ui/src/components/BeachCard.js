@@ -4,13 +4,13 @@ import { Star, MapPin, TrendingUp, ShieldCheck } from 'lucide-react';
 
 const BeachCard = ({ beach }) => {
   const navigate = useNavigate();
-  const beachImage = beach.imageUrl || `https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80`;
+  const beachImage = beach.imageUrl || beach.coverImageUrl || `https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80`;
 
   const handleCardClick = () => {
     navigate(`/beaches/${beach.id}`);
   };
 
-  const occupancy = beach.occupancyRate || 45;
+  const occupancy = beach.occupancyRate ?? beach.occupancyPercent ?? 45;
 
   return (
     <div 
@@ -68,7 +68,7 @@ const BeachCard = ({ beach }) => {
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-blue-600 mb-1">
              <MapPin size={14} />
-             <span className="text-[11px] font-black uppercase tracking-widest">{beach.location || 'Antalya, TR'}</span>
+             <span className="text-[11px] font-black uppercase tracking-widest">{beach.location || beach.address || 'Antalya, TR'}</span>
           </div>
           <h3 className="text-2xl font-bold text-slate-900 tracking-tight line-clamp-1 group-hover:text-blue-600 transition-colors">
             {beach.name}

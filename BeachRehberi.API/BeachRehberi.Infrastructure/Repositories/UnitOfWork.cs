@@ -11,7 +11,7 @@ namespace BeachRehberi.Infrastructure.Repositories;
 /// </summary>
 public class UnitOfWork : IUnitOfWork
 {
-    private readonly AppDbContext _context;
+    private readonly BeachDbContext _context;
 
     private IRepository<Beach>? _beaches;
     private IRepository<Reservation>? _reservations;

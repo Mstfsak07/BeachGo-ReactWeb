@@ -12,10 +12,10 @@ namespace BeachRehberi.Infrastructure.Repositories;
 /// </summary>
 public class BaseRepository<T> : IRepository<T> where T : BaseEntity
 {
-    protected readonly AppDbContext _context;
+    protected readonly BeachDbContext _context;
     protected readonly DbSet<T> _dbSet;
 
-    public BaseRepository(AppDbContext context)
+    public BaseRepository(BeachDbContext context)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
         _dbSet = context.Set<T>();

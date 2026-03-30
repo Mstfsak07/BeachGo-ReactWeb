@@ -70,7 +70,8 @@ public class BeachCommandHandler : IRequestHandler<CreateBeachCommand, ServiceRe
                 request.BeachRequest.Description,
                 request.BeachRequest.Location,
                 request.BeachRequest.Latitude,
-                request.BeachRequest.Longitude
+                request.BeachRequest.Longitude,
+                0 // ownerId: authenticated user id'ye bakılır ama burada 0 kullanıyoruz
             );
 
             _context.Beaches.Add(beach);
@@ -80,7 +81,7 @@ public class BeachCommandHandler : IRequestHandler<CreateBeachCommand, ServiceRe
             {
                 Id = beach.Id,
                 Name = beach.Name,
-                Location = beach.Address,
+                Address = beach.Address,
                 Description = beach.Description,
                 Latitude = beach.Latitude,
                 Longitude = beach.Longitude,

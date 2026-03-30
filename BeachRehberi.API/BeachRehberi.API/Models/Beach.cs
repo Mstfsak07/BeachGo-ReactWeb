@@ -33,6 +33,9 @@ public class Beach
     public string GooglePlaceId { get; set; } = string.Empty;
     public string CoverImageUrl { get; set; } = string.Empty;
 
+    // Frontend uyumu: JSON'da "imageUrl" olarak serialize edilir
+    public string ImageUrl => CoverImageUrl;
+
     public bool HasSunbeds { get; set; }
     public bool HasShower { get; set; }
     public bool HasParking { get; set; }
@@ -57,6 +60,26 @@ public class Beach
     public int Capacity { get; set; }
 
     public bool IsDeleted { get; private set; }
+
+    // Computed: Frontend uyumluluğu için facilities listesi
+    public List<string> Facilities
+    {
+        get
+        {
+            var list = new List<string>();
+            if (HasSunbeds) list.Add("Şezlong");
+            if (HasShower) list.Add("Duş");
+            if (HasParking) list.Add("Otopark");
+            if (HasRestaurant) list.Add("Restoran");
+            if (HasBar) list.Add("Bar");
+            if (HasWifi) list.Add("WiFi");
+            if (HasWaterSports) list.Add("Su Sporları");
+            if (HasPool) list.Add("Yüzme Havuzu");
+            if (IsChildFriendly) list.Add("Çocuk Dostu");
+            if (HasAccessibility) list.Add("Engelli Erişim");
+            return list;
+        }
+    }
 
     public ICollection<BeachPhoto> Photos { get; set; } = new List<BeachPhoto>();
     public ICollection<Review> Reviews { get; set; } = new List<Review>();

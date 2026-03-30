@@ -77,16 +77,22 @@ api.interceptors.response.use(
 
       try {
         // Refresh isteği: direkt axios kullanarak bu interceptor'ı atlatıyoruz
+        // Memory'deki token yoksa (sayfa yenilendi) localStorage'dan oku
+        const tokenForRefresh = getAccessToken() || localStorage.getItem('accessToken');
         const { data } = await axios.post(
           `${api.defaults.baseURL}/Auth/refresh`,
           {},
-          { withCredentials: true }
+          {
+            withCredentials: true,
+            headers: tokenForRefresh ? { 'Authorization': `Bearer ${tokenForRefresh}` } : {}
+          }
         );
 
         const result = data.data;
         if (!result?.accessToken) throw new Error('Refresh failed - no access token');
 
         setAccessToken(result.accessToken, result.accessTokenExpiry);
+        localStorage.setItem('accessToken', result.accessToken);
 
         // Bundan sonraki tüm requestler için default header'ı güncelle
         api.defaults.headers.common['Authorization'] = `Bearer ${result.accessToken}`;

@@ -5,6 +5,7 @@ using BeachRehberi.API.Models;
 using BeachRehberi.API.Models.Enums;
 using BeachRehberi.API.Services;
 using BeachRehberi.API.Extensions;
+using BeachRehberi.API.DTOs;
 using System.Security.Claims;
 
 namespace BeachRehberi.API.Controllers
@@ -60,7 +61,7 @@ namespace BeachRehberi.API.Controllers
         }
 
         [HttpPut("beach")]
-        public async Task<IActionResult> UpdateMyBeach([FromBody] Beach beachUpdate)
+        public async Task<IActionResult> UpdateMyBeach([FromBody] UpdateBeachDto beachUpdate)
         {
             var beachId = GetUserBeachId();
             if (beachId == -1) return "İşletme yetkiniz bulunamadı.".ToUnauthorizedApiResponse();

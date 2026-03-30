@@ -3,9 +3,11 @@ using BeachRehberi.Domain.Entities;
 using BeachRehberi.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-using BeachRehberi.Infrastructure.Persistence;
 
-namespace BeachRehberi.Infrastructure.Repositories;
+
+using BeachRehberi.API.Data;
+
+namespace BeachRehberi.API.Repositories;
 
 /// <summary>
 /// Base repository implementation

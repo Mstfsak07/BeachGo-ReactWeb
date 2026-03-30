@@ -6,11 +6,13 @@ using BeachRehberi.Application.Features.Beaches.Queries.GetBeaches;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace BeachRehberi.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("fixed")]
 public class BeachesController : BaseController
 {
     private readonly IMediator _mediator;

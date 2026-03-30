@@ -1,10 +1,12 @@
 using BeachRehberi.Domain.Entities;
 using BeachRehberi.Domain.Interfaces;
-using BeachRehberi.Infrastructure.Repositories;
 
-using BeachRehberi.Infrastructure.Persistence;
 
-namespace BeachRehberi.Infrastructure.Repositories;
+
+
+using BeachRehberi.API.Data;
+
+namespace BeachRehberi.API.Repositories;
 
 /// <summary>
 /// Unit of Work implementation

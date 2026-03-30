@@ -12,6 +12,7 @@ namespace BeachRehberi.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("auth")]
 public class AuthController : BaseController
 {
     private readonly IMediator _mediator;

@@ -4,12 +4,14 @@ using BeachRehberi.Application.Features.Reservations.Queries.GetMyReservations;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace BeachRehberi.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
+[EnableRateLimiting("fixed")]
 public class ReservationsController : BaseController
 {
     private readonly IMediator _mediator;

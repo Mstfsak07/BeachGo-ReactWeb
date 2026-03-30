@@ -3,28 +3,34 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Services;
 using BeachRehberi.API.Middlewares;
 using BeachRehberi.API.Validators;
 using BeachRehberi.API.Mappings;
+using BeachRehberi.API.Repositories;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Mapster;
 using MapsterMapper;
 using MediatR;
-using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using BCrypt.Net;
 using System.Security.Claims;
 using BeachRehberi.API.Models;
 
+
+using BeachRehberi.Domain.Interfaces;
+
 var builder = WebApplication.CreateBuilder(args);
+
 
 // ─────────────────────────────────────────
 // 1. JWT SECRET (Must be provided in production)
 // ─────────────────────────────────────────
-var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET") 
+var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET")
                 ?? builder.Configuration["Jwt:SecretKey"];
 
 if (string.IsNullOrEmpty(jwtSecret) || (builder.Environment.IsProduction() && jwtSecret.Contains("Testing_Secret_Key")))
@@ -41,10 +47,11 @@ if (jwtSecret.Length < 32)
 var dbConn = builder.Configuration.GetConnectionString("DefaultConnection")
              ?? "Host=localhost;Database=BeachGo_Prod;Username=postgres;Password=your_password;";
 
-builder.Services.AddDbContext<BeachDbContext>(options => {
+builder.Services.AddDbContext<BeachDbContext>(options =>
+{
     // PostgreSQL entegrasyonu
     options.UseNpgsql(dbConn);
-    
+
     if (builder.Environment.IsDevelopment())
     {
         options.EnableSensitiveDataLogging();
@@ -56,6 +63,9 @@ builder.Services.AddDbContext<BeachDbContext>(options => {
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
+
+builder.Services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // ... (DI registrations) ...
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -268,7 +278,7 @@ app.UseMiddleware<JwtBlacklistMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers().RequireRateLimiter("fixed");
+app.MapControllers();
 
 // ─────────────────────────────────────────
 // AUTO MIGRATE
@@ -276,7 +286,7 @@ app.MapControllers().RequireRateLimiter("fixed");
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<BeachDbContext>();
-    try 
+    try
     {
         await db.Database.MigrateAsync();
 

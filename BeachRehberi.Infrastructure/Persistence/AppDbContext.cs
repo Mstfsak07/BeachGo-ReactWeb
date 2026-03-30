@@ -64,19 +64,26 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // ─── Global Soft-Delete ve Multi-Tenant Filtreleri ────────────────────────
-        // Filtrede TenantId denetimi oturum açmış kullanıcı null DEĞİLSE ve bir TenantId'ye SAHİPSE devreye girer.
-        // Bu sayede Super-Adminler (_currentUserService.TenantId null olanlar) tüm datayı görebilir.
+        // ─── Global Soft-Delete ve Multi-Tenant/Owner Filtreleri ────────────────────────
+        
+        // Tenant Entity'sinin kendisi merkeze ait ana yönetim tablosudur, sadece Soft-Delete filtresi uygulandı.
+        modelBuilder.Entity<Tenant>().HasQueryFilter(e => !e.IsDeleted);
+
+        // Ortak ve Dışarıya Açık / Listelenebilir Varlıklar (Müşteriler Hepsini Görebilir)
         modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
         modelBuilder.Entity<Beach>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
-        modelBuilder.Entity<Reservation>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
         modelBuilder.Entity<Review>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
         modelBuilder.Entity<BeachPhoto>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
         modelBuilder.Entity<BeachEvent>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
         modelBuilder.Entity<Subscription>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
 
-        // Tenant Entity'sinin kendisi merkeze ait ana yönetim tablosudur, sadece Soft-Delete filtresi uygulandı.
-        modelBuilder.Entity<Tenant>().HasQueryFilter(e => !e.IsDeleted);
+        // ─── OWNER VALIDATION: REZERVASYON (GİZLİ VERİ) ──────────────────────────────────
+        // Eğer Tenant ise kendi işletmesinin rezervasyonlarını (TenantId eşleşmesi)
+        // Eğer Müşteri ise SADECE KENDİ rezervasyonlarını (UserId eşleşmesi) görebilir!
+        modelBuilder.Entity<Reservation>().HasQueryFilter(e => !e.IsDeleted && 
+            (_currentUserService == null || 
+             (_currentUserService.TenantId != null && e.TenantId == _currentUserService.TenantId) ||
+             (_currentUserService.TenantId == null && _currentUserService.UserId != null && e.UserId == _currentUserService.UserId)));
 
         // ─── User ─────────────────────────────────────────────────
         modelBuilder.Entity<User>(entity =>

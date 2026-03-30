@@ -1,0 +1,1 @@
+(_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId)

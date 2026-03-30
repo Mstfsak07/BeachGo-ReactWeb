@@ -1,0 +1,4 @@
+if (!entry.Entity.TenantId.HasValue && _currentUserService?.TenantId != null)
+{
+    entry.Entity.TenantId = _currentUserService.TenantId;
+}

@@ -1,26 +1,22 @@
 import api from '../api/axios';
 
 const reservationService = {
-  // Rezervasyon oluştur
   create: async (beachId, reservationDate) => {
     const response = await api.post('/Reservations', {
       beachId,
       reservationDate
     });
-    return response.data;
+    return response;
   },
 
-  // Kullanıcının rezervasyonlarını getir
   getMyReservations: async () => {
     const response = await api.get('/Reservations/my');
-    return response.data;
+    return response;
   },
 
-  // Rezervasyon iptal et
-  delete: async (id) => {
+  cancelReservation: async (id) => {
     const response = await api.delete(`/Reservations/${id}`);
-    return response.data;
+    return response;
   }
 };
-
 export default reservationService;

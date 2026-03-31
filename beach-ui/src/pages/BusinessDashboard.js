@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { Users, Calendar, LogOut, TrendingUp, Check, X, Bell } from 'lucide-react';
-import apiClient from '../api/client';
+import apiClient from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 
 const BusinessDashboard = () => {

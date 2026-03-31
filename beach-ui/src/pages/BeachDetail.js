@@ -66,11 +66,18 @@ const BeachDetail = () => {
     setResLoading(true);
     try {
       const result = await reservationService.create(parseInt(id), resDate);
-      if (result.success) {
+      console.log("CREATE RESERVATION RESULT", result);
+      if (
+        result.status === 200 ||
+        result.status === 201 ||
+        result.data?.success === true
+      ) {
         toast.success('Rezervasyonunuz basariyla olusturuldu!');
+      } else {
+        toast.error(result.data?.message || 'Rezervasyon olusturulamadi.');
       }
     } catch (err) {
-      toast.error('Rezervasyon olusturulamadi. Lutfen tekrar deneyin.');
+      toast.error(err.response?.data?.message || 'Rezervasyon olusturulamadi. Lutfen tekrar deneyin.');
     } finally {
       setResLoading(false);
     }

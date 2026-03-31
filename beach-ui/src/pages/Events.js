@@ -10,7 +10,8 @@ const Events = () => {
     const fetchEvents = async () => {
       try {
         const res = await getEvents();
-        setEvents(res.data);
+        const data = res.data?.data?.items ?? res.data?.data ?? [];
+        setEvents(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error(err);
       } finally {

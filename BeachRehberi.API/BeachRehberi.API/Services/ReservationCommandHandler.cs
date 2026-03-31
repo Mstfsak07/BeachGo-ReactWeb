@@ -7,12 +7,12 @@ using System.Security.Claims;
 
 namespace BeachRehberi.API.Services;
 
-public record CreateReservationCommand(CreateReservationDto ReservationDto) : IRequest<ServiceResult<Reservation>>;
+public record CreateReservationCommand(CreateReservationDto ReservationDto) : IRequest<ServiceResult<ReservationResponseDto>>;
 public record GetMyReservationsQuery() : IRequest<ServiceResult<List<ReservationListItemDto>>>;
 public record CancelReservationCommand(int ReservationId) : IRequest<ServiceResult<bool>>;
 
 public class ReservationCommandHandler :
-    IRequestHandler<CreateReservationCommand, ServiceResult<Reservation>>,
+    IRequestHandler<CreateReservationCommand, ServiceResult<ReservationResponseDto>>,
     IRequestHandler<GetMyReservationsQuery, ServiceResult<List<ReservationListItemDto>>>,
     IRequestHandler<CancelReservationCommand, ServiceResult<bool>>
 {
@@ -38,11 +38,11 @@ public class ReservationCommandHandler :
         return null;
     }
 
-    public async Task<ServiceResult<Reservation>> Handle(CreateReservationCommand request, CancellationToken cancellationToken)
+    public async Task<ServiceResult<ReservationResponseDto>> Handle(CreateReservationCommand request, CancellationToken cancellationToken)
     {
         var userId = GetAuthenticatedUserId();
         if (!userId.HasValue)
-            return ServiceResult<Reservation>.FailureResult("Yetkisiz erişim. Lütfen giriş yapın.");
+            return ServiceResult<ReservationResponseDto>.FailureResult("Yetkisiz erişim. Lütfen giriş yapın.");
 
         return await _reservationService.CreateAsync(request.ReservationDto, userId.Value);
     }
@@ -63,7 +63,6 @@ public class ReservationCommandHandler :
         if (!userId.HasValue)
             return ServiceResult<bool>.FailureResult("Yetkisiz erişim. Kullanıcı kimliği belirlenemedi.");
 
-        var result = await _reservationService.CancelAsync(request.ReservationId, userId.Value);
-        return result;
+        return await _reservationService.CancelAsync(request.ReservationId, userId.Value);
     }
 }

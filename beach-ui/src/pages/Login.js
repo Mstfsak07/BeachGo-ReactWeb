@@ -1,22 +1,30 @@
 import React, { useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link, useLocation, Navigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
+
+  // Zaten giriş yapılmışsa ana sayfaya yönlendir
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+
+    if (isSubmitting) return;
 
     try {
+      setIsSubmitting(true);
+      console.log("LOGIN REQUEST");
       await login(email, password);
       toast.success("Başarıyla giriş yapıldı!");
 
@@ -30,7 +38,7 @@ const Login = () => {
       toast.error(errorMsg);
       console.error("Login error", err);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -76,10 +84,10 @@ const Login = () => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={isSubmitting}
               className="w-full py-4 bg-blue-600 text-white rounded-xl text-sm font-black tracking-widest uppercase disabled:opacity-70 flex items-center justify-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200"
             >
-              {loading ? "Yükleniyor..." : "Giriş Yap"}
+              {isSubmitting ? "Giriş yapılıyor..." : "Giriş Yap"}
             </button>
           </form>
 

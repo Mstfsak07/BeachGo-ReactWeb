@@ -129,7 +129,23 @@ export const AuthProvider = ({ children }) => {
     }, [clearSession, scheduleProactiveRefresh]);
 
     useEffect(() => {
-        silentRefresh();
+        const initializeAuth = async () => {
+            const storedUserData = localStorage.getItem('user');
+            if (storedUserData) {
+                try {
+                    const parsedUser = JSON.parse(storedUserData);
+                    setUser(parsedUser); // Set user immediately for UI consistency
+                } catch (error) {
+                    console.error('[AuthContext] Error parsing stored user data:', error);
+                    clearSession(); // Clear session if stored user data is corrupt
+                }
+            }
+
+            // Always try to silent refresh to validate/refresh the token
+            await silentRefresh();
+        };
+        
+        initializeAuth();
 
         const handleAuthLogout = () => {
             clearSession();

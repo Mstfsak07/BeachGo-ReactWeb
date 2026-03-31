@@ -34,9 +34,11 @@ const Navbar = () => {
 
   const filteredLinks = navLinks.filter(link => {
     if (!link.role) return true;
-    if (link.role === "User") return isAuthenticated && user?.role === "User";
-    if (link.role === "Business") return isAuthenticated && (user?.role === "Business" || user?.role === "Admin");
-    if (link.role === "Admin") return isAuthenticated && user?.role === "Admin";
+    if (!isAuthenticated) return false;
+    const role = user?.role?.toLowerCase();
+    if (link.role === "User") return role === "user";
+    if (link.role === "Business") return role === "business" || role === "admin";
+    if (link.role === "Admin") return role === "admin";
     return false;
   });
 

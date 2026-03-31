@@ -14,9 +14,9 @@ const MyReservations = () => {
   const fetchReservations = async () => {
     try {
       const result = await reservationService.getMyReservations();
-      if (result.success) {
-        setReservations(result.data);
-      }
+      console.log("MY RESERVATIONS RESULT", result);
+      const data = result.data?.data ?? result.data ?? [];
+      setReservations(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Fetch reservations error:', err);
       toast.error('Rezervasyonlarınız yüklenemedi.');
@@ -26,19 +26,24 @@ const MyReservations = () => {
   };
 
   const handleCancel = async (id) => {
-    if (!window.confirm('Bu rezervasyonu iptal etmek istediğinizden emin misiniz?')) return;
-
+    if (!window.confirm("Bu rezervasyonu iptal etmek istediğinizden emin misiniz?")) {
+      return;
+    }
     try {
-      const result = await reservationService.delete(id);
-      if (result.success) {
-        toast.success(result.message || 'Rezervasyon iptal edildi.');
-        setReservations(reservations.filter(r => r.id !== id));
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'İptal işlemi başarısız oldu.');
+      const result = await reservationService.cancelReservation(id);
+      console.log("DELETE RESULT", result);
+      // 200/204 dönüyorsa backend başarılı — success field'ına bakma
+      setReservations((prev) => {
+        const filtered = prev.filter((r) => (r.id ?? r.reservationId) !== id);
+        console.log("Filtered reservations:", filtered);
+        return filtered;
+      });
+      toast.success("Rezervasyon iptal edildi");
+    } catch (error) {
+      console.error("DELETE ERROR", error);
+      toast.error(error.response?.data?.message || "Rezervasyon silinirken hata oluştu");
     }
   };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -63,9 +68,11 @@ const MyReservations = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {reservations.map((res) => (
-              <div 
-                key={res.id} 
+            {reservations.map((res) => {
+              const resId = res.id ?? res.reservationId;
+              return (
+              <div
+                key={resId}
                 className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-4">
@@ -88,14 +95,15 @@ const MyReservations = () => {
                 </div>
 
                 <button
-                  onClick={() => handleCancel(res.id)}
+                  onClick={() => handleCancel(resId)}
                   className="flex items-center justify-center gap-2 px-6 py-3 bg-red-50 text-red-500 rounded-xl font-bold text-sm hover:bg-red-500 hover:text-white transition-all group"
                 >
                   <Trash2 size={16} className="group-hover:scale-110 transition-transform" />
                   İptal Et
                 </button>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

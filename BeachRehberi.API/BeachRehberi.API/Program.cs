@@ -42,15 +42,14 @@ if (jwtSecret.Length < 32)
     throw new InvalidOperationException("JWT Secret must be at least 32 characters long.");
 
 // ─────────────────────────────────────────
-// DATABASE CONFIGURATION (PostgreSQL)
+// DATABASE CONFIGURATION (SQLite)
 // ─────────────────────────────────────────
 var dbConn = builder.Configuration.GetConnectionString("DefaultConnection")
-             ?? "Host=localhost;Database=BeachGo_Prod;Username=postgres;Password=your_password;";
-
+             ?? "Data Source=beachgo.db";
 builder.Services.AddDbContext<BeachDbContext>(options =>
 {
     // PostgreSQL entegrasyonu
-    options.UseNpgsql(dbConn);
+    options.UseSqlite(dbConn);
 
     if (builder.Environment.IsDevelopment())
     {
@@ -121,7 +120,7 @@ builder.Services.AddRateLimiter(options =>
     options.AddFixedWindowLimiter("auth", opt =>
     {
         opt.Window = TimeSpan.FromMinutes(1);
-        opt.PermitLimit = 5;
+        opt.PermitLimit = 20;
         opt.QueueLimit = 0;
     });
 });

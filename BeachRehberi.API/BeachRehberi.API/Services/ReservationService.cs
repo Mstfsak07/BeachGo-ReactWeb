@@ -19,25 +19,25 @@ public class ReservationService : IReservationService
         _context = context;
     }
 
-    public async Task<ServiceResult<Reservation>> CreateAsync(CreateReservationDto dto, int userId)
+    public async Task<ServiceResult<ReservationResponseDto>> CreateAsync(CreateReservationDto dto, int userId)
     {
         if (dto.ReservationDate.Date < DateTime.UtcNow.Date)
-            return ServiceResult<Reservation>.FailureResult("Geçmiş bir tarih için rezervasyon yapılamaz.");
+            return ServiceResult<ReservationResponseDto>.FailureResult("Geçmiş bir tarih için rezervasyon yapılamaz.");
 
         var beach = await _context.Beaches.FirstOrDefaultAsync(b => b.Id == dto.BeachId && !b.IsDeleted);
         if (beach == null)
-            return ServiceResult<Reservation>.FailureResult("Plaj bulunamadı.");
+            return ServiceResult<ReservationResponseDto>.FailureResult("Plaj bulunamadı.");
 
-        var exists = await _context.Reservations.AnyAsync(r => 
-            r.UserId == userId && 
-            r.BeachId == dto.BeachId && 
+        var exists = await _context.Reservations.AnyAsync(r =>
+            r.UserId == userId &&
+            r.BeachId == dto.BeachId &&
             r.ReservationDate.Date == dto.ReservationDate.Date &&
             !r.IsDeleted &&
             r.Status != ReservationStatus.Cancelled &&
             r.Status != ReservationStatus.Rejected);
 
         if (exists)
-            return ServiceResult<Reservation>.FailureResult("Bu plaj için bu tarihte zaten aktif bir rezervasyonunuz bulunmaktadır.");
+            return ServiceResult<ReservationResponseDto>.FailureResult("Bu plaj için bu tarihte zaten aktif bir rezervasyonunuz bulunmaktadır.");
 
         var reservation = new Reservation
         {
@@ -51,14 +51,23 @@ public class ReservationService : IReservationService
         _context.Reservations.Add(reservation);
         await _context.SaveChangesAsync();
 
-        return ServiceResult<Reservation>.SuccessResult(reservation, "Rezervasyon başarıyla oluşturuldu.");
+        var responseDto = new ReservationResponseDto
+        {
+            Id = reservation.Id,
+            ReservationDate = reservation.ReservationDate,
+            Status = reservation.Status.ToString(),
+            BeachId = reservation.BeachId,
+            BeachName = beach.Name
+        };
+
+        return ServiceResult<ReservationResponseDto>.SuccessResult(responseDto, "Rezervasyon başarıyla oluşturuldu.");
     }
 
     public async Task<List<ReservationListItemDto>> GetByUserAsync(int userId)
     {
         return await _context.Reservations
             .Include(r => r.Beach)
-            .Where(r => r.UserId == userId && !r.IsDeleted)
+            .Where(r => r.UserId == userId && !r.IsDeleted && r.Status != ReservationStatus.Cancelled)
             .OrderByDescending(r => r.ReservationDate)
             .Select(r => new ReservationListItemDto
             {

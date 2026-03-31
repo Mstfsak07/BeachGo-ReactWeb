@@ -108,6 +108,27 @@ public class BusinessService : IBusinessService
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
 
+    public async Task<BusinessStatsDto> GetStatsAsync(int beachId)
+    {
+        var today = DateTime.UtcNow.Date;
+
+        var total = await _db.Reservations
+            .CountAsync(r => r.BeachId == beachId && !r.IsDeleted);
+
+        var todayCheckins = await _db.Reservations
+            .CountAsync(r => r.BeachId == beachId && !r.IsDeleted && r.ReservationDate.Date == today);
+
+        // TODO: Reservation modelinde TotalPrice alanı eklenince burayı güncelle
+        decimal estimatedEarnings = 0;
+
+        return new BusinessStatsDto
+        {
+            TotalReservations = total,
+            TodayCheckins = todayCheckins,
+            EstimatedEarnings = estimatedEarnings
+        };
+    }
+
     public async Task<ServiceResult<object>> UpdateReservationStatusAsync(int id, int beachId, ReservationStatus status, string? comment = null)
     {
         var res = await _db.Reservations

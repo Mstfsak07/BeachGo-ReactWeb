@@ -36,17 +36,7 @@ namespace BeachRehberi.API.Controllers
             var beachId = GetUserBeachId();
             if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
-            // Gerçek projede bu veriler servisten gelmeli
-            var stats = new {
-                TotalReservations = 124,
-                TodayCheckins = 18,
-                OccupancyRate = 65,
-                EstimatedEarnings = 12400,
-                RecentActivity = new[] {
-                    new { Name = "Murat", Action = "Yeni Rezervasyon", Time = "10 dk önce" },
-                    new { Name = "Ayşe", Action = "İptal Talebi", Time = "45 dk önce" }
-                }
-            };
+            var stats = await _businessService.GetStatsAsync(beachId);
             return stats.ToOkApiResponse();
         }
 

@@ -81,6 +81,13 @@ public class UpdateBeachDto
     public string TodaySpecial { get; set; } = string.Empty;
 }
 
+public class BusinessStatsDto
+{
+    public int TotalReservations { get; set; }
+    public int TodayCheckins { get; set; }
+    public decimal EstimatedEarnings { get; set; }
+}
+
 public class BeachResponseDto
 {
     public int Id { get; set; }

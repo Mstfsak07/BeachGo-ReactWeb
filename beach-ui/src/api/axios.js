@@ -50,6 +50,9 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// ── Public routes: bu sayfalarda 401 → refresh veya redirect yapma
+const PUBLIC_ROUTES = ['/login', '/register', '/business-register'];
+
 // ── Response interceptor: 401 → refresh → retry
 api.interceptors.response.use(
   (response) => response,
@@ -58,6 +61,17 @@ api.interceptors.response.use(
 
     // 401 geldi ve bu istek daha önce retry edilmemişse
     if (error.response?.status === 401 && !originalRequest._retry) {
+
+      // Public sayfadaysak refresh/redirect yapma
+      if (PUBLIC_ROUTES.includes(window.location.pathname)) {
+        return Promise.reject(error);
+      }
+
+      // Kullanıcı hiç giriş yapmamışsa (token yok) refresh deneme
+      const storedToken = getAccessToken() || localStorage.getItem('accessToken');
+      if (!storedToken) {
+        return Promise.reject(error);
+      }
 
       // Refresh isteği kendisi 401 döndürdüyse veya endpoint /Auth/login ise → logout yap
       if (originalRequest.url?.includes('/Auth/refresh') || originalRequest.url?.includes('/Auth/login')) {
@@ -79,7 +93,6 @@ api.interceptors.response.use(
 
       try {
         // Refresh isteği: direkt axios kullanarak bu interceptor'ı atlatıyoruz
-        // Memory'deki token yoksa (sayfa yenilendi) localStorage'dan oku
         const tokenForRefresh = getAccessToken() || localStorage.getItem('accessToken');
         const { data } = await axios.post(
           `${api.defaults.baseURL}/Auth/refresh`,
@@ -100,7 +113,7 @@ api.interceptors.response.use(
         api.defaults.headers.common['Authorization'] = `Bearer ${result.accessToken}`;
 
         processQueue(null, result.accessToken);
-        
+
         originalRequest.headers.Authorization = `Bearer ${result.accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {

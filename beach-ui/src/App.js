@@ -19,6 +19,8 @@ import Dashboard from "./pages/Dashboard";
 import AdminPanel from "./pages/AdminPanel";
 import BeachSettings from "./pages/BeachSettings";
 import Events from "./pages/Events";
+import DashboardStats from "./pages/DashboardStats";
+import DashboardReservations from "./pages/DashboardReservations";
 
 function App() {
   return (
@@ -64,6 +66,24 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["Business", "Admin"]}>
                 <BeachSettings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/stats"
+            element={
+              <ProtectedRoute allowedRoles={["Business", "Admin"]}>
+                <DashboardStats />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/reservations"
+            element={
+              <ProtectedRoute allowedRoles={["Business", "Admin"]}>
+                <DashboardReservations />
               </ProtectedRoute>
             }
           />

@@ -1,5 +1,9 @@
 import axios from '../api/axios';
 
+export const register = async (businessName, contactName, email, password, beachId) => {
+  return await axios.post('/Auth/register', { businessName, contactName, email, password, beachId });
+};
+
 export const getBusinessReservations = async () => {
   return await axios.get('/business/reservations');
 };
@@ -17,6 +21,7 @@ export const getBusinessBeach = async () => {
 };
 
 export default {
+  register,
   getBusinessReservations,
   getBusinessStats,
   updateReservationStatus,

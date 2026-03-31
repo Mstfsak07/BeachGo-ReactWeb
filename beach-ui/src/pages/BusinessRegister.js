@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 
 const BusinessRegister = () => {
     const [formData, setFormData] = useState({
+        businessName: '',
         contactName: '',
         email: '',
         password: '',
@@ -24,7 +25,7 @@ const BusinessRegister = () => {
             return toast.error('Şifreler uyuşmuyor.');
         }
 
-        if (!formData.contactName || !formData.email || !formData.password) {
+        if (!formData.contactName || !formData.email || !formData.password || !formData.businessName) {
             return toast.error('Tüm alanları doldurunuz.');
         }
 
@@ -33,6 +34,7 @@ const BusinessRegister = () => {
         try {
             // 1. Business Register isteği
             await businessService.register(
+                formData.businessName,
                 formData.contactName,
                 formData.email,
                 formData.password,
@@ -75,6 +77,15 @@ const BusinessRegister = () => {
 
                 <div className="card p-8 bg-white shadow-2xl border-white ring-1 ring-slate-100 rounded-2xl">
                     <form onSubmit={handleSubmit} className="space-y-5">
+                        <input
+                            type="text"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"
+                            placeholder="İşletme Adı"
+                            required
+                            value={formData.businessName}
+                            onChange={(e) => setFormData({ ...formData, businessName: e.target.value })}
+                        />
+
                         <input
                             type="text"
                             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition"

@@ -31,6 +31,15 @@ public class Reservation
 
     public ReservationStatus Status { get; set; } = ReservationStatus.Pending;
 
+    public int PersonCount { get; set; }
+
+    public int SunbedCount { get; set; }
+
+    public string? Notes { get; set; }
+
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal TotalPrice { get; set; }
+
     // Reservation Business Logic Methods
     public void Approve(string? comment = null) 
     {

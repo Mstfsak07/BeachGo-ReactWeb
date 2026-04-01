@@ -6,7 +6,6 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     const { user, loading, isAuthenticated } = useAuth();
     const location = useLocation();
 
-    // Uygulama hala yükleniyorsa (Silent Refresh bitmediyse)
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -15,14 +14,12 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         );
     }
 
-    // Kullanıcı yoksa login'e yönlendir
     if (!isAuthenticated) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // Rol kontrolü
     if (allowedRoles && !allowedRoles.includes(user?.role)) {
-        return <Navigate to="/" replace />;
+        return <Navigate to="/unauthorized" replace />;
     }
 
     return children;

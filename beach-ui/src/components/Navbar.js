@@ -27,19 +27,16 @@ const Navbar = () => {
   const navLinks = [
     { name: "Ana Sayfa", path: "/" },
     { name: "Plajlar", path: "/beaches" },
-    { name: "Rezervasyonlarım", path: "/my-reservations", role: "User" },
-    { name: "Dashboard", path: "/dashboard", role: "Business" },
-    { name: "Admin Panel", path: "/admin", role: "Admin" },
+    { name: "Rezervasyonlarım", path: "/my-reservations", requireAuth: true, roles: ["User"] },
+    { name: "Dashboard", path: "/dashboard", requireAuth: true, roles: ["Business", "Admin"] },
+    { name: "Admin Panel", path: "/admin", requireAuth: true, roles: ["Admin"] },
   ];
 
   const filteredLinks = navLinks.filter(link => {
-    if (!link.role) return true;
+    if (!link.requireAuth) return true;
     if (!isAuthenticated) return false;
-    const role = user?.role?.toLowerCase();
-    if (link.role === "User") return role === "user";
-    if (link.role === "Business") return role === "business" || role === "admin";
-    if (link.role === "Admin") return role === "admin";
-    return false;
+    if (!link.roles) return true;
+    return link.roles.includes(user?.role);
   });
 
   const isHomePage = location.pathname === "/";

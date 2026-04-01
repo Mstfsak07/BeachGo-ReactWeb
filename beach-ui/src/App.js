@@ -1,11 +1,12 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
 import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import { useAuth } from "./context/AuthContext";
 
 import Home from "./pages/Home";
 import Beaches from "./pages/Beaches";
@@ -21,6 +22,18 @@ import BeachSettings from "./pages/BeachSettings";
 import Events from "./pages/Events";
 import DashboardStats from "./pages/DashboardStats";
 import DashboardReservations from "./pages/DashboardReservations";
+import Unauthorized from "./pages/Unauthorized";
+
+// Giriş yapmış kullanıcıyı login/register'dan uygun sayfaya yönlendir
+const GuestOnlyRoute = ({ children }) => {
+  const { isAuthenticated, loading, user } = useAuth();
+  if (loading) return null;
+  if (isAuthenticated) {
+    if (user?.role === "Business" || user?.role === "Admin") return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
+  }
+  return children;
+};
 
 function App() {
   return (
@@ -30,14 +43,20 @@ function App() {
         <Navbar />
 
         <Routes>
+          {/* Public */}
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/business-register" element={<BusinessRegister />} />
-
           <Route path="/beaches" element={<Beaches />} />
           <Route path="/beaches/:id" element={<BeachDetail />} />
+          <Route path="/events" element={<Events />} />
+          <Route path="/reservation-check" element={<ReservationCheck />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
 
+          {/* Guest only — authenticated users are redirected */}
+          <Route path="/login" element={<GuestOnlyRoute><Login /></GuestOnlyRoute>} />
+          <Route path="/register" element={<GuestOnlyRoute><Register /></GuestOnlyRoute>} />
+          <Route path="/business-register" element={<GuestOnlyRoute><BusinessRegister /></GuestOnlyRoute>} />
+
+          {/* Auth required — any role */}
           <Route
             path="/my-reservations"
             element={
@@ -47,11 +66,7 @@ function App() {
             }
           />
 
-          <Route
-            path="/reservation-check"
-            element={<ReservationCheck />}
-          />
-
+          {/* Business + Admin only */}
           <Route
             path="/dashboard"
             element={
@@ -60,7 +75,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/dashboard/beach-settings"
             element={
@@ -69,7 +83,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/dashboard/stats"
             element={
@@ -78,7 +91,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           <Route
             path="/dashboard/reservations"
             element={
@@ -88,8 +100,7 @@ function App() {
             }
           />
 
-          <Route path="/events" element={<Events />} />
-
+          {/* Admin only */}
           <Route
             path="/admin"
             element={
@@ -98,7 +109,11 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Catch-all — bilinmeyen route'lar anasayfaya */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+
         <Footer />
       </Router>
     </AuthProvider>

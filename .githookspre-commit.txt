@@ -1,6 +1,4 @@
-#!/bin/bash
-
-git diff --cached | claude "
+$review = git diff --cached | claude @"
 [audit + redteam]
 
 Bu değişiklikleri incele.
@@ -10,9 +8,11 @@ Bu değişiklikleri incele.
 
 Ciddi sorun varsa BLOCK yaz.
 Sorun yoksa OK yaz.
-" > .claude-review.txt
+"@
 
-if grep -q "BLOCK" .claude-review.txt; then
-  cat .claude-review.txt
-  exit 1
-fi
+$review | Out-File .claude-review.txt
+
+if ($review -match "BLOCK") {
+    Write-Host $review
+    exit 1
+}

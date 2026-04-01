@@ -1,5 +1,6 @@
 using BeachRehberi.API.Data;
 using BeachRehberi.API.DTOs;
+using BeachRehberi.API.DTOs.Reservation;
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Models.Enums;
 using Microsoft.EntityFrameworkCore;

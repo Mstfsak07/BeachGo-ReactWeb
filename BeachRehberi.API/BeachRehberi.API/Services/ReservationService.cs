@@ -45,7 +45,11 @@ public class ReservationService : IReservationService
             BeachId = dto.BeachId,
             ReservationDate = dto.ReservationDate.Date,
             CreatedAt = DateTime.UtcNow,
-            Status = ReservationStatus.Pending
+            Status = ReservationStatus.Pending,
+            PersonCount = dto.PersonCount,
+            SunbedCount = dto.SunbedCount,
+            Notes = dto.Notes,
+            TotalPrice = dto.TotalPrice
         };
 
         _context.Reservations.Add(reservation);
@@ -67,7 +71,9 @@ public class ReservationService : IReservationService
     {
         return await _context.Reservations
             .Include(r => r.Beach)
-            .Where(r => r.UserId == userId && !r.IsDeleted && r.Status != ReservationStatus.Cancelled)
+            .Where(r => r.UserId == userId && !r.IsDeleted &&
+                        r.Status != ReservationStatus.Cancelled &&
+                        r.Status != ReservationStatus.Rejected)
             .OrderByDescending(r => r.ReservationDate)
             .Select(r => new ReservationListItemDto
             {

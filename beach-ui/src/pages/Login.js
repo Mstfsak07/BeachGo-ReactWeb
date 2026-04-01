@@ -24,7 +24,6 @@ const Login = () => {
 
     try {
       setIsSubmitting(true);
-      console.log("LOGIN REQUEST");
       await login(email, password);
       toast.success("Başarıyla giriş yapıldı!");
 

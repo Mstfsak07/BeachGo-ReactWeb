@@ -1,0 +1,18 @@
+#!/bin/bash
+
+git diff --cached | claude "
+[audit + redteam]
+
+Bu değişiklikleri incele.
+- kritik bug var mı
+- null reference riski var mı
+- güvenlik sorunu var mı
+
+Ciddi sorun varsa BLOCK yaz.
+Sorun yoksa OK yaz.
+" > .claude-review.txt
+
+if grep -q "BLOCK" .claude-review.txt; then
+  cat .claude-review.txt
+  exit 1
+fi

@@ -43,7 +43,7 @@ namespace BeachRehberi.API.Controllers
                 {
                     HttpOnly = true,
                     Secure = !_env.IsDevelopment(),
-                    SameSite = SameSiteMode.Strict,
+                    SameSite = SameSiteMode.Lax,
                     Expires = DateTime.UtcNow.AddDays(7)
                 });
 
@@ -58,19 +58,12 @@ namespace BeachRehberi.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Refresh()
         {
-            // Authorization header'dan accessToken al
-            var authHeader = Request.Headers.Authorization.ToString();
-            var accessToken = authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
-                ? authHeader["Bearer ".Length..].Trim()
-                : null;
-
             var refreshToken = Request.Cookies["refreshToken"];
 
-            if (string.IsNullOrWhiteSpace(accessToken) || string.IsNullOrWhiteSpace(refreshToken))
-                return Unauthorized("Access token ya da refresh token bulunamadı");
+            if (string.IsNullOrWhiteSpace(refreshToken))
+                return Unauthorized("Refresh token bulunamadı.");
 
             var result = await _authService.RefreshTokenAsync(
-                accessToken,
                 refreshToken,
                 GetIpAddress(),
                 Request.Headers["User-Agent"].ToString()
@@ -82,7 +75,7 @@ namespace BeachRehberi.API.Controllers
                 {
                     HttpOnly = true,
                     Secure = !_env.IsDevelopment(),
-                    SameSite = SameSiteMode.Strict,
+                    SameSite = SameSiteMode.Lax,
                     Expires = DateTime.UtcNow.AddDays(7)
                 });
 
@@ -150,7 +143,7 @@ namespace BeachRehberi.API.Controllers
                     {
                         HttpOnly = true,
                         Secure = !_env.IsDevelopment(),
-                        SameSite = SameSiteMode.Strict,
+                        SameSite = SameSiteMode.Lax,
                         Expires = DateTime.UtcNow.AddDays(7)
                     });
 
@@ -208,7 +201,7 @@ namespace BeachRehberi.API.Controllers
                     {
                         HttpOnly = true,
                         Secure = !_env.IsDevelopment(),
-                        SameSite = SameSiteMode.Strict,
+                        SameSite = SameSiteMode.Lax,
                         Expires = DateTime.UtcNow.AddDays(7)
                     });
 

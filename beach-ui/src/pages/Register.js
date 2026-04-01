@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link, Navigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -13,12 +13,7 @@ const Register = () => {
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
-
-  // Zaten giriş yapılmışsa ana sayfaya yönlendir
-  if (isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();

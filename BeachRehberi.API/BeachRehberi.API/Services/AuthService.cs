@@ -92,16 +92,8 @@ public class AuthService : IAuthService
     }
 
     public async Task<ServiceResult<AuthResponse>> RefreshTokenAsync(
-        string accessTokenStr, string refreshTokenStr, string ipAddress, string userAgent)
+        string refreshTokenStr, string ipAddress, string userAgent)
     {
-        // 1. Access token'ın yapısını doğrula (süresi dolmuş olabilir ama signature geçerli olmalı)
-        var claims = _tokenService.ValidateExpiredAccessToken(accessTokenStr);
-        if (claims == null)
-            return ServiceResult<AuthResponse>.FailureResult("Geçersiz access token.");
-
-        if (!int.TryParse(claims.UserId, out int userId))
-            return ServiceResult<AuthResponse>.FailureResult("Token bilgisi hatalı.");
-
         using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
         try
         {
@@ -110,15 +102,6 @@ public class AuthService : IAuthService
 
             if (refreshToken == null)
                 return ServiceResult<AuthResponse>.FailureResult("Geçersiz refresh token.");
-
-            // KRITIK: accessToken.userId == refreshToken.userId olmalı (token pairing)
-            if (refreshToken.UserId != userId)
-            {
-                // Farklı kullanıcının token'larını birbirine karıştırma girişimi
-                await InvalidateAllSessionsAsync(refreshToken.UserId, "security_mismatch");
-                await transaction.CommitAsync();
-                return ServiceResult<AuthResponse>.FailureResult("Güvenlik ihlali tespit edildi.");
-            }
 
             // KRITIK: Revoked token → Reuse Attack → Tüm sessionları kapat
             if (refreshToken.IsRevoked)

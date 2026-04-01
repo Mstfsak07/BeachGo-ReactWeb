@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast';
 const DashboardReservations = () => {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -32,6 +33,7 @@ const DashboardReservations = () => {
   }, []);
 
   const handleStatus = async (id, action) => {
+    setActionLoadingId(id);
     try {
       if (action === 'Approved') {
         await approveReservation(id);
@@ -45,6 +47,8 @@ const DashboardReservations = () => {
     } catch (err) {
       console.error('Status update error:', err);
       toast.error('İşlem başarısız.');
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -140,15 +144,17 @@ const DashboardReservations = () => {
                           <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => handleStatus(res.id, 'Approved')}
-                              className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg"
+                              disabled={actionLoadingId === res.id}
+                              className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
                             >
-                              <CheckCircle2 size={18} />
+                              {actionLoadingId === res.id ? <Loader size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
                             </button>
                             <button
                               onClick={() => handleStatus(res.id, 'Rejected')}
-                              className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"
+                              disabled={actionLoadingId === res.id}
+                              className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
                             >
-                              <XCircle size={18} />
+                              {actionLoadingId === res.id ? <Loader size={18} className="animate-spin" /> : <XCircle size={18} />}
                             </button>
                           </div>
                         )}

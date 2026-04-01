@@ -4,7 +4,7 @@ import {
   CalendarCheck, Search, Filter, CheckCircle2, XCircle, Loader
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
-import { getBusinessReservations, updateReservationStatus } from '../services/businessService';
+import { getBusinessReservations, approveReservation, rejectReservation } from '../services/businessService';
 import { toast } from 'react-hot-toast';
 
 const DashboardReservations = () => {
@@ -31,13 +31,17 @@ const DashboardReservations = () => {
     fetchReservations();
   }, []);
 
-  const handleStatus = async (id, status) => {
+  const handleStatus = async (id, action) => {
     try {
-      await updateReservationStatus(id, status);
+      if (action === 'Approved') {
+        await approveReservation(id);
+      } else {
+        await rejectReservation(id);
+      }
       setReservations(prev =>
-        prev.map(r => r.id === id ? { ...r, status } : r)
+        prev.map(r => r.id === id ? { ...r, status: action } : r)
       );
-      toast.success(status === 'Approved' ? 'Rezervasyon onaylandı.' : 'Rezervasyon reddedildi.');
+      toast.success(action === 'Approved' ? 'Rezervasyon onaylandı.' : 'Rezervasyon reddedildi.');
     } catch (err) {
       console.error('Status update error:', err);
       toast.error('İşlem başarısız.');

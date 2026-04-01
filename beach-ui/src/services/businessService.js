@@ -12,8 +12,12 @@ export const getBusinessStats = async () => {
   return await axios.get('/business/stats');
 };
 
-export const updateReservationStatus = async (id, status) => {
-  return await axios.put(`/business/reservations/${id}/status`, { status });
+export const approveReservation = async (id) => {
+  return await axios.put(`/business/reservations/${id}/approve`);
+};
+
+export const rejectReservation = async (id) => {
+  return await axios.put(`/business/reservations/${id}/reject`);
 };
 
 export const getBusinessBeach = async () => {
@@ -24,6 +28,7 @@ export default {
   register,
   getBusinessReservations,
   getBusinessStats,
-  updateReservationStatus,
+  approveReservation,
+  rejectReservation,
   getBusinessBeach
 };

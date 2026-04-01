@@ -39,7 +39,6 @@ const processQueue = (error, token = null) => {
 // ── Request interceptor: her isteğe token ekle
 api.interceptors.request.use(
   (config) => {
-    console.log("REQUEST:", config.url);
     // Memory'de token yoksa (sayfa yenilendi) localStorage'dan oku
     const token = getAccessToken() || localStorage.getItem('accessToken');
     if (token) {

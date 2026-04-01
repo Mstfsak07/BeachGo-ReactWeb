@@ -32,6 +32,8 @@ const BeachDetail = () => {
   const [error, setError] = useState(null);
   const [resLoading, setResLoading] = useState(false);
   const [resDate, setResDate] = useState(new Date().toISOString().split('T')[0]);
+  const [personCount, setPersonCount] = useState(1);
+  const [sunbedCount, setSunbedCount] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
 
   const fetchBeach = useCallback(async () => {
@@ -65,8 +67,7 @@ const BeachDetail = () => {
     }
     setResLoading(true);
     try {
-      const result = await reservationService.create(parseInt(id), resDate);
-      console.log("CREATE RESERVATION RESULT", result);
+      const result = await reservationService.create(parseInt(id), resDate, personCount, sunbedCount);
       if (
         result.status === 200 ||
         result.status === 201 ||
@@ -243,10 +244,20 @@ const BeachDetail = () => {
                       <button onClick={() => navigate('/login')} className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-blue-600 transition-all shadow-xl active:scale-95 uppercase tracking-widest text-xs">Giris Yap</button>
                     </div>
                   ) : (
-                    <form onSubmit={handleReservation} className="space-y-8">
+                    <form onSubmit={handleReservation} className="space-y-6">
                       <div className="space-y-4">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Ziyaret Tarihiniz</label>
                         <input type="date" value={resDate} onChange={(e) => setResDate(e.target.value)} min={new Date().toISOString().split('T')[0]} disabled={resLoading} required className="w-full px-6 py-5 rounded-[1.5rem] border-2 border-slate-100 bg-white/50 focus:bg-white focus:border-blue-500 outline-none transition-all text-slate-800 font-bold text-lg" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Kişi Sayısı</label>
+                          <input type="number" min="1" value={personCount} onChange={(e) => setPersonCount(parseInt(e.target.value) || 1)} disabled={resLoading} required className="w-full px-4 py-4 rounded-2xl border-2 border-slate-100 bg-white/50 focus:bg-white focus:border-blue-500 outline-none transition-all text-slate-800 font-bold text-center" />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Sezlong</label>
+                          <input type="number" min="0" value={sunbedCount} onChange={(e) => setSunbedCount(parseInt(e.target.value) || 0)} disabled={resLoading} className="w-full px-4 py-4 rounded-2xl border-2 border-slate-100 bg-white/50 focus:bg-white focus:border-blue-500 outline-none transition-all text-slate-800 font-bold text-center" />
+                        </div>
                       </div>
                       <motion.button type="submit" disabled={resLoading} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`w-full py-6 font-black text-lg rounded-[1.5rem] uppercase tracking-widest shadow-2xl transition-all flex items-center justify-center gap-3 ${!resLoading ? 'bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-blue-500/30' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}>
                         {resLoading ? <Loader className="animate-spin" size={24} /> : <>SIMDI REZERVE ET <TrendingUp size={20} /></>}

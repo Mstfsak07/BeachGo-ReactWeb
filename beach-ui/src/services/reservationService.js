@@ -1,10 +1,12 @@
 import api from '../api/axios';
 
 const reservationService = {
-  create: async (beachId, reservationDate) => {
+  create: async (beachId, reservationDate, personCount, sunbedCount) => {
     const response = await api.post('/Reservations', {
       beachId,
-      reservationDate
+      reservationDate,
+      personCount,
+      sunbedCount
     });
     return response;
   },

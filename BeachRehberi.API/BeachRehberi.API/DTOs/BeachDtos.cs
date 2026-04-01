@@ -85,7 +85,16 @@ public class BusinessStatsDto
 {
     public int TotalReservations { get; set; }
     public int TodayCheckins { get; set; }
+    public int MonthlyReservations { get; set; }
+    public int ActiveCustomers { get; set; }
     public decimal EstimatedEarnings { get; set; }
+    public List<WeeklyStatDto> WeeklyData { get; set; } = new();
+}
+
+public class WeeklyStatDto
+{
+    public string Day { get; set; } = string.Empty;
+    public int Count { get; set; }
 }
 
 public class BeachResponseDto

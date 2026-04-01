@@ -208,22 +208,30 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        // Production domains - uncomment for production
-        // policy.WithOrigins("https://beachgo.com", "https://www.beachgo.com")
-
-        // Development domains (HTTP + HTTPS)
-        policy.WithOrigins(
-                "http://localhost:3000",
-                "https://localhost:3000",
-                "http://localhost:5173",
-                "https://localhost:5173",
-                "http://192.168.1.6:3000",
-                "https://192.168.1.6:3000",
-                "http://192.168.1.6:5173",
-                "https://192.168.1.6:5173")
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+        if (builder.Environment.IsProduction())
+        {
+            policy.WithOrigins(
+                    "https://beachgo.com",
+                    "https://www.beachgo.com")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+        else
+        {
+            policy.WithOrigins(
+                    "http://localhost:3000",
+                    "https://localhost:3000",
+                    "http://localhost:5173",
+                    "https://localhost:5173",
+                    "http://192.168.1.6:3000",
+                    "https://192.168.1.6:3000",
+                    "http://192.168.1.6:5173",
+                    "https://192.168.1.6:5173")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
     });
 });
 
@@ -351,9 +359,13 @@ using (var scope = app.Services.CreateScope())
         // Admin user seed
         if (!await db.BusinessUsers.AnyAsync(u => u.Email == "admin@beachgo.com"))
         {
+            var adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD");
+            if (string.IsNullOrWhiteSpace(adminPassword))
+                throw new InvalidOperationException("ADMIN_PASSWORD environment variable is not set. Cannot seed admin user.");
+
             var adminUser = new BeachRehberi.API.Models.BusinessUser(
                 "admin@beachgo.com",
-                BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+                BCrypt.Net.BCrypt.HashPassword(adminPassword),
                 BeachRehberi.API.Models.UserRoles.Admin
             );
             adminUser.UpdateProfile("Admin User", "BeachGo Admin");

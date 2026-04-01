@@ -14,7 +14,6 @@ const MyReservations = () => {
   const fetchReservations = async () => {
     try {
       const result = await reservationService.getMyReservations();
-      console.log("MY RESERVATIONS RESULT", result);
       const data = result.data?.data ?? result.data ?? [];
       setReservations(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -31,11 +30,9 @@ const MyReservations = () => {
     }
     try {
       const result = await reservationService.cancelReservation(id);
-      console.log("DELETE RESULT", result);
       // 200/204 dönüyorsa backend başarılı — success field'ına bakma
       setReservations((prev) => {
         const filtered = prev.filter((r) => (r.id ?? r.reservationId) !== id);
-        console.log("Filtered reservations:", filtered);
         return filtered;
       });
       toast.success("Rezervasyon iptal edildi");

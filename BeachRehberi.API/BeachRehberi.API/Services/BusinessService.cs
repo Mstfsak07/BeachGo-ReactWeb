@@ -104,6 +104,7 @@ public class BusinessService : IBusinessService
 
     public async Task<List<Reservation>> GetAllReservationsAsync(int beachId) =>
         await _db.Reservations
+            .Include(r => r.User)
             .Where(r => r.BeachId == beachId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
@@ -111,6 +112,8 @@ public class BusinessService : IBusinessService
     public async Task<BusinessStatsDto> GetStatsAsync(int beachId)
     {
         var today = DateTime.UtcNow.Date;
+        var monthStart = new DateTime(today.Year, today.Month, 1);
+        var weekStart = today.AddDays(-6);
 
         var total = await _db.Reservations
             .CountAsync(r => r.BeachId == beachId && !r.IsDeleted);
@@ -118,14 +121,44 @@ public class BusinessService : IBusinessService
         var todayCheckins = await _db.Reservations
             .CountAsync(r => r.BeachId == beachId && !r.IsDeleted && r.ReservationDate.Date == today);
 
-        // TODO: Reservation modelinde TotalPrice alanı eklenince burayı güncelle
-        decimal estimatedEarnings = 0;
+        var monthly = await _db.Reservations
+            .CountAsync(r => r.BeachId == beachId && !r.IsDeleted && r.ReservationDate.Date >= monthStart);
+
+        var activeCustomers = await _db.Reservations
+            .Where(r => r.BeachId == beachId && !r.IsDeleted &&
+                        (r.Status == ReservationStatus.Pending || r.Status == ReservationStatus.Approved))
+            .Select(r => r.UserId)
+            .Distinct()
+            .CountAsync();
+
+        var estimatedEarnings = await _db.Reservations
+            .Where(r => r.BeachId == beachId && !r.IsDeleted)
+            .SumAsync(r => r.TotalPrice);
+
+        var weeklyRaw = await _db.Reservations
+            .Where(r => r.BeachId == beachId && !r.IsDeleted && r.ReservationDate.Date >= weekStart)
+            .GroupBy(r => r.ReservationDate.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var dayNames = new[] { "Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt" };
+        var weeklyData = Enumerable.Range(0, 7)
+            .Select(i =>
+            {
+                var date = weekStart.AddDays(i);
+                var count = weeklyRaw.FirstOrDefault(w => w.Date == date)?.Count ?? 0;
+                return new WeeklyStatDto { Day = dayNames[(int)date.DayOfWeek], Count = count };
+            })
+            .ToList();
 
         return new BusinessStatsDto
         {
             TotalReservations = total,
             TodayCheckins = todayCheckins,
-            EstimatedEarnings = estimatedEarnings
+            MonthlyReservations = monthly,
+            ActiveCustomers = activeCustomers,
+            EstimatedEarnings = estimatedEarnings,
+            WeeklyData = weeklyData
         };
     }
 

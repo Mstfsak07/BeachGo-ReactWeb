@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Save, 
-  Palmtree, 
-  MapPin, 
-  Users, 
-  Clock, 
+import {
+  Save,
+  Palmtree,
+  MapPin,
+  Users,
+  Clock,
   Image as ImageIcon,
   CheckCircle2,
   Loader
@@ -18,25 +18,32 @@ const BeachSettings = () => {
   const [loading, setLoading] = useState(false);
   const [beach, setBeach] = useState({
     name: '',
-    location: '',
+    address: '',
     description: '',
     capacity: 0,
-    imageUrl: '',
-    openingHours: '08:00 - 20:00'
+    openTime: '',
+    closeTime: '',
   });
 
   useEffect(() => {
+    const fetchBeachData = async () => {
+      try {
+        const res = await axios.get('/business/beach');
+        const data = res.data.data;
+        setBeach({
+          name: data.name || '',
+          address: data.address || '',
+          description: data.description || '',
+          capacity: data.capacity || 0,
+          openTime: data.openTime || '',
+          closeTime: data.closeTime || '',
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    };
     fetchBeachData();
   }, []);
-
-  const fetchBeachData = async () => {
-    try {
-      const res = await axios.get('/business/beach');
-      setBeach(res.data.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,7 +52,12 @@ const BeachSettings = () => {
       await axios.put('/business/beach', beach);
       toast.success('Bilgiler başarıyla güncellendi!');
     } catch (err) {
-      toast.error('Güncelleme sırasında bir hata oluştu.');
+      const errors = err.response?.data?.errors;
+      if (errors?.length) {
+        errors.forEach(msg => toast.error(msg));
+      } else {
+        toast.error(err.response?.data?.message || 'Güncelleme sırasında bir hata oluştu.');
+      }
     } finally {
       setLoading(false);
     }
@@ -54,7 +66,7 @@ const BeachSettings = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <Sidebar role="Business" />
-      
+
       <main className="flex-1 ml-72 p-10">
         <header className="mb-10">
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Plaj Ayarları</h1>
@@ -62,8 +74,7 @@ const BeachSettings = () => {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          {/* Form Section */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="lg:col-span-2 bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 p-10 border border-white"
@@ -74,8 +85,8 @@ const BeachSettings = () => {
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Plaj Adı</label>
                   <div className="relative group">
                     <Palmtree className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={beach.name}
                       onChange={(e) => setBeach({...beach, name: e.target.value})}
                       className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 pl-12 pr-4 focus:bg-white focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
@@ -83,13 +94,13 @@ const BeachSettings = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Konum</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Adres</label>
                   <div className="relative group">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
-                    <input 
-                      type="text" 
-                      value={beach.location}
-                      onChange={(e) => setBeach({...beach, location: e.target.value})}
+                    <input
+                      type="text"
+                      value={beach.address}
+                      onChange={(e) => setBeach({...beach, address: e.target.value})}
                       className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 pl-12 pr-4 focus:bg-white focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
                     />
                   </div>
@@ -98,7 +109,7 @@ const BeachSettings = () => {
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Açıklama</label>
-                <textarea 
+                <textarea
                   rows="4"
                   value={beach.description}
                   onChange={(e) => setBeach({...beach, description: e.target.value})}
@@ -106,34 +117,46 @@ const BeachSettings = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Günlük Kapasite</label>
                   <div className="relative group">
                     <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       value={beach.capacity}
-                      onChange={(e) => setBeach({...beach, capacity: parseInt(e.target.value)})}
+                      onChange={(e) => setBeach({...beach, capacity: parseInt(e.target.value) || 0})}
                       className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 pl-12 pr-4 focus:bg-white focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Çalışma Saatleri</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Açılış Saati</label>
                   <div className="relative group">
                     <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
-                    <input 
-                      type="text" 
-                      value={beach.openingHours}
-                      onChange={(e) => setBeach({...beach, openingHours: e.target.value})}
+                    <input
+                      type="time"
+                      value={beach.openTime}
+                      onChange={(e) => setBeach({...beach, openTime: e.target.value})}
+                      className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 pl-12 pr-4 focus:bg-white focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Kapanış Saati</label>
+                  <div className="relative group">
+                    <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                    <input
+                      type="time"
+                      value={beach.closeTime}
+                      onChange={(e) => setBeach({...beach, closeTime: e.target.value})}
                       className="w-full bg-slate-50 border-2 border-slate-50 rounded-2xl py-4 pl-12 pr-4 focus:bg-white focus:border-blue-500 outline-none transition-all font-bold text-slate-700"
                     />
                   </div>
                 </div>
               </div>
 
-              <button 
+              <button
                 type="submit"
                 disabled={loading}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-blue-200 transition-all active:scale-95"
@@ -143,33 +166,11 @@ const BeachSettings = () => {
             </form>
           </motion.div>
 
-          {/* Preview Section */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="space-y-8"
           >
-            <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/20 blur-3xl rounded-full" />
-              <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <ImageIcon size={20} className="text-blue-400" /> Görsel Önizleme
-              </h3>
-              <div className="aspect-video rounded-3xl overflow-hidden bg-white/5 border border-white/10 mb-6">
-                {beach.imageUrl ? (
-                  <img src={beach.imageUrl} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-600 font-bold">Resim Yok</div>
-                )}
-              </div>
-              <input 
-                type="text" 
-                placeholder="Resim URL yapıştırın..."
-                value={beach.imageUrl}
-                onChange={(e) => setBeach({...beach, imageUrl: e.target.value})}
-                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 focus:border-blue-500 outline-none text-sm font-medium transition-all"
-              />
-            </div>
-
             <div className="bg-blue-50 rounded-[2.5rem] p-8 border border-blue-100">
               <div className="flex items-center gap-4 mb-4">
                 <CheckCircle2 className="text-blue-600" size={24} />

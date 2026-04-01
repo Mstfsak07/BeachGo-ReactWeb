@@ -4,7 +4,8 @@
       "Bash(del /f \"C:\\\\Users\\\\akMuratNET\\\\Desktop\\\\BeachGo\\\\BeachGo-ReactWeb\\\\src\\\\api\\\\client.js\")",
       "Bash(del /f \"C:\\\\Users\\\\akMuratNET\\\\Desktop\\\\BeachGo\\\\BeachGo-ReactWeb\\\\src\\\\store\\\\useAuthStore.js\")",
       "Bash(dotnet build:*)",
-      "Bash(dotnet ef:*)"
+      "Bash(dotnet ef:*)",
+      "Bash(del:*)"
     ]
   }
 }

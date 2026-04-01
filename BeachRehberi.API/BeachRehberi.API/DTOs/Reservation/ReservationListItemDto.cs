@@ -9,5 +9,7 @@ public class ReservationListItemDto
     public string BeachName { get; set; } = string.Empty;
     public DateTime ReservationDate { get; set; }
     public DateTime CreatedAt { get; set; }
+    public int PersonCount { get; set; }
+    public int SunbedCount { get; set; }
     public ReservationStatus Status { get; set; }
 }

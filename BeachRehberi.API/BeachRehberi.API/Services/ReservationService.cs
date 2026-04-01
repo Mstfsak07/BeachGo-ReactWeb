@@ -81,6 +81,8 @@ public class ReservationService : IReservationService
                 BeachName = r.Beach.Name,
                 ReservationDate = r.ReservationDate,
                 CreatedAt = r.CreatedAt,
+                PersonCount = r.PersonCount,
+                SunbedCount = r.SunbedCount,
                 Status = r.Status
             })
             .ToListAsync();

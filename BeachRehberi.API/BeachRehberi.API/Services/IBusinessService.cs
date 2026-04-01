@@ -1,6 +1,7 @@
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Models.Enums;
 using BeachRehberi.API.DTOs;
+using BeachRehberi.API.DTOs.Reservation;
 
 namespace BeachRehberi.API.Services;
 
@@ -12,7 +13,7 @@ public interface IBusinessService
     Task<BeachEvent> AddEventAsync(BeachEvent ev);
     Task<bool> DeleteEventAsync(int eventId, int beachId);
     Task<List<Reservation>> GetReservationsAsync(int beachId, DateTime date);
-    Task<List<Reservation>> GetAllReservationsAsync(int beachId);
+    Task<List<BusinessReservationDto>> GetAllReservationsAsync(int beachId);
     Task<BusinessStatsDto> GetStatsAsync(int beachId);
     Task<ServiceResult<object>> UpdateReservationStatusAsync(int id, int beachId, ReservationStatus status, string? comment = null);
 }

@@ -48,8 +48,8 @@ const BusinessRegister = () => {
 
             toast.success('Giriş başarılı! Hoşgeldiniz.');
 
-            // 3. /beaches'e yönlendir
-            navigate('/beaches');
+            // 3. /dashboard'a yönlendir
+            navigate('/dashboard');
 
         } catch (err) {
             console.error('Business Register error:', err);

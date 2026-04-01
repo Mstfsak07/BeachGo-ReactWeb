@@ -102,11 +102,21 @@ public class BusinessService : IBusinessService
             .OrderBy(r => r.ReservationDate)
             .ToListAsync();
 
-    public async Task<List<Reservation>> GetAllReservationsAsync(int beachId) =>
+    public async Task<List<BusinessReservationDto>> GetAllReservationsAsync(int beachId) =>
         await _db.Reservations
             .Include(r => r.User)
             .Where(r => r.BeachId == beachId)
             .OrderByDescending(r => r.CreatedAt)
+            .Select(r => new BusinessReservationDto
+            {
+                Id = r.Id,
+                UserEmail = r.User.Email,
+                ReservationDate = r.ReservationDate,
+                PersonCount = r.PersonCount,
+                SunbedCount = r.SunbedCount,
+                Status = r.Status.ToString(),
+                CreatedAt = r.CreatedAt
+            })
             .ToListAsync();
 
     public async Task<BusinessStatsDto> GetStatsAsync(int beachId)

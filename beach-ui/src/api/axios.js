@@ -36,11 +36,10 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-// ── Request interceptor: her isteğe token ekle
+// ── Request interceptor: her isteğe memory'deki token'ı ekle
 api.interceptors.request.use(
   (config) => {
-    // Memory'de token yoksa (sayfa yenilendi) localStorage'dan oku
-    const token = getAccessToken() || localStorage.getItem('accessToken');
+    const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -58,7 +57,6 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // 401 geldi ve bu istek daha önce retry edilmemişse
     if (error.response?.status === 401 && !originalRequest._retry) {
 
       // Public sayfadaysak refresh/redirect yapma
@@ -66,13 +64,12 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // Kullanıcı hiç giriş yapmamışsa (token yok) refresh deneme
-      const storedToken = getAccessToken() || localStorage.getItem('accessToken');
-      if (!storedToken) {
+      // Memory'de token yoksa (henüz silentRefresh bitmemiş veya hiç login olmamış)
+      if (!getAccessToken()) {
         return Promise.reject(error);
       }
 
-      // Refresh isteği kendisi 401 döndürdüyse veya endpoint /Auth/login ise → logout yap
+      // Refresh isteği kendisi 401 döndürdüyse → logout yap
       if (originalRequest.url?.includes('/Auth/refresh') || originalRequest.url?.includes('/Auth/login')) {
         window.dispatchEvent(new CustomEvent('auth:logout'));
         return Promise.reject(error);
@@ -91,24 +88,17 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Refresh isteği: direkt axios kullanarak bu interceptor'ı atlatıyoruz
-        const tokenForRefresh = getAccessToken() || localStorage.getItem('accessToken');
+        // Refresh isteği cookie üzerinden — Authorization header gönderilmez
         const { data } = await axios.post(
           `${api.defaults.baseURL}/Auth/refresh`,
           {},
-          {
-            withCredentials: true,
-            headers: tokenForRefresh ? { 'Authorization': `Bearer ${tokenForRefresh}` } : {}
-          }
+          { withCredentials: true }
         );
 
         const result = data.data;
         if (!result?.accessToken) throw new Error('Refresh failed - no access token');
 
         setAccessToken(result.accessToken, result.accessTokenExpiry);
-        localStorage.setItem('accessToken', result.accessToken);
-
-        // Bundan sonraki tüm requestler için default header'ı güncelle
         api.defaults.headers.common['Authorization'] = `Bearer ${result.accessToken}`;
 
         processQueue(null, result.accessToken);

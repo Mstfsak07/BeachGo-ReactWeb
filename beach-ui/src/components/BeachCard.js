@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, MapPin, TrendingUp } from 'lucide-react';
 
-const BeachCard = ({ beach }) => {
+const BeachCard = React.memo(({ beach }) => {
   const navigate = useNavigate();
   const beachImage = beach.imageUrl;
   const occupancy = beach.occupancyPercent ?? 0;
@@ -10,16 +10,17 @@ const BeachCard = ({ beach }) => {
   const address = beach.address || '';
 
   return (
-    <div 
+    <div
       onClick={() => navigate(`/beaches/${beach.id}`)}
-      className="group relative bg-white rounded-[2.5rem] p-4 shadow-xl shadow-slate-200/50 border border-slate-50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 cursor-pointer overflow-hidden"
+      className="group relative bg-white rounded-[1.5rem] sm:rounded-[2.5rem] p-3 sm:p-4 shadow-xl shadow-slate-200/50 border border-slate-50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 cursor-pointer overflow-hidden"
     >
       {/* Image Container */}
-      <div className="relative aspect-[1.1/1] overflow-hidden rounded-[2rem] mb-6">
+      <div className="relative aspect-[1.1/1] overflow-hidden rounded-[1.2rem] sm:rounded-[2rem] mb-4 sm:mb-6">
         {beachImage ? (
-          <img 
-            src={beachImage} 
+          <img
+            src={beachImage}
             alt={beach.name}
+            loading="lazy"
             className="w-full h-full object-cover transition-transform duration-[1500ms] ease-out group-hover:scale-110"
           />
         ) : (
@@ -75,7 +76,7 @@ const BeachCard = ({ beach }) => {
           {address && (
             <div className="flex items-center gap-2 text-blue-600 mb-1">
                <MapPin size={14} />
-               <span className="text-[11px] font-black uppercase tracking-widest">{address}</span>
+               <span className="text-[11px] font-black uppercase tracking-widest truncate">{address}</span>
             </div>
           )}
           <h3 className="text-2xl font-bold text-slate-900 tracking-tight line-clamp-1 group-hover:text-blue-600 transition-colors">

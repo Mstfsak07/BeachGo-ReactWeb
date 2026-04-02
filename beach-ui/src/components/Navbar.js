@@ -50,7 +50,7 @@ const Navbar = () => {
           : "bg-transparent py-5"
       }`}
     >
-      <div className="container mx-auto px-6 flex justify-between items-center">
+      <div className="container mx-auto px-3 sm:px-6 flex justify-between items-center">
         
         <Link to="/" className="flex items-center space-x-3 group">
           <div className="bg-blue-600 p-2.5 rounded-2xl shadow-xl shadow-blue-200 group-hover:rotate-12 transition-transform duration-300">
@@ -91,7 +91,7 @@ const Navbar = () => {
                 <span className={`text-[11px] font-black uppercase tracking-[0.2em] leading-none mb-1.5 ${
                   shouldShowSolid ? "text-slate-400" : "text-white/50"
                 }`}>Profil</span>
-                <span className={`text-sm font-bold leading-none ${
+                <span className={`text-sm font-bold leading-none truncate max-w-[120px] ${
                   shouldShowSolid ? "text-slate-800" : "text-white"
                 }`}>{user?.email?.split('@')[0]}</span>
               </div>
@@ -142,7 +142,7 @@ const Navbar = () => {
               <div className="space-y-4">
                 <div className="flex items-center gap-3 text-slate-700">
                   <User size={20} className="text-blue-600" />
-                  <span className="font-bold">{user?.email}</span>
+                  <span className="font-bold truncate max-w-[200px]">{user?.email}</span>
                 </div>
                 <button
                   onClick={handleLogout}

@@ -67,7 +67,7 @@ const AdminPanel = () => {
     <div className="min-h-screen bg-slate-50 flex">
       <Sidebar role="Admin" />
       
-      <main className="flex-1 ml-72 p-10">
+      <main className="flex-1 ml-0 md:ml-72 p-4 sm:p-6 md:p-10">
         <header className="mb-10">
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Sistem Yönetimi</h1>
           <p className="text-slate-500 font-medium">Tüm platformun genel durumunu ve kayıtları yönetin.</p>
@@ -121,7 +121,7 @@ const AdminPanel = () => {
                     <tr key={beach.id} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-3">
-                          <img src={beach.imageUrl} alt="" className="w-10 h-10 rounded-xl object-cover" />
+                          <img src={beach.imageUrl} alt="" loading="lazy" className="w-10 h-10 rounded-xl object-cover" />
                           <span className="font-bold text-slate-700">{beach.name}</span>
                         </div>
                       </td>

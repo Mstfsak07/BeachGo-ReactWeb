@@ -43,7 +43,7 @@ const DashboardStats = () => {
     <div className="min-h-screen bg-slate-50 flex">
       <Sidebar role="Business" />
 
-      <main className="flex-1 ml-72 p-10">
+      <main className="flex-1 ml-0 md:ml-72 p-4 sm:p-6 md:p-10">
         <header className="mb-10">
           <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
             <BarChart3 className="text-blue-600" size={32} />

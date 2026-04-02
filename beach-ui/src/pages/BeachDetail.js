@@ -125,14 +125,14 @@ const BeachDetail = () => {
       {/* Hero Section */}
       <div className="relative h-[50vh] md:h-[75vh] w-full overflow-hidden">
         {heroImage ? (
-          <motion.img initial={{ scale: 1.1 }} animate={{ scale: 1 }} transition={{ duration: 1.5 }} src={heroImage} className="w-full h-full object-cover" />
+          <motion.img initial={{ scale: 1.1 }} animate={{ scale: 1 }} transition={{ duration: 1.5 }} src={heroImage} loading="lazy" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-blue-500 to-cyan-400" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
         
         {/* Top Actions */}
-        <div className="absolute top-24 left-0 right-0 z-30 px-4 md:px-12">
+        <div className="absolute top-20 sm:top-24 left-0 right-0 z-30 px-3 sm:px-4 md:px-12">
           <div className="max-w-7xl mx-auto flex justify-between items-center">
             <motion.button whileHover={{ scale: 1.1, x: -5 }} whileTap={{ scale: 0.9 }} onClick={() => navigate(-1)} className="bg-white/10 backdrop-blur-xl p-3 rounded-2xl text-white border border-white/20"><ChevronRight size={24} className="rotate-180" /></motion.button>
             <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsFavorite(!isFavorite)} className="bg-white/10 backdrop-blur-xl p-3 rounded-2xl text-white border border-white/20"><Heart size={22} className={isFavorite ? 'fill-rose-500 text-rose-500' : ''} /></motion.button>
@@ -140,10 +140,10 @@ const BeachDetail = () => {
         </div>
 
         {/* Hero Info */}
-        <div className="absolute bottom-0 left-0 right-0 pb-10 px-4 md:px-12 z-20">
+        <div className="absolute bottom-0 left-0 right-0 pb-6 sm:pb-10 px-3 sm:px-4 md:px-12 z-20">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-6 text-white">
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="space-y-2">
-              <h1 className="text-5xl md:text-8xl font-bold tracking-tight leading-none drop-shadow-2xl">{beach.name}</h1>
+              <h1 className="text-3xl sm:text-5xl md:text-8xl font-bold tracking-tight leading-none drop-shadow-2xl break-words">{beach.name}</h1>
               {beach.address && (
                 <div className="flex items-center gap-2 text-white/80 font-medium text-lg"><MapPin size={20} className="text-blue-400" /> {beach.address}</div>
               )}
@@ -159,11 +159,11 @@ const BeachDetail = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 md:px-12 -mt-10 relative z-40">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-12 -mt-10 relative z-40">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
           
           <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="lg:col-span-8 space-y-12 order-1">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               {[
                 { icon: Users, label: 'Kapasite', val: beach.capacity > 0 ? beach.capacity : '-', bg: 'bg-blue-50', c: 'text-blue-600' },
                 { icon: TrendingUp, label: 'Doluluk', val: `%${occupancy}`, bg: 'bg-rose-50', c: 'text-rose-600' },
@@ -224,7 +224,7 @@ const BeachDetail = () => {
           {/* Reservation Card */}
           <div className="lg:col-span-4 order-2 lg:order-none">
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }} className="lg:sticky lg:top-32 mb-10">
-              <div className="bg-white/80 backdrop-blur-2xl rounded-[2.5rem] p-8 shadow-3xl border border-white/50 relative overflow-hidden">
+              <div className="bg-white/80 backdrop-blur-2xl rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-3xl border border-white/50 relative overflow-hidden">
                 <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl" />
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-8">

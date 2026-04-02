@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 
@@ -10,19 +10,20 @@ import { useAuth } from "./context/AuthContext";
 
 import Home from "./pages/Home";
 import Beaches from "./pages/Beaches";
-import BeachDetail from "./pages/BeachDetail";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import BusinessRegister from "./pages/BusinessRegister";
-import MyReservations from "./pages/MyReservations";
-import ReservationCheck from "./pages/ReservationCheck";
-import Dashboard from "./pages/Dashboard";
-import AdminPanel from "./pages/AdminPanel";
-import BeachSettings from "./pages/BeachSettings";
-import Events from "./pages/Events";
-import DashboardStats from "./pages/DashboardStats";
-import DashboardReservations from "./pages/DashboardReservations";
 import Unauthorized from "./pages/Unauthorized";
+
+const BeachDetail = lazy(() => import("./pages/BeachDetail"));
+const BusinessRegister = lazy(() => import("./pages/BusinessRegister"));
+const MyReservations = lazy(() => import("./pages/MyReservations"));
+const ReservationCheck = lazy(() => import("./pages/ReservationCheck"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const BeachSettings = lazy(() => import("./pages/BeachSettings"));
+const Events = lazy(() => import("./pages/Events"));
+const DashboardStats = lazy(() => import("./pages/DashboardStats"));
+const DashboardReservations = lazy(() => import("./pages/DashboardReservations"));
 
 // Giriş yapmış kullanıcıyı login/register'dan uygun sayfaya yönlendir
 const GuestOnlyRoute = ({ children }) => {
@@ -42,6 +43,7 @@ function App() {
         <Toaster position="top-right" reverseOrder={false} />
         <Navbar />
 
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div></div>}>
         <Routes>
           {/* Public */}
           <Route path="/" element={<Home />} />
@@ -113,6 +115,7 @@ function App() {
           {/* Catch-all — bilinmeyen route'lar anasayfaya */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
 
         <Footer />
       </Router>

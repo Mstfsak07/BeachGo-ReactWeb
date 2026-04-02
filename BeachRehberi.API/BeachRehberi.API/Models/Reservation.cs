@@ -40,6 +40,29 @@ public class Reservation
     [Column(TypeName = "decimal(18,2)")]
     public decimal TotalPrice { get; set; }
 
+    // Guest reservation fields
+    public bool IsGuest { get; set; } = false;
+
+    [MaxLength(100)]
+    public string? GuestFirstName { get; set; }
+
+    [MaxLength(100)]
+    public string? GuestLastName { get; set; }
+
+    [MaxLength(20)]
+    public string? GuestPhone { get; set; }
+
+    [MaxLength(200)]
+    public string? GuestEmail { get; set; }
+
+    [MaxLength(20)]
+    public string? ConfirmationCode { get; set; }
+
+    [MaxLength(50)]
+    public string? ReservationType { get; set; }
+
+    public TimeSpan? ReservationTime { get; set; }
+
     // Reservation Business Logic Methods
     public void Approve(string? comment = null) 
     {

@@ -15,6 +15,9 @@ public class BeachDbContext : DbContext
     public DbSet<BusinessUser> BusinessUsers => Set<BusinessUser>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
+    public DbSet<VerificationCode> VerificationCodes => Set<VerificationCode>();
+    public DbSet<ReservationPayment> ReservationPayments => Set<ReservationPayment>();
+    public DbSet<BeachStory> BeachStories => Set<BeachStory>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

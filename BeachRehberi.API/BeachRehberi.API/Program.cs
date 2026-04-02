@@ -78,6 +78,12 @@ builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IWeatherService, WeatherService>();
 
+// Guest Reservation + OTP + SMS (Mock)
+builder.Services.AddScoped<ISmsService, MockSmsService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<IGuestReservationService, GuestReservationService>();
+builder.Services.AddScoped<IStoryService, StoryService>();
+
 // ─────────────────────────────────────────
 // 5. MAPSTER – IMapper DI
 // ─────────────────────────────────────────

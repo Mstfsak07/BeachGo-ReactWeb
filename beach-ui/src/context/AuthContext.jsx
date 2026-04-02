@@ -2,8 +2,7 @@ import React, {
     createContext, useContext, useState,
     useEffect, useCallback, useRef
 } from 'react';
-import axios from 'axios';
-import api, { setAccessToken, clearAccessToken } from '../api/axios';
+import api, { setAccessToken, clearAccessToken, refreshAccessToken } from '../api/axios';
 
 const AuthContext = createContext(null);
 
@@ -38,14 +37,7 @@ export const AuthProvider = ({ children }) => {
 
         refreshTimerRef.current = setTimeout(async () => {
             try {
-                const { data } = await axios.post(
-                    `${api.defaults.baseURL}/Auth/refresh`,
-                    {},
-                    { withCredentials: true }
-                );
-
-                const result = data.data;
-                setAccessToken(result.accessToken, result.accessTokenExpiry);
+                const result = await refreshAccessToken();
                 scheduleProactiveRefresh(result.accessTokenExpiry);
             } catch (err) {
                 console.error('[AuthContext] Proactive refresh failed:', err);
@@ -92,18 +84,11 @@ export const AuthProvider = ({ children }) => {
     // ── Silent Refresh: sayfa açılışında oturum canlandırma ──────────────
     const silentRefresh = useCallback(async () => {
         try {
-            const { data } = await axios.post(
-                `${api.defaults.baseURL}/Auth/refresh`,
-                {},
-                { withCredentials: true }
-            );
-
-            const result = data.data;
-            setAccessToken(result.accessToken, result.accessTokenExpiry);
+            const result = await refreshAccessToken();
             const userData = { email: result.email, role: result.role };
             localStorage.setItem('user', JSON.stringify(userData));
             setUser(userData);
-            
+
             scheduleProactiveRefresh(result.accessTokenExpiry);
         } catch (err) {
             // Kullanıcı login değilse veya cookie yoksa buraya düşer

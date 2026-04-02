@@ -51,6 +51,42 @@ api.interceptors.request.use(
 // ── Public routes: bu sayfalarda 401 → refresh veya redirect yapma
 const PUBLIC_ROUTES = ['/login', '/register', '/business-register'];
 
+// ── Merkezi refresh fonksiyonu ─────────────────────────────────────────
+// AuthContext ve interceptor bu tek fonksiyonu kullanır.
+// Race condition koruması burada: eş zamanlı çağrılar tek bir refresh'e katılır.
+export const refreshAccessToken = async () => {
+  if (isRefreshing) {
+    // Zaten refresh yapılıyor → sonucunu bekle
+    return new Promise((resolve, reject) => {
+      failedQueue.push({ resolve, reject });
+    });
+  }
+
+  isRefreshing = true;
+
+  try {
+    const { data } = await axios.post(
+      `${api.defaults.baseURL}/Auth/refresh`,
+      {},
+      { withCredentials: true }
+    );
+
+    const result = data?.data ?? data;
+    if (!result?.accessToken) throw new Error('Refresh failed - no access token');
+
+    setAccessToken(result.accessToken, result.accessTokenExpiry);
+    api.defaults.headers.common['Authorization'] = `Bearer ${result.accessToken}`;
+
+    processQueue(null, result.accessToken);
+    return result;
+  } catch (err) {
+    processQueue(err, null);
+    throw err;
+  } finally {
+    isRefreshing = false;
+  }
+};
+
 // ── Response interceptor: 401 → refresh → retry
 api.interceptors.response.use(
   (response) => response,
@@ -69,48 +105,21 @@ api.interceptors.response.use(
         return Promise.reject(error);
       }
 
-      // Refresh isteği kendisi 401 döndürdüyse → logout yap
+      // Refresh/login isteği kendisi 401 döndürdüyse → sonsuz loop önle
       if (originalRequest.url?.includes('/Auth/refresh') || originalRequest.url?.includes('/Auth/login')) {
         window.dispatchEvent(new CustomEvent('auth:logout'));
         return Promise.reject(error);
       }
 
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then((newToken) => {
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
-          return api(originalRequest);
-        }).catch((err) => Promise.reject(err));
-      }
-
       originalRequest._retry = true;
-      isRefreshing = true;
 
       try {
-        // Refresh isteği cookie üzerinden — Authorization header gönderilmez
-        const { data } = await axios.post(
-          `${api.defaults.baseURL}/Auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
-
-        const result = data.data;
-        if (!result?.accessToken) throw new Error('Refresh failed - no access token');
-
-        setAccessToken(result.accessToken, result.accessTokenExpiry);
-        api.defaults.headers.common['Authorization'] = `Bearer ${result.accessToken}`;
-
-        processQueue(null, result.accessToken);
-
+        const result = await refreshAccessToken();
         originalRequest.headers.Authorization = `Bearer ${result.accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
         window.dispatchEvent(new CustomEvent('auth:logout'));
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
 

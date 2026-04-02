@@ -13,9 +13,8 @@ const MyReservations = () => {
 
   const fetchReservations = async () => {
     try {
-      const result = await reservationService.getMyReservations();
-      const data = result.data?.data ?? result.data ?? [];
-      setReservations(Array.isArray(data) ? data : []);
+      const data = await reservationService.getMyReservations();
+      setReservations(data);
     } catch (err) {
       console.error('Fetch reservations error:', err);
       toast.error('Rezervasyonlarınız yüklenemedi.');

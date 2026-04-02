@@ -9,9 +9,8 @@ const Events = () => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const res = await getEvents();
-        const data = res.data?.data?.items ?? res.data?.data ?? [];
-        setEvents(Array.isArray(data) ? data : []);
+        const data = await getEvents();
+        setEvents(data);
       } catch (err) {
         console.error(err);
       } finally {

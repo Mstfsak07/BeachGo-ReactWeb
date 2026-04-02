@@ -14,9 +14,8 @@ const ReservationCheck = () => {
     setLoading(true);
     setReservation(null);
     try {
-      const res = await checkReservation(code);
-      const data = res.data?.data;
-      
+      const data = await checkReservation(code);
+
       if (data) {
         setReservation(data);
         setMsg('');

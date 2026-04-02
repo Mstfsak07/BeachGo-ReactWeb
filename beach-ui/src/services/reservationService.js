@@ -1,24 +1,27 @@
 import api from '../api/axios';
+import { unwrapResponse, unwrapArrayResponse } from '../types';
 
 const reservationService = {
+  /** @returns {Promise<import('../types').ReservationDto>} */
   create: async (beachId, reservationDate, personCount, sunbedCount) => {
-    const response = await api.post('/Reservations', {
+    const res = await api.post('/Reservations', {
       beachId,
       reservationDate,
       personCount,
       sunbedCount
     });
-    return response;
+    return unwrapResponse(res.data);
   },
 
+  /** @returns {Promise<import('../types').ReservationDto[]>} */
   getMyReservations: async () => {
-    const response = await api.get('/Reservations/my');
-    return response;
+    const res = await api.get('/Reservations/my');
+    return unwrapArrayResponse(res.data);
   },
 
   cancelReservation: async (id) => {
-    const response = await api.delete(`/Reservations/${id}`);
-    return response;
+    const res = await api.delete(`/Reservations/${id}`);
+    return unwrapResponse(res.data);
   }
 };
 export default reservationService;

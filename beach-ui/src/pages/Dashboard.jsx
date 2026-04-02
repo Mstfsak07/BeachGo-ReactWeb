@@ -34,8 +34,8 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchReservations = async () => {
       try {
-        const res = await getBusinessReservations();
-        setReservations(res.data?.data || []);
+        const data = await getBusinessReservations();
+        setReservations(data);
       } catch (err) {
         if (err.response?.status !== 404) {
           toast.error('Rezervasyonlar yüklenemedi.');
@@ -47,8 +47,8 @@ const Dashboard = () => {
 
     const fetchStats = async () => {
       try {
-        const res = await getBusinessStats();
-        setStats(res.data?.data || null);
+        const data = await getBusinessStats();
+        setStats(data || null);
       } catch (err) {
         console.error('Stats fetch error:', err);
       } finally {

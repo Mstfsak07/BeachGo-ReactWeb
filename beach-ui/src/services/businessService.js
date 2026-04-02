@@ -1,27 +1,37 @@
-import axios from '../api/axios';
+import api from '../api/axios';
+import { unwrapResponse, unwrapArrayResponse } from '../types';
 
 export const register = async (businessName, contactName, email, password, beachId) => {
-  return await axios.post('/Auth/register', { businessName, contactName, email, password, beachId });
+  const res = await api.post('/Auth/register', { businessName, contactName, email, password, beachId });
+  return unwrapResponse(res.data);
 };
 
+/** @returns {Promise<import('../types').BusinessReservationDto[]>} */
 export const getBusinessReservations = async () => {
-  return await axios.get('/business/reservations');
+  const res = await api.get('/business/reservations');
+  return unwrapArrayResponse(res.data);
 };
 
+/** @returns {Promise<import('../types').BusinessStatsDto>} */
 export const getBusinessStats = async () => {
-  return await axios.get('/business/stats');
+  const res = await api.get('/business/stats');
+  return unwrapResponse(res.data);
 };
 
 export const approveReservation = async (id) => {
-  return await axios.put(`/business/reservations/${id}/approve`);
+  const res = await api.put(`/business/reservations/${id}/approve`);
+  return unwrapResponse(res.data);
 };
 
 export const rejectReservation = async (id) => {
-  return await axios.put(`/business/reservations/${id}/reject`);
+  const res = await api.put(`/business/reservations/${id}/reject`);
+  return unwrapResponse(res.data);
 };
 
+/** @returns {Promise<import('../types').BeachDto>} */
 export const getBusinessBeach = async () => {
-  return await axios.get('/business/beach');
+  const res = await api.get('/business/beach');
+  return unwrapResponse(res.data);
 };
 
 export default {

@@ -40,9 +40,9 @@ const BeachDetail = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await getBeachById(id);
-      if (res.data?.success) {
-        setBeach(res.data.data);
+      const data = await getBeachById(id);
+      if (data) {
+        setBeach(data);
       } else {
         setError('Plaj bilgileri su an yuklenemiyor.');
       }

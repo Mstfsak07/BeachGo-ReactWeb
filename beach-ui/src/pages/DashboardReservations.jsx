@@ -16,8 +16,8 @@ const DashboardReservations = () => {
   useEffect(() => {
     const fetchReservations = async () => {
       try {
-        const res = await getBusinessReservations();
-        setReservations(res.data?.data || []);
+        const data = await getBusinessReservations();
+        setReservations(data);
       } catch (err) {
         if (err.response?.status === 404) {
           setReservations([]);

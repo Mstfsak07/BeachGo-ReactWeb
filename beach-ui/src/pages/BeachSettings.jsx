@@ -29,7 +29,7 @@ const BeachSettings = () => {
     const fetchBeachData = async () => {
       try {
         const res = await axios.get('/business/beach');
-        const data = res.data.data;
+        const data = res.data?.data ?? res.data;
         setBeach({
           name: data.name || '',
           address: data.address || '',

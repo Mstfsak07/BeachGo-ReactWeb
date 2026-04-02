@@ -18,8 +18,8 @@ const DashboardStats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await getBusinessStats();
-        setStats(res.data?.data || null);
+        const data = await getBusinessStats();
+        setStats(data || null);
       } catch (err) {
         console.error('Stats fetch error:', err);
         setError(true);

@@ -19,9 +19,8 @@ const Beaches = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await getBeaches();
-      const beachList = res.data?.data?.items ?? res.data?.data ?? [];
-      setBeaches(Array.isArray(beachList) ? beachList : []);
+      const beachList = await getBeaches();
+      setBeaches(beachList);
     } catch (err) {
       console.error('Beaches fetch error:', err);
       setError('Plajlar yüklenirken bir hata oluştu');
@@ -40,9 +39,8 @@ const Beaches = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await searchBeaches(query);
-      const searchList = res.data?.data?.items ?? res.data?.data ?? [];
-      setBeaches(Array.isArray(searchList) ? searchList : []);
+      const searchList = await searchBeaches(query);
+      setBeaches(searchList);
     } catch (err) {
       console.error('Search error:', err);
       setError('Arama yapılırken bir hata oluştu');

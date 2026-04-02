@@ -32,9 +32,8 @@ const Home = () => {
   useEffect(() => {
     const fetchBeaches = async () => {
       try {
-        const res = await getBeaches();
-        const data = res.data?.data?.items ?? res.data?.data ?? [];
-        setFeaturedBeaches(Array.isArray(data) ? data.slice(0, 3) : []);
+        const data = await getBeaches();
+        setFeaturedBeaches(data.slice(0, 3));
       } catch (err) {
         console.error("Fetch error:", err);
       } finally {

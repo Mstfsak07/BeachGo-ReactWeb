@@ -22,8 +22,8 @@ public class RaceConditionTestController : ControllerBase
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
         var userAgent = Request.Headers["User-Agent"].ToString();
 
-        var task1 = _authService.RefreshTokenAsync(request.AccessToken, request.RefreshToken, ipAddress, userAgent);
-        var task2 = _authService.RefreshTokenAsync(request.AccessToken, request.RefreshToken, ipAddress, userAgent);
+        var task1 = _authService.RefreshTokenAsync(request.RefreshToken, ipAddress, userAgent);
+        var task2 = _authService.RefreshTokenAsync(request.RefreshToken, ipAddress, userAgent);
 
         var result1 = await task1;
         var result2 = await task2;

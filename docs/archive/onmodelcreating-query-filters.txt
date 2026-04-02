@@ -1,0 +1,13 @@
+Orijinal dosya adı: "OnModelCreating` metodu içindeki şu satırlara dikkat edelim"
+Arşivlenme tarihi: 2026-04-02
+
+--- Orijinal İçerik ---
+modelBuilder.Entity<Beach>().HasQueryFilter(e => !e.IsDeleted &&
+    (_currentUserService == null ||
+     _currentUserService.TenantId == null ||
+     e.TenantId == _currentUserService.TenantId));
+
+modelBuilder.Entity<Reservation>().HasQueryFilter(e => !e.IsDeleted &&
+    (_currentUserService == null ||
+     _currentUserService.TenantId == null ||
+     e.TenantId == _currentUserService.TenantId));

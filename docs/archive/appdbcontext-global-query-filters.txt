@@ -1,0 +1,6 @@
+Orijinal dosya adı: "AppDbContext` içindeki Global Sorgu Filtreleri sayesinde"
+Arşivlenme tarihi: 2026-04-02
+
+--- Orijinal İçerik ---
+modelBuilder.Entity<Beach>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));
+modelBuilder.Entity<Reservation>().HasQueryFilter(e => !e.IsDeleted && (_currentUserService == null || _currentUserService.TenantId == null || e.TenantId == _currentUserService.TenantId));

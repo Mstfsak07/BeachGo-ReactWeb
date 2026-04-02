@@ -1,0 +1,8 @@
+Orijinal dosya adı: "Ayrıca `SaveChangesAsync` metodunuzdaki şu blok sayesinde"
+Arşivlenme tarihi: 2026-04-02
+
+--- Orijinal İçerik ---
+if (!entry.Entity.TenantId.HasValue && _currentUserService?.TenantId != null)
+{
+    entry.Entity.TenantId = _currentUserService.TenantId;
+}

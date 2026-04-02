@@ -1,0 +1,4 @@
+Bu dosya boş bir migration notu idi.
+Orijinal dosya adı: "1. Önce Package Manager Console (veya Komut satırına Terminal'den) aşağıdaki komutu yazarak initial migration'ı oluşturun"
+İçerik: Boş (0 satır)
+Arşivlenme tarihi: 2026-04-02

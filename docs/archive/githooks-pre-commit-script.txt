@@ -1,0 +1,23 @@
+Orijinal dosya adı: ".githookspre-commit.txt"
+Arşivlenme tarihi: 2026-04-02
+Not: Bu PowerShell scripti, commit öncesi Claude ile otomatik kod review yapan bir pre-commit hook taslağıdır.
+
+--- Orijinal İçerik ---
+$review = git diff --cached | claude @"
+[audit + redteam]
+
+Bu değişiklikleri incele.
+- kritik bug var mı
+- null reference riski var mı
+- güvenlik sorunu var mı
+
+Ciddi sorun varsa BLOCK yaz.
+Sorun yoksa OK yaz.
+"@
+
+$review | Out-File .claude-review.txt
+
+if ($review -match "BLOCK") {
+    Write-Host $review
+    exit 1
+}

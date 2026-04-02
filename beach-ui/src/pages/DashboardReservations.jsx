@@ -22,7 +22,7 @@ const DashboardReservations = () => {
         if (err.response?.status === 404) {
           setReservations([]);
         } else {
-          console.error('Reservations fetch error:', err);
+          // Reservations fetch failed
           toast.error('Rezervasyonlar yüklenemedi.');
         }
       } finally {
@@ -45,7 +45,7 @@ const DashboardReservations = () => {
       );
       toast.success(action === 'Approved' ? 'Rezervasyon onaylandı.' : 'Rezervasyon reddedildi.');
     } catch (err) {
-      console.error('Status update error:', err);
+      // Status update failed
       toast.error('İşlem başarısız.');
     } finally {
       setActionLoadingId(null);

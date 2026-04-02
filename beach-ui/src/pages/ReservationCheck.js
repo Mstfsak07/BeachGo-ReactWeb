@@ -24,7 +24,7 @@ const ReservationCheck = () => {
       }
     } catch (err) {
       setMsg('❌ Sorgulama sırasında bir hata oluştu. Kodun doğru olduğundan emin olun.');
-      console.error('Check error:', err);
+      // Reservation check failed
     } finally {
       setLoading(false);
     }

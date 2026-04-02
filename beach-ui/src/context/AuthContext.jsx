@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
                 const result = await refreshAccessToken();
                 scheduleProactiveRefresh(result.accessTokenExpiry);
             } catch (err) {
-                console.error('[AuthContext] Proactive refresh failed:', err);
+                // Proactive refresh failed — force logout
                 // Sessizce logout yapabiliriz veya bir sonraki 401'i bekleyebiliriz
                 // Burada logout yapmak en güvenlisi
                 clearSession();
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }) => {
         try {
             await api.post('/Auth/logout', {});
         } catch (err) {
-            console.error('[AuthContext] Logout error:', err);
+            // Logout request failed — clear session anyway
         } finally {
             clearSession();
         }
@@ -92,7 +92,7 @@ export const AuthProvider = ({ children }) => {
             scheduleProactiveRefresh(result.accessTokenExpiry);
         } catch (err) {
             // Kullanıcı login değilse veya cookie yoksa buraya düşer
-            console.log('[AuthContext] No active session found.');
+            // No active session — user not logged in
             clearSession();
         } finally {
             setLoading(false);
@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }) => {
                     const parsedUser = JSON.parse(storedUserData);
                     setUser(parsedUser); // Set user immediately for UI consistency
                 } catch (error) {
-                    console.error('[AuthContext] Error parsing stored user data:', error);
+                    // Corrupt stored user data — clear session
                     clearSession(); // Clear session if stored user data is corrupt
                 }
             }

@@ -35,7 +35,7 @@ const Home = () => {
         const data = await getBeaches();
         setFeaturedBeaches(data.slice(0, 3));
       } catch (err) {
-        console.error("Fetch error:", err);
+        // Fetch failed
       } finally {
         setLoading(false);
       }

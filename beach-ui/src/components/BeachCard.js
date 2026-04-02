@@ -103,6 +103,6 @@ const BeachCard = React.memo(({ beach }) => {
       </div>
     </div>
   );
-};
+});
 
 export default BeachCard;

@@ -50,7 +50,7 @@ const Dashboard = () => {
         const data = await getBusinessStats();
         setStats(data || null);
       } catch (err) {
-        console.error('Stats fetch error:', err);
+        // Stats fetch failed
       } finally {
         setStatsLoading(false);
       }

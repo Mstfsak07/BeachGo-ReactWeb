@@ -18,7 +18,7 @@ export const clearAccessToken = () => {
 
 // ── Axios instance
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5144/api',
+  baseURL: process.env.REACT_APP_API_URL,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
   withCredentials: true, // HttpOnly cookie'ler için kritik ayar

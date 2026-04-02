@@ -33,9 +33,9 @@ const Login = () => {
 
     } catch (err) {
       // Hata mesajı backend'den geliyorsa göster, yoksa genel hata
-      const errorMsg = err.response?.data?.message || err.message || "Giriş başarısız.";
+      const errorMsg = err.response?.data?.message || "Giriş başarısız. Lütfen tekrar deneyin.";
       toast.error(errorMsg);
-      console.error("Login error", err);
+      // Login failed
     } finally {
       setIsSubmitting(false);
     }

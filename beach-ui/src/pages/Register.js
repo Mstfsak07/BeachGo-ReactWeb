@@ -43,8 +43,8 @@ const Register = () => {
       navigate('/beaches');
 
     } catch (err) {
-      console.error('Register error:', err);
-      const errorMsg = err.response?.data?.message || err.message || 'Kayıt işlemi başarısız oldu.';
+      // Register failed
+      const errorMsg = err.response?.data?.message || 'Kayıt işlemi başarısız oldu. Lütfen tekrar deneyin.';
       toast.error(errorMsg);
     } finally {
       setLoading(false);

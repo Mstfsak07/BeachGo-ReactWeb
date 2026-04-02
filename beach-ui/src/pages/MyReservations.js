@@ -16,7 +16,7 @@ const MyReservations = () => {
       const data = await reservationService.getMyReservations();
       setReservations(data);
     } catch (err) {
-      console.error('Fetch reservations error:', err);
+      // Fetch reservations failed
       toast.error('Rezervasyonlarınız yüklenemedi.');
     } finally {
       setLoading(false);
@@ -36,7 +36,7 @@ const MyReservations = () => {
       });
       toast.success("Rezervasyon iptal edildi");
     } catch (error) {
-      console.error("DELETE ERROR", error);
+      // Cancel reservation failed
       toast.error(error.response?.data?.message || "Rezervasyon silinirken hata oluştu");
     }
   };

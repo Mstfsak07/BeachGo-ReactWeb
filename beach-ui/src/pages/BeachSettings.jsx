@@ -39,7 +39,7 @@ const BeachSettings = () => {
           closeTime: data.closeTime || '',
         });
       } catch (err) {
-        console.error(err);
+        // Beach data fetch failed
       }
     };
     fetchBeachData();

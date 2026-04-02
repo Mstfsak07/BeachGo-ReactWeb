@@ -22,7 +22,7 @@ const Beaches = () => {
       const beachList = await getBeaches();
       setBeaches(beachList);
     } catch (err) {
-      console.error('Beaches fetch error:', err);
+      // Beaches fetch failed
       setError('Plajlar yüklenirken bir hata oluştu');
       setBeaches([]);
     } finally {
@@ -42,7 +42,7 @@ const Beaches = () => {
       const searchList = await searchBeaches(query);
       setBeaches(searchList);
     } catch (err) {
-      console.error('Search error:', err);
+      // Search failed
       setError('Arama yapılırken bir hata oluştu');
       setBeaches([]);
     } finally {

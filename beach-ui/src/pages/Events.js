@@ -12,7 +12,7 @@ const Events = () => {
         const data = await getEvents();
         setEvents(data);
       } catch (err) {
-        console.error(err);
+        // Events fetch failed
       } finally {
         setLoading(false);
       }

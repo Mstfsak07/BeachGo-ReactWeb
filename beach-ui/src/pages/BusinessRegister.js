@@ -52,8 +52,8 @@ const BusinessRegister = () => {
             navigate('/dashboard');
 
         } catch (err) {
-            console.error('Business Register error:', err);
-            const errorMsg = err.response?.data?.message || err.message || 'İşletme kaydı başarısız oldu.';
+            // Business register failed
+            const errorMsg = err.response?.data?.message || 'İşletme kaydı başarısız oldu. Lütfen tekrar deneyin.';
             toast.error(errorMsg);
         } finally {
             setLoading(false);

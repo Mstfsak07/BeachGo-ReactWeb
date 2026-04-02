@@ -21,7 +21,7 @@ const DashboardStats = () => {
         const data = await getBusinessStats();
         setStats(data || null);
       } catch (err) {
-        console.error('Stats fetch error:', err);
+        // Stats fetch failed
         setError(true);
       } finally {
         setLoading(false);

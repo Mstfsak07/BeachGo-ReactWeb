@@ -47,7 +47,7 @@ const BeachDetail = () => {
         setError('Plaj bilgileri su an yuklenemiyor.');
       }
     } catch (err) {
-      console.error('Beach detail fetch error:', err);
+      // Beach detail fetch failed
       setError('Sistemsel bir hata olustu. Lutfen daha sonra tekrar deneyin.');
     } finally {
       setLoading(false);

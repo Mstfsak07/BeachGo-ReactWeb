@@ -42,12 +42,6 @@ export const checkReservation = async (code) => {
   return unwrapResponse(res.data);
 };
 
-/** @returns {Promise<import('../types').ReservationDto>} */
-export const createReservation = async (data) => {
-  const res = await api.post('/Reservations', data);
-  return unwrapResponse(res.data);
-};
-
 // Reviews
 export const getBeachReviews = async (beachId) => {
   const res = await api.get(`/Beaches/${beachId}/Reviews`);

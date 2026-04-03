@@ -50,7 +50,7 @@ public class GuestReservationService : IGuestReservationService
         var reservation = new Reservation
         {
             BeachId = dto.BeachId,
-            UserId = 0, // Guest — no user
+            UserId = beach.OwnerId, // Guest
             ReservationDate = dto.ReservationDate,
             PersonCount = dto.PersonCount,
             SunbedCount = 0,
@@ -65,6 +65,7 @@ public class GuestReservationService : IGuestReservationService
             ConfirmationCode = confirmationCode,
             ReservationType = dto.ReservationType,
             ReservationTime = resTime,
+            PaymentStatus = "Pending"
         };
 
         _db.Reservations.Add(reservation);
@@ -75,8 +76,75 @@ public class GuestReservationService : IGuestReservationService
             ReservationId = reservation.Id,
             ConfirmationCode = confirmationCode,
             Status = reservation.Status.ToString(),
-            TotalPrice = price
+            TotalPrice = price,
+            PaymentStatus = reservation.PaymentStatus
         }, "Rezervasyon başarıyla oluşturuldu.");
+    }
+
+    public async Task<ServiceResult<GuestReservationDetailDto>> GetByConfirmationCodeAsync(string confirmationCode)
+    {
+        var reservation = await _db.Reservations
+            .Include(r => r.Beach)
+            .FirstOrDefaultAsync(r => r.ConfirmationCode == confirmationCode && r.IsGuest);
+
+        if (reservation == null)
+            return ServiceResult<GuestReservationDetailDto>.FailureResult("Rezervasyon bulunamadı.");
+
+        return ServiceResult<GuestReservationDetailDto>.SuccessResult(new GuestReservationDetailDto
+        {
+            ConfirmationCode = reservation.ConfirmationCode!,
+            GuestName = $"{reservation.GuestFirstName} {reservation.GuestLastName}",
+            BeachName = reservation.Beach?.Name ?? "Bilinmiyor",
+            ReservationDate = reservation.ReservationDate.ToString("yyyy-MM-dd"),
+            ReservationTime = reservation.ReservationTime?.ToString(@"hh\:mm") ?? "Belirtilmemiş",
+            PersonCount = reservation.PersonCount,
+            ReservationType = reservation.ReservationType ?? "Bilinmiyor",
+            Status = reservation.Status.ToString()
+        });
+    }
+
+    public async Task<ServiceResult<GuestReservationResponseDto>> CancelAsync(string confirmationCode)
+    {
+        var reservation = await _db.Reservations.FirstOrDefaultAsync(r => r.ConfirmationCode == confirmationCode && r.IsGuest);
+        if (reservation == null)
+            return ServiceResult<GuestReservationResponseDto>.FailureResult("Rezervasyon bulunamadı.");
+
+        if (reservation.Status == ReservationStatus.Cancelled)
+            return ServiceResult<GuestReservationResponseDto>.FailureResult("Rezervasyon zaten iptal edilmiş.");
+
+        if (reservation.Status != ReservationStatus.Pending && reservation.Status.ToString() != "Waiting")
+            return ServiceResult<GuestReservationResponseDto>.FailureResult("Sadece Pending veya Waiting durumundaki rezervasyonlar iptal edilebilir.");
+
+        reservation.Status = ReservationStatus.Cancelled;
+        await _db.SaveChangesAsync();
+
+        return ServiceResult<GuestReservationResponseDto>.SuccessResult(new GuestReservationResponseDto
+        {
+            ReservationId = reservation.Id,
+            ConfirmationCode = reservation.ConfirmationCode,
+            Status = reservation.Status.ToString(),
+            TotalPrice = reservation.TotalPrice,
+            PaymentStatus = reservation.PaymentStatus
+        }, "Rezervasyon başarıyla iptal edildi.");
+    }
+
+    public async Task<ServiceResult<GuestReservationResponseDto>> MockPayAsync(string confirmationCode)
+    {
+        var reservation = await _db.Reservations.FirstOrDefaultAsync(r => r.ConfirmationCode == confirmationCode && r.IsGuest);
+        if (reservation == null)
+            return ServiceResult<GuestReservationResponseDto>.FailureResult("Rezervasyon bulunamadı.");
+
+        reservation.PaymentStatus = "Paid";
+        await _db.SaveChangesAsync();
+
+        return ServiceResult<GuestReservationResponseDto>.SuccessResult(new GuestReservationResponseDto
+        {
+            ReservationId = reservation.Id,
+            ConfirmationCode = reservation.ConfirmationCode,
+            Status = reservation.Status.ToString(),
+            TotalPrice = reservation.TotalPrice,
+            PaymentStatus = reservation.PaymentStatus
+        }, "Ödeme başarılı (Mock).");
     }
 
     private static decimal CalculatePrice(Beach beach, string reservationType, int personCount)

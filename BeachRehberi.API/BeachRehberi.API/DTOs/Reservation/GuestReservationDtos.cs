@@ -50,6 +50,7 @@ public class GuestReservationResponseDto
     public string ConfirmationCode { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public decimal TotalPrice { get; set; }
+    public string PaymentStatus { get; set; } = string.Empty;
 }
 
 public class SendOtpDto
@@ -77,4 +78,16 @@ public class VerifyOtpDto
 public class VerifyOtpResponseDto
 {
     public bool Verified { get; set; }
+}
+
+public class GuestReservationDetailDto
+{
+    public string ConfirmationCode { get; set; } = string.Empty;
+    public string GuestName { get; set; } = string.Empty;
+    public string BeachName { get; set; } = string.Empty;
+    public string ReservationDate { get; set; } = string.Empty;
+    public string ReservationTime { get; set; } = string.Empty;
+    public int PersonCount { get; set; }
+    public string ReservationType { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
 }

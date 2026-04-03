@@ -49,4 +49,25 @@ public class GuestReservationsController : ControllerBase
         var result = await _guestReservationService.CreateAsync(dto);
         return result.ToActionResult();
     }
+
+    [HttpGet("{confirmationCode}")]
+    public async Task<IActionResult> GetByConfirmationCode(string confirmationCode)
+    {
+        var result = await _guestReservationService.GetByConfirmationCodeAsync(confirmationCode);
+        return result.ToActionResult();
+    }
+
+    [HttpPost("cancel/{confirmationCode}")]
+    public async Task<IActionResult> Cancel(string confirmationCode)
+    {
+        var result = await _guestReservationService.CancelAsync(confirmationCode);
+        return result.ToActionResult();
+    }
+
+    [HttpPost("mock-pay/{confirmationCode}")]
+    public async Task<IActionResult> MockPay(string confirmationCode)
+    {
+        var result = await _guestReservationService.MockPayAsync(confirmationCode);
+        return result.ToActionResult();
+    }
 }

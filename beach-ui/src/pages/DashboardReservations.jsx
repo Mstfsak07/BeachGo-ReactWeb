@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CalendarCheck, Search, Filter, CheckCircle2, XCircle, Loader, X, Info, CreditCard, MessageSquare, Activity
+  CalendarCheck, Search, Filter, CheckCircle2, XCircle, Loader, X, Info, CreditCard, MessageSquare, Activity, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { getBusinessReservations, approveReservation, rejectReservation, cancelReservation } from '../services/businessService';
@@ -17,6 +17,8 @@ const DashboardReservations = () => {
   const [sortType, setSortType] = useState('Newest'); 
   
   const [selectedRes, setSelectedRes] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchReservations = async () => {
@@ -58,6 +60,11 @@ const DashboardReservations = () => {
     }
   };
 
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterType, filterStatus, sortType]);
+
   const filtered = reservations.filter(r => {
     const s = search.toLowerCase();
     const matchesSearch = 
@@ -74,6 +81,34 @@ const DashboardReservations = () => {
     if (sortType === 'NameZA') return (b.customerName || '').localeCompare(a.customerName || '');
     return 0;
   });
+
+
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [filtered.length, totalPages, currentPage]);
+
+  const paginatedItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const getPageNumbers = () => {
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = startPage + 4;
+    
+    if (endPage > totalPages) {
+      endPage = totalPages;
+      startPage = Math.max(1, endPage - 4);
+    }
+    
+    const pages = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+    return pages;
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -162,7 +197,7 @@ const DashboardReservations = () => {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map(res => (
+                  paginatedItems.map(res => (
                     <tr 
                       key={res.id} 
                       onClick={() => setSelectedRes(res)}
@@ -257,6 +292,47 @@ const DashboardReservations = () => {
               </tbody>
             </table>
           </div>
+          
+          {/* SAYFALAMA (PAGINATION) */}
+          {filtered.length > 0 && totalPages > 1 && (
+            <div className="flex items-center justify-between px-8 py-5 border-t border-slate-50 bg-slate-50/50">
+              <span className="text-xs font-bold text-slate-500">
+                Toplam <span className="text-slate-900">{filtered.length}</span> kayıttan {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filtered.length)} arası gösteriliyor.
+              </span>
+              
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg text-slate-500 hover:bg-white hover:text-slate-900 hover:shadow-sm disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                
+                {getPageNumbers().map(num => (
+                  <button
+                    key={num}
+                    onClick={() => setCurrentPage(num)}
+                    className={`w-9 h-9 rounded-lg font-bold text-sm transition-all ${
+                      currentPage === num 
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' 
+                        : 'text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-sm'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+                
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg text-slate-500 hover:bg-white hover:text-slate-900 hover:shadow-sm disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:shadow-none transition-all"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+          )}
         </motion.section>
       </main>
 

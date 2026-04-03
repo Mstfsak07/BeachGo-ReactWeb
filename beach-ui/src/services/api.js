@@ -38,7 +38,17 @@ export const getReservations = async () => {
 };
 
 export const checkReservation = async (code) => {
-  const res = await api.get(`/Reservations/check/${code}`);
+  const res = await api.get(`/GuestReservations/${code}`);
+  return unwrapResponse(res.data);
+};
+
+export const cancelGuestReservation = async (code) => {
+  const res = await api.post(`/GuestReservations/cancel/${code}`);
+  return unwrapResponse(res.data);
+};
+
+export const mockPayGuestReservation = async (code) => {
+  const res = await api.post(`/GuestReservations/mock-pay/${code}`);
   return unwrapResponse(res.data);
 };
 

@@ -62,6 +62,10 @@ const DashboardReservations = () => {
 
 
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     setCurrentPage(1);
   }, [search, filterType, filterStatus, sortType]);
 
@@ -169,6 +173,22 @@ const DashboardReservations = () => {
                 <option value="NameAZ">İsme Göre (A-Z)</option>
                 <option value="NameZA">İsme Göre (Z-A)</option>
               </select>
+              {(search !== '' || filterType !== 'All' || filterStatus !== 'All' || sortType !== 'Newest') && (
+                <button
+                  onClick={() => {
+                    setSearch('');
+                    setFilterType('All');
+                    setFilterStatus('All');
+                    setSortType('Newest');
+                    setCurrentPage(1);
+                    localStorage.removeItem('beachgo_admin_reservations_state');
+                  }}
+                  className="flex items-center justify-center gap-1 bg-rose-50 text-rose-600 border-none rounded-xl py-2.5 px-4 outline-none font-bold text-sm hover:bg-rose-100 transition-colors shrink-0"
+                  title="Tüm filtreleri ve aramayı temizle"
+                >
+                  <X size={16} /> Temizle
+                </button>
+              )}
             </div>
           </div>
 

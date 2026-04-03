@@ -99,11 +99,16 @@ const GuestReservation = () => {
         verificationId: formData.verificationId,
       };
       const result = await reservationService.createGuestReservation(dto);
-      updateForm({
-        confirmationCode: result.confirmationCode,
-        reservationId: result.reservationId,
+      navigate('/reservation-success', {
+        state: {
+          confirmationCode: result.confirmationCode,
+          beachName: beach.name,
+          reservationDate: formData.reservationDate,
+          reservationTime: formData.reservationTime,
+          personCount: formData.personCount,
+          reservationType: formData.reservationType,
+        }
       });
-      handleNext();
     } catch {
       toast.error('Rezervasyon oluşturulamadı. Lütfen tekrar deneyin.');
     } finally {

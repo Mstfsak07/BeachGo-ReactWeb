@@ -25,6 +25,7 @@ const Events = lazy(() => import("./pages/Events"));
 const DashboardStats = lazy(() => import("./pages/DashboardStats"));
 const DashboardReservations = lazy(() => import("./pages/DashboardReservations"));
 const GuestReservation = lazy(() => import("./pages/GuestReservation"));
+const ReservationSuccess = lazy(() => import("./pages/ReservationSuccess"));
 
 // Giriş yapmış kullanıcıyı login/register'dan uygun sayfaya yönlendir
 const GuestOnlyRoute = ({ children }) => {
@@ -53,6 +54,7 @@ function App() {
           <Route path="/events" element={<Events />} />
           <Route path="/reservation-check" element={<ReservationCheck />} />
           <Route path="/reservation/:beachId" element={<GuestReservation />} />
+          <Route path="/reservation-success" element={<ReservationSuccess />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
           {/* Guest only — authenticated users are redirected */}

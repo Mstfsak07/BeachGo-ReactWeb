@@ -1,11 +1,25 @@
 import React, { useState } from 'react';
 import { checkReservation } from '../services/api';
+import { motion } from 'framer-motion';
 
 const ReservationCheck = () => {
   const [code, setCode] = useState('');
   const [reservation, setReservation] = useState(null);
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const getStatusBadge = (status) => {
+    if (status === 'Approved' || status === 1) {
+      return <span className="bg-emerald-100 text-emerald-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-center w-full block">Onaylandı</span>;
+    }
+    if (status === 'Pending' || status === 0 || status === 'PaymentPending') {
+      return <span className="bg-orange-100 text-orange-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-center w-full block">Bekliyor</span>;
+    }
+    if (status === 'Cancelled' || status === 3 || status === 'Rejected' || status === 2) {
+      return <span className="bg-rose-100 text-rose-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-center w-full block">İptal / Red</span>;
+    }
+    return <span className="bg-blue-100 text-blue-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-center w-full block">{status || 'Bilinmiyor'}</span>;
+  };
 
   const handleCheck = async (e) => {
     e.preventDefault();
@@ -16,15 +30,18 @@ const ReservationCheck = () => {
     try {
       const data = await checkReservation(code);
 
-      if (data) {
+      if (data && data.id) {
         setReservation(data);
         setMsg('');
       } else {
         setMsg('🔍 Bu kod ile kayıtlı bir rezervasyon bulunamadı.');
       }
     } catch (err) {
-      setMsg('❌ Sorgulama sırasında bir hata oluştu. Kodun doğru olduğundan emin olun.');
-      // Reservation check failed
+      if (err.response && err.response.status === 404) {
+        setMsg('🔍 Bu kod ile kayıtlı bir rezervasyon bulunamadı.');
+      } else {
+        setMsg('❌ Sorgulama sırasında bir hata oluştu. Kodun doğru olduğundan emin olun.');
+      }
     } finally {
       setLoading(false);
     }
@@ -91,8 +108,8 @@ const ReservationCheck = () => {
                    </div>
                 </div>
                 <div className="flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl min-w-[120px]">
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Durum</span>
-                   <span className="text-blue-600 font-black text-sm uppercase tracking-widest">Onaylandı</span>
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Durum</span>
+                   {getStatusBadge(reservation.status)}
                 </div>
              </div>
           </div>

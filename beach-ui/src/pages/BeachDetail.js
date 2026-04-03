@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   ChevronRight
 } from 'lucide-react';
+import GoogleReviewsPlaceholder from '../components/GoogleReviewsPlaceholder';
 
 const BeachDetail = () => {
   const { id } = useParams();
@@ -219,6 +220,32 @@ const BeachDetail = () => {
                 </div>
               </div>
             )}
+
+            {/* Contact Info */}
+            {(beach.phone || beach.website || beach.instagram) && (
+              <div className="space-y-4 pb-12">
+                <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3"><div className="w-1.5 h-8 bg-purple-600 rounded-full" /> İletişim</h3>
+                <div className="flex flex-wrap gap-4">
+                  {beach.phone && (
+                    <div className="bg-slate-50 rounded-2xl px-6 py-4 border border-slate-100 flex items-center gap-3">
+                      <span className="text-sm font-bold text-slate-700">📞 {beach.phone}</span>
+                    </div>
+                  )}
+                  {beach.website && (
+                    <div className="bg-slate-50 rounded-2xl px-6 py-4 border border-slate-100 flex items-center gap-3">
+                      <span className="text-sm font-bold text-slate-700">🌐 {beach.website}</span>
+                    </div>
+                  )}
+                  {beach.instagram && (
+                    <div className="bg-slate-50 rounded-2xl px-6 py-4 border border-slate-100 flex items-center gap-3">
+                      <span className="text-sm font-bold text-slate-700">📸 {beach.instagram}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <GoogleReviewsPlaceholder />
           </motion.div>
 
           {/* Reservation Card */}

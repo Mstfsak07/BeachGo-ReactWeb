@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import {
   CalendarCheck, Search, Filter, CheckCircle2, XCircle, Loader, X, Info, CreditCard, MessageSquare, Activity, ChevronLeft, ChevronRight
 } from 'lucide-react';
@@ -11,14 +12,112 @@ const DashboardReservations = () => {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState(null);
-  const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState('All'); 
-  const [filterStatus, setFilterStatus] = useState('All');
-  const [sortType, setSortType] = useState('Newest'); 
+    const [searchParams, setSearchParams] = useSearchParams();
+  const STORAGE_KEY = 'beachgo_admin_reservations_state';
+
+  const initialState = React.useMemo(() => {
+    let lsState = { search: '', filterType: 'All', filterStatus: 'All', sortType: 'Newest', currentPage: 1 };
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        lsState = {
+          search: typeof parsed.search === 'string' ? parsed.search : '',
+          filterType: ['All', 'Guest', 'User'].includes(parsed.filterType) ? parsed.filterType : 'All',
+          filterStatus: ['All', 'Active', 'Cancelled'].includes(parsed.filterStatus) ? parsed.filterStatus : 'All',
+          sortType: ['Newest', 'Oldest', 'NameAZ', 'NameZA'].includes(parsed.sortType) ? parsed.sortType : 'Newest',
+          currentPage: typeof parsed.currentPage === 'number' && parsed.currentPage > 0 ? parsed.currentPage : 1
+        };
+      }
+    } catch (e) {}
+
+    const qSearch = searchParams.get('search');
+    const qType = searchParams.get('type');
+    const qStatus = searchParams.get('status');
+    const qSort = searchParams.get('sort');
+    const qPage = searchParams.get('page');
+
+    const hasAnyQuery = qSearch !== null || qType !== null || qStatus !== null || qSort !== null || qPage !== null;
+
+    if (hasAnyQuery) {
+      return {
+        search: qSearch !== null ? qSearch : lsState.search,
+        filterType: ['All', 'Guest', 'User'].includes(qType) ? qType : (qType === null ? lsState.filterType : 'All'),
+        filterStatus: ['All', 'Active', 'Cancelled'].includes(qStatus) ? qStatus : (qStatus === null ? lsState.filterStatus : 'All'),
+        sortType: ['Newest', 'Oldest', 'NameAZ', 'NameZA'].includes(qSort) ? qSort : (qSort === null ? lsState.sortType : 'Newest'),
+        currentPage: qPage !== null && !isNaN(parseInt(qPage)) && parseInt(qPage) > 0 ? parseInt(qPage) : lsState.currentPage
+      };
+    }
+    return lsState;
+  }, []);
+
+  const [search, setSearch] = useState(initialState.search);
+  const [filterType, setFilterType] = useState(initialState.filterType);
+  const [filterStatus, setFilterStatus] = useState(initialState.filterStatus);
+  const [sortType, setSortType] = useState(initialState.sortType);
   
   const [selectedRes, setSelectedRes] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialState.currentPage);
   const itemsPerPage = 10;
+
+  // Sync: State -> URL & LS
+  useEffect(() => {
+    const stateToSave = { search, filterType, filterStatus, sortType, currentPage };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+
+    const currentQs = searchParams.get('search') ?? '';
+    const currentQt = searchParams.get('type') ?? 'All';
+    const currentQstat = searchParams.get('status') ?? 'All';
+    const currentQsort = searchParams.get('sort') ?? 'Newest';
+    const currentQpage = searchParams.get('page') ? parseInt(searchParams.get('page')) : 1;
+
+    if (
+      search !== currentQs ||
+      filterType !== currentQt ||
+      filterStatus !== currentQstat ||
+      sortType !== currentQsort ||
+      currentPage !== currentQpage
+    ) {
+      const newParams = new URLSearchParams();
+      if (search) newParams.set('search', search);
+      if (filterType !== 'All') newParams.set('type', filterType);
+      if (filterStatus !== 'All') newParams.set('status', filterStatus);
+      if (sortType !== 'Newest') newParams.set('sort', sortType);
+      if (currentPage !== 1) newParams.set('page', currentPage);
+      
+      setSearchParams(newParams, { replace: search !== currentQs }); 
+    }
+  }, [search, filterType, filterStatus, sortType, currentPage, searchParams, setSearchParams]);
+
+  // Sync: URL -> State
+  useEffect(() => {
+    const qSearch = searchParams.get('search');
+    const qType = searchParams.get('type');
+    const qStatus = searchParams.get('status');
+    const qSort = searchParams.get('sort');
+    const qPage = searchParams.get('page');
+
+    const parsedSearch = qSearch !== null ? qSearch : '';
+    const parsedType = ['All', 'Guest', 'User'].includes(qType) ? qType : 'All';
+    const parsedStatus = ['All', 'Active', 'Cancelled'].includes(qStatus) ? qStatus : 'All';
+    const parsedSort = ['Newest', 'Oldest', 'NameAZ', 'NameZA'].includes(qSort) ? qSort : 'Newest';
+    const parsedPage = qPage !== null && !isNaN(parseInt(qPage)) && parseInt(qPage) > 0 ? parseInt(qPage) : 1;
+
+    if (
+      search !== parsedSearch ||
+      filterType !== parsedType ||
+      filterStatus !== parsedStatus ||
+      sortType !== parsedSort ||
+      currentPage !== parsedPage
+    ) {
+      setSearch(parsedSearch);
+      setFilterType(parsedType);
+      setFilterStatus(parsedStatus);
+      setSortType(parsedSort);
+      setCurrentPage(parsedPage);
+    }
+  }, [searchParams]);
+
 
   useEffect(() => {
     const fetchReservations = async () => {

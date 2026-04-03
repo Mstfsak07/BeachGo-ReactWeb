@@ -1,19 +1,24 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, Copy, Search, Home, Calendar, Users, MapPin } from 'lucide-react';
+import { CheckCircle, Copy, Search, Home, Calendar, Users, MapPin, CreditCard } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { mockPayGuestReservation } from '../services/api';
 
 const ReservationSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  
+  // Initialize state once so we can mutate it on mock pay
+  const [resState, setResState] = useState(location.state);
+  const [payLoading, setPayLoading] = useState(false);
 
-  if (!location.state) {
+  if (!resState) {
     return <Navigate to="/" replace />;
   }
 
-  const { confirmationCode, beachName, reservationDate, reservationTime, personCount, reservationType } = location.state;
+  const { confirmationCode, beachName, reservationDate, reservationTime, personCount, reservationType, paymentStatus, totalPrice } = resState;
 
   const handleCopy = async () => {
     try {
@@ -24,6 +29,27 @@ const ReservationSuccess = () => {
     } catch {
       toast.error('Kopyalama başarısız.');
     }
+  };
+
+  const handleMockPay = async () => {
+    setPayLoading(true);
+    try {
+      const res = await mockPayGuestReservation(confirmationCode);
+      if (res && res.paymentStatus === 'Paid') {
+        toast.success('Ödeme işlemi (Mock) başarılı!');
+        setResState((prev) => ({ ...prev, paymentStatus: 'Paid' }));
+      }
+    } catch (err) {
+      toast.error('Ödeme işlemi başarısız oldu.');
+    } finally {
+      setPayLoading(false);
+    }
+  };
+
+  const getPaymentBadge = (status) => {
+    if (status === 'Paid') return <span className="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Ödendi</span>;
+    if (status === 'Failed') return <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Başarısız</span>;
+    return <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Ödeme Bekliyor</span>;
   };
 
   return (
@@ -45,13 +71,13 @@ const ReservationSuccess = () => {
           </motion.div>
 
           <div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-1">Rezervasyonunuz Onaylandı!</h2>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-1">Rezervasyonunuz Alındı!</h2>
             <p className="text-sm text-slate-500 font-medium">Aşağıdaki onay kodunu saklayın.</p>
           </div>
 
           <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Onay Kodu</p>
-            <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center justify-center gap-3 mb-4">
               <span className="text-3xl font-black text-slate-900 tracking-widest">{confirmationCode || 'XXXXXX'}</span>
               <button
                 onClick={handleCopy}
@@ -60,7 +86,12 @@ const ReservationSuccess = () => {
                 <Copy size={18} />
               </button>
             </div>
-            {copied && <p className="text-xs text-emerald-500 font-bold mt-1">Kopyalandı!</p>}
+            {copied && <p className="text-xs text-emerald-500 font-bold mb-4">Kopyalandı!</p>}
+            
+            <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ödeme Durumu</span>
+              {getPaymentBadge(paymentStatus)}
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl p-5 space-y-3 border border-slate-100 text-left shadow-sm">
@@ -72,13 +103,28 @@ const ReservationSuccess = () => {
               <Calendar size={16} className="text-blue-500" />
               <span className="font-bold text-slate-700">{reservationDate} — {reservationTime}</span>
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <Users size={16} className="text-blue-500" />
-              <span className="font-bold text-slate-700">{personCount} Kişi — {reservationType}</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 text-sm">
+                <Users size={16} className="text-blue-500" />
+                <span className="font-bold text-slate-700">{personCount} Kişi — {reservationType}</span>
+              </div>
+              {totalPrice > 0 && (
+                <span className="font-black text-slate-900">{totalPrice} TL</span>
+              )}
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+          {paymentStatus !== 'Paid' && (
+            <button
+              onClick={handleMockPay}
+              disabled={payLoading}
+              className="w-full py-4 bg-emerald-500 text-white font-black rounded-xl uppercase tracking-widest text-sm shadow-xl transition-all flex items-center justify-center gap-2 hover:bg-emerald-600 disabled:opacity-50"
+            >
+              <CreditCard size={18} /> {payLoading ? 'Ödeniyor...' : 'Ödemeyi Tamamla (Mock)'}
+            </button>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button
               onClick={() => navigate('/reservation-check')}
               className="flex-1 py-4 bg-white border-2 border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition flex items-center justify-center gap-2"

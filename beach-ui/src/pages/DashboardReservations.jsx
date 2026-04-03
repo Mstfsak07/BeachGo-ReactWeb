@@ -98,8 +98,8 @@ const DashboardReservations = () => {
               <thead className="bg-slate-50/50 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">
                 <tr>
                   <th className="px-8 py-5 text-left">Müşteri</th>
-                  <th className="px-8 py-5 text-left">Tarih</th>
-                  <th className="px-8 py-5 text-left">Kişi</th>
+                  <th className="px-8 py-5 text-left">İletişim</th>
+                  <th className="px-8 py-5 text-left">Rezervasyon</th>
                   <th className="px-8 py-5 text-left">Durum</th>
                   <th className="px-8 py-5 text-right">İşlemler</th>
                 </tr>
@@ -122,22 +122,44 @@ const DashboardReservations = () => {
                     <tr key={res.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
-                            {res.userEmail?.charAt(0).toUpperCase()}
+                          <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                            {(res.guestName || res.userEmail || '?').charAt(0).toUpperCase()}
                           </div>
-                          <span className="font-bold text-slate-700">{res.userEmail}</span>
+                          <div>
+                            <span className="font-bold text-slate-700 block">{res.guestName || res.userEmail}</span>
+                            {res.isGuest && <span className="text-[9px] font-black bg-purple-100 text-purple-600 px-2 py-0.5 rounded uppercase tracking-widest mt-1 inline-block">Guest</span>}
+                          </div>
                         </div>
                       </td>
-                      <td className="px-8 py-5 font-bold text-slate-500 text-sm">{res.reservationDate?.slice(0, 10)}</td>
-                      <td className="px-8 py-5 font-black text-slate-900">{res.personCount ?? res.guests ?? '—'}</td>
                       <td className="px-8 py-5">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                        <span className="font-bold text-slate-500 text-sm block">{res.guestPhone || '-'}</span>
+                        <span className="text-xs text-slate-400 font-medium">{res.guestEmail || res.userEmail || '-'}</span>
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className="font-bold text-slate-700 text-sm block">{res.reservationDate?.slice(0, 10)}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{res.personCount ?? res.guests ?? '—'} Kişi</span>
+                        {res.confirmationCode && <span className="ml-2 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold">#{res.confirmationCode}</span>}
+                      </td>
+                      <td className="px-8 py-5 space-y-1">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest block w-fit ${
                           res.status === 'Approved' ? 'bg-emerald-50 text-emerald-600' :
                           res.status === 'Rejected' ? 'bg-rose-50 text-rose-600' :
+                          res.status === 'Cancelled' ? 'bg-rose-100 text-rose-600 border border-rose-200' :
                           'bg-amber-50 text-amber-600'
                         }`}>
-                          {res.status === 'Approved' ? 'Onaylandı' : res.status === 'Rejected' ? 'Reddedildi' : 'Beklemede'}
+                          {res.status === 'Approved' ? 'Onaylandı' : 
+                           res.status === 'Rejected' ? 'Reddedildi' : 
+                           res.status === 'Cancelled' ? 'İptal Edildi' : 'Beklemede'}
                         </span>
+                        {res.paymentStatus && (
+                          <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${
+                            res.paymentStatus === 'Paid' ? 'bg-emerald-50 text-emerald-600' :
+                            res.paymentStatus === 'Failed' ? 'bg-rose-50 text-rose-600' :
+                            'bg-orange-50 text-orange-600'
+                          }`}>
+                            Ödeme: {res.paymentStatus === 'Paid' ? 'Ödendi' : res.paymentStatus === 'Failed' ? 'Başarısız' : 'Bekliyor'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-8 py-5 text-right">
                         {res.status === 'Pending' && (

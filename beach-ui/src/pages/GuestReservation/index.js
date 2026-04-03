@@ -107,6 +107,8 @@ const GuestReservation = () => {
           reservationTime: formData.reservationTime,
           personCount: formData.personCount,
           reservationType: formData.reservationType,
+          paymentStatus: result.paymentStatus,
+          totalPrice: result.totalPrice
         }
       });
     } catch {

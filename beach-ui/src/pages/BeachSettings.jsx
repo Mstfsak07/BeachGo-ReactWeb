@@ -10,7 +10,7 @@ import {
   Loader,
   Phone,
   Globe,
-  Instagram,
+  Camera,
   DollarSign,
   Umbrella,
   ShowerHead,
@@ -201,10 +201,9 @@ const BeachSettings = () => {
                   <div className="space-y-2">
                     <label className={labelClass}>Instagram</label>
                     <div className="relative group">
-                      <Instagram className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                      <Camera className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
                       <input type="text" value={beach.instagram} onChange={(e) => setBeach({...beach, instagram: e.target.value})} placeholder="@plajadi" className={inputClass} />
-                    </div>
-                  </div>
+                    </div>                  </div>
                 </div>
               </div>
 

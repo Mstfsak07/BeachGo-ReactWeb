@@ -8,7 +8,7 @@ root.render(
   <App />
 );
 
-// PWA: Service worker kaydÄ±
+// PWA: Service worker kaydı
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js').catch(err => {

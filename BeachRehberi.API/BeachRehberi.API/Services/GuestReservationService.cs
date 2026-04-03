@@ -117,7 +117,7 @@ public class GuestReservationService : IGuestReservationService
         if (reservation.Status != ReservationStatus.Pending && reservation.Status.ToString() != "Waiting")
             return ServiceResult<GuestReservationResponseDto>.FailureResult("Sadece Pending veya Waiting durumundaki rezervasyonlar iptal edilebilir.");
 
-        reservation.Status = ReservationStatus.Cancelled;
+        reservation.Cancel();
         await _db.SaveChangesAsync();
 
         return ServiceResult<GuestReservationResponseDto>.SuccessResult(new GuestReservationResponseDto

@@ -75,7 +75,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> Reject(int id, [FromBody] string? comment)
         {
             var beachId = GetUserBeachId();
-            if (beachId == -1) return "Kendi iÃ…Å¸letme yetkiniz bulunamadÃ„Â±, iÃ…Å¸lem reddedildi.".ToForbiddenApiResponse();
+            if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
             var result = await _businessService.UpdateReservationStatusAsync(id, beachId, ReservationStatus.Rejected, comment);
             return result.ToActionResult();
@@ -85,7 +85,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> Cancel(int id, [FromBody] string? comment)
         {
             var beachId = GetUserBeachId();
-            if (beachId == -1) return "Kendi iÃ…Å¸letme yetkiniz bulunamadÃ„Â±, iÃ…Å¸lem reddedildi.".ToForbiddenApiResponse();
+            if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
             var result = await _businessService.UpdateReservationStatusAsync(id, beachId, ReservationStatus.Cancelled, comment);
             return result.ToActionResult();

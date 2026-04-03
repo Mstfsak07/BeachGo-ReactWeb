@@ -27,6 +27,8 @@ public class Reservation
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public DateTime? CancelledAt { get; set; }
+
     public bool IsDeleted { get; set; } = false;
 
     public ReservationStatus Status { get; set; } = ReservationStatus.Pending;
@@ -80,6 +82,7 @@ public class Reservation
     public void Cancel()
     {
         Status = ReservationStatus.Cancelled;
+        CancelledAt = DateTime.UtcNow;
     }
 
     public void MarkAsNoShow()

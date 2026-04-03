@@ -106,6 +106,7 @@ public class BusinessService : IBusinessService
     public async Task<List<BusinessReservationDto>> GetAllReservationsAsync(int beachId) =>
         await _db.Reservations
             .Include(r => r.User)
+            .Include(r => r.Beach)
             .Where(r => r.BeachId == beachId)
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => new BusinessReservationDto
@@ -121,8 +122,22 @@ public class BusinessService : IBusinessService
                 GuestName = (r.GuestFirstName + " " + r.GuestLastName).Trim(),
                 GuestPhone = r.GuestPhone ?? "",
                 GuestEmail = r.GuestEmail ?? "",
+                PaymentStatus = r.PaymentStatus ?? "Mock",
+                
+                IsGuestReservation = r.IsGuest,
                 ConfirmationCode = r.ConfirmationCode ?? "",
-                PaymentStatus = "Mock" // Phase 13'te eklenecek
+                CustomerName = r.IsGuest ? (r.GuestFirstName + " " + r.GuestLastName).Trim() : (r.User != null ? (r.User.ContactName ?? r.User.Email) : "Bilinmeyen"),
+                Phone = r.IsGuest ? (r.GuestPhone ?? "") : "",
+
+                BeachName = r.Beach != null ? r.Beach.Name : "",
+                TotalPrice = r.TotalPrice,
+                
+                SmsSent = r.IsGuest && _db.VerificationCodes.Any(v => v.Phone == r.GuestPhone),
+                SmsVerified = r.IsGuest && _db.VerificationCodes.Any(v => v.Phone == r.GuestPhone && v.IsUsed),
+                SmsLastSentTime = r.IsGuest ? _db.VerificationCodes.Where(v => v.Phone == r.GuestPhone).Max(v => (DateTime?)v.CreatedAt) : null,
+
+                PaymentCreatedAt = _db.ReservationPayments.Where(p => p.ReservationId == r.Id).Select(p => (DateTime?)p.CreatedAt).FirstOrDefault(),
+                CancelledAt = r.CancelledAt
             })
             .ToListAsync();
 

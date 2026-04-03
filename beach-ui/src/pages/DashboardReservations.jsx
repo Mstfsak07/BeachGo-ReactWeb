@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import {
-  CalendarCheck, Search, Filter, CheckCircle2, XCircle, Loader, X, Info, CreditCard, MessageSquare, Activity, ChevronLeft, ChevronRight
+  CalendarCheck, Search, Filter, CheckCircle2, XCircle, Loader, X, Info, CreditCard, MessageSquare, Activity, ChevronLeft, ChevronRight, AlertCircle, RefreshCw
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { getBusinessReservations, approveReservation, rejectReservation, cancelReservation } from '../services/businessService';
@@ -11,6 +11,7 @@ import { toast } from 'react-hot-toast';
 const DashboardReservations = () => {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
     const [searchParams, setSearchParams] = useSearchParams();
   const STORAGE_KEY = 'beachgo_admin_reservations_state';
@@ -121,19 +122,35 @@ const DashboardReservations = () => {
   }, [searchParams]);
 
 
+  const fetchReservations = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getBusinessReservations();
+      setReservations(data || []);
+    } catch (err) {
+      toast.error('Rezervasyonlar yüklenemedi.');
+      setError(err.message || 'Sunucuyla bağlantı kurulurken beklenmeyen bir hata oluştu.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchReservations = async () => {
-      try {
-        const data = await getBusinessReservations();
-        setReservations(data || []);
-      } catch (err) {
-        toast.error('Rezervasyonlar yüklenemedi.');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchReservations();
   }, []);
+
+  const hasActiveFilters = search !== '' || filterType !== 'All' || filterStatus !== 'All' || sortType !== 'Newest' || currentPage !== 1;
+
+  const clearFilters = () => {
+    setSearch('');
+    setFilterType('All');
+    setFilterStatus('All');
+    setSortType('Newest');
+    setCurrentPage(1);
+    localStorage.removeItem('beachgo_admin_reservations_state');
+    setSearchParams({}, { replace: true });
+  };
 
   const handleStatus = async (id, action, e) => {
     if (e) e.stopPropagation();
@@ -380,7 +397,7 @@ const DashboardReservations = () => {
             </div>
           </div>
 
-          {selectedIds.size > 0 && (
+          {!loading && !error && selectedIds.size > 0 && (
             <div className="bg-blue-50/50 border-b border-blue-50 px-8 py-3 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="bg-blue-600 text-white min-w-[24px] h-6 rounded-full flex items-center justify-center text-xs font-bold px-2">
@@ -436,15 +453,82 @@ const DashboardReservations = () => {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {loading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="animate-pulse border-b border-slate-50">
+                      <td className="px-8 py-5 w-12"><div className="w-4 h-4 bg-slate-200 rounded"></div></td>
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-slate-200 shrink-0"></div>
+                          <div className="space-y-2 w-full max-w-[120px]">
+                            <div className="h-4 bg-slate-200 rounded w-full"></div>
+                            <div className="h-3 bg-slate-200 rounded w-2/3"></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-5 space-y-2">
+                        <div className="h-4 bg-slate-200 rounded w-24"></div>
+                        <div className="h-3 bg-slate-200 rounded w-32"></div>
+                      </td>
+                      <td className="px-8 py-5 space-y-2">
+                        <div className="h-4 bg-slate-200 rounded w-20"></div>
+                        <div className="h-3 bg-slate-200 rounded w-12"></div>
+                      </td>
+                      <td className="px-8 py-5 space-y-2">
+                        <div className="h-6 bg-slate-200 rounded-full w-20"></div>
+                        <div className="h-4 bg-slate-200 rounded-full w-16"></div>
+                      </td>
+                      <td className="px-8 py-5 text-right">
+                        <div className="flex justify-end gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-slate-200"></div>
+                          <div className="w-8 h-8 rounded-lg bg-slate-200"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : error ? (
                   <tr>
-                    <td colSpan="6" className="py-20 text-center text-slate-400">
-                      <Loader className="animate-spin mx-auto mb-2" /> Yükleniyor...
+                    <td colSpan="6" className="py-24">
+                      <div className="text-center flex flex-col items-center justify-center max-w-sm mx-auto">
+                        <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mb-4">
+                          <AlertCircle size={32} />
+                        </div>
+                        <h3 className="text-lg font-black text-slate-800 mb-2">Rezervasyonlar yüklenemedi</h3>
+                        <p className="text-sm font-medium text-slate-500 mb-6 line-clamp-2 leading-relaxed">
+                          {error}
+                        </p>
+                        <button
+                          onClick={fetchReservations}
+                          className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-lg shadow-slate-200/50"
+                        >
+                          <RefreshCw size={18} /> Tekrar Dene
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="py-20 text-center text-slate-400 font-medium">
-                      Rezervasyon bulunamadı.
+                    <td colSpan="6" className="py-24">
+                      <div className="text-center flex flex-col items-center justify-center max-w-sm mx-auto">
+                        <div className="text-5xl mb-4 opacity-50">📭</div>
+                        <h3 className="text-lg font-black text-slate-800 mb-2">Rezervasyon bulunamadı</h3>
+                        {hasActiveFilters ? (
+                          <>
+                            <p className="text-sm font-medium text-slate-500 mb-6 leading-relaxed">
+                              Mevcut arama veya filtrelerinize uygun sonuç yok. Filtreleri temizleyip tekrar deneyin.
+                            </p>
+                            <button
+                              onClick={clearFilters}
+                              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-rose-50 text-rose-600 font-bold rounded-xl hover:bg-rose-100 transition-colors"
+                            >
+                              <X size={18} /> Temizle
+                            </button>
+                          </>
+                        ) : (
+                          <p className="text-sm font-medium text-slate-500 leading-relaxed">
+                            Şu anda sisteme kayıtlı hiçbir rezervasyon bulunmuyor.
+                          </p>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -553,7 +637,7 @@ const DashboardReservations = () => {
           </div>
           
           {/* SAYFALAMA (PAGINATION) */}
-          {filtered.length > 0 && totalPages > 1 && (
+          {!loading && !error && filtered.length > 0 && totalPages > 1 && (
             <div className="flex items-center justify-between px-8 py-5 border-t border-slate-50 bg-slate-50/50">
               <span className="text-xs font-bold text-slate-500">
                 Toplam <span className="text-slate-900">{filtered.length}</span> kayıttan {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, filtered.length)} arası gösteriliyor.

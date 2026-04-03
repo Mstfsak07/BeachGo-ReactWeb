@@ -236,12 +236,18 @@ const BeachDetail = () => {
                   </div>
 
                   {!isAuthenticated ? (
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       <div className="bg-white/50 border border-dashed border-slate-200 rounded-[2rem] p-8 text-center backdrop-blur-sm">
                         <Users className="mx-auto text-blue-400 mb-4" size={40} strokeWidth={1.5} />
                         <p className="text-slate-600 font-bold leading-snug text-sm">Hemen giris yapin ve yerinizi simdiden ayirtin.</p>
                       </div>
                       <button onClick={() => navigate('/login')} className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-blue-600 transition-all shadow-xl active:scale-95 uppercase tracking-widest text-xs">Giris Yap</button>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-px bg-slate-200" />
+                        <span className="text-xs text-slate-400 font-bold">veya</span>
+                        <div className="flex-1 h-px bg-slate-200" />
+                      </div>
+                      <button onClick={() => navigate(`/reservation/${id}`)} className="w-full py-4 bg-white text-slate-900 font-black rounded-2xl hover:bg-slate-50 transition-all border-2 border-slate-200 active:scale-95 uppercase tracking-widest text-xs">Giris yapmadan devam et</button>
                     </div>
                   ) : (
                     <form onSubmit={handleReservation} className="space-y-6">

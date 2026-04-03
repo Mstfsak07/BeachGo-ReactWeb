@@ -92,6 +92,39 @@
  */
 
 /**
+ * @typedef {Object} GuestReservationCreateDto
+ * @property {number} beachId
+ * @property {string} reservationDate
+ * @property {string} reservationTime
+ * @property {'Masa'|'Şezlong'|'Loca'|'Etkinlik'} reservationType
+ * @property {number} personCount
+ * @property {string} [note]
+ * @property {string} firstName
+ * @property {string} lastName
+ * @property {string} phone
+ * @property {string} [email]
+ * @property {string} verificationId
+ */
+
+/**
+ * @typedef {Object} GuestReservationResponseDto
+ * @property {number} reservationId
+ * @property {string} confirmationCode
+ * @property {string} status
+ * @property {number} [totalPrice]
+ */
+
+/**
+ * @typedef {Object} OtpSendResponseDto
+ * @property {string} verificationId
+ */
+
+/**
+ * @typedef {Object} OtpVerifyResponseDto
+ * @property {boolean} verified
+ */
+
+/**
  * Unwraps backend ApiResponse envelope.
  * Handles: { success, data, message } or raw data.
  * @param {any} responseData - axios response.data

@@ -79,17 +79,19 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IWeatherService, WeatherService>();
 
 // Provider Configurations
-var smsProvider = builder.Configuration["Providers:Sms"] ?? "Mock";
+var smsProvider = builder.Configuration["Sms:Provider"] ?? "Mock";
 if (smsProvider == "NetGsm" || smsProvider == "Twilio") {
-    // TODO: Register real SMS provider
+    // TODO: Register real SMS provider here (e.g. NetGsmService)
+    // builder.Services.AddScoped<ISmsService, NetGsmService>();
     builder.Services.AddScoped<ISmsService, MockSmsService>();
 } else {
     builder.Services.AddScoped<ISmsService, MockSmsService>();
 }
 
-var paymentProvider = builder.Configuration["Providers:Payment"] ?? "Mock";
+var paymentProvider = builder.Configuration["Payment:Provider"] ?? "Mock";
 if (paymentProvider == "Iyzipay" || paymentProvider == "PayTR") {
-    // TODO: Register real Payment provider
+    // TODO: Register real Payment provider here (e.g. IyzipayService)
+    // builder.Services.AddScoped<IPaymentService, IyzipayService>();
     builder.Services.AddScoped<IPaymentService, MockPaymentService>();
 } else {
     builder.Services.AddScoped<IPaymentService, MockPaymentService>();

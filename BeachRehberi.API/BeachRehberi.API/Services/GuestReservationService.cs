@@ -12,11 +12,13 @@ public class GuestReservationService : IGuestReservationService
 {
     private readonly BeachDbContext _db;
     private readonly IOtpService _otpService;
+    private readonly IPaymentService _paymentService;
 
-    public GuestReservationService(BeachDbContext db, IOtpService otpService)
+    public GuestReservationService(BeachDbContext db, IOtpService otpService, IPaymentService paymentService)
     {
         _db = db;
         _otpService = otpService;
+        _paymentService = paymentService;
     }
 
     public async Task<ServiceResult<GuestReservationResponseDto>> CreateAsync(CreateGuestReservationDto dto)
@@ -134,17 +136,25 @@ public class GuestReservationService : IGuestReservationService
         if (reservation == null)
             return ServiceResult<GuestReservationResponseDto>.FailureResult("Rezervasyon bulunamadı.");
 
+        if (reservation.PaymentStatus == "Paid")
+            return ServiceResult<GuestReservationResponseDto>.FailureResult("Bu rezervasyon zaten ödenmiş.");
+
+        var paymentResult = await _paymentService.ProcessPaymentAsync(reservation.Id, reservation.TotalPrice);
+        
+        if (!paymentResult)
+            return ServiceResult<GuestReservationResponseDto>.FailureResult("Ödeme işlemi başarısız oldu.");
+
         reservation.PaymentStatus = "Paid";
         await _db.SaveChangesAsync();
 
         return ServiceResult<GuestReservationResponseDto>.SuccessResult(new GuestReservationResponseDto
         {
             ReservationId = reservation.Id,
-            ConfirmationCode = reservation.ConfirmationCode,
+            ConfirmationCode = reservation.ConfirmationCode!,
             Status = reservation.Status.ToString(),
             TotalPrice = reservation.TotalPrice,
             PaymentStatus = reservation.PaymentStatus
-        }, "Ödeme başarılı (Mock).");
+        }, "Ödeme başarılı.");
     }
 
     private static decimal CalculatePrice(Beach beach, string reservationType, int personCount)

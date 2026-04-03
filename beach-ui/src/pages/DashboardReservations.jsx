@@ -319,6 +319,19 @@ const DashboardReservations = () => {
     }
   };
 
+  const sortLabels = {
+    'Newest': 'En Yeni',
+    'Oldest': 'En Eski',
+    'NameAZ': 'İsme Göre (A-Z)',
+    'NameZA': 'İsme Göre (Z-A)'
+  };
+
+  const activeChips = [];
+  if (search) activeChips.push({ id: 'search', label: 'Arama', value: search, onClear: () => { setSearch(''); setCurrentPage(1); } });
+  if (filterType !== 'All') activeChips.push({ id: 'type', label: 'Rol', value: filterType === 'Guest' ? 'Misafir' : 'Üye', onClear: () => { setFilterType('All'); setCurrentPage(1); } });
+  if (filterStatus !== 'All') activeChips.push({ id: 'status', label: 'Durum', value: filterStatus === 'Active' ? 'Aktif' : 'İptal', onClear: () => { setFilterStatus('All'); setCurrentPage(1); } });
+  if (sortType !== 'Newest') activeChips.push({ id: 'sort', label: 'Sıralama', value: sortLabels[sortType] || sortType, onClear: () => { setSortType('Newest'); setCurrentPage(1); } });
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <Sidebar role="Business" />
@@ -378,24 +391,46 @@ const DashboardReservations = () => {
                 <option value="NameAZ">İsme Göre (A-Z)</option>
                 <option value="NameZA">İsme Göre (Z-A)</option>
               </select>
-              {(search !== '' || filterType !== 'All' || filterStatus !== 'All' || sortType !== 'Newest') && (
-                <button
-                  onClick={() => {
-                    setSearch('');
-                    setFilterType('All');
-                    setFilterStatus('All');
-                    setSortType('Newest');
-                    setCurrentPage(1);
-                    localStorage.removeItem('beachgo_admin_reservations_state');
-                  }}
-                  className="flex items-center justify-center gap-1 bg-rose-50 text-rose-600 border-none rounded-xl py-2.5 px-4 outline-none font-bold text-sm hover:bg-rose-100 transition-colors shrink-0"
-                  title="Tüm filtreleri ve aramayı temizle"
-                >
-                  <X size={16} /> Temizle
-                </button>
-              )}
-            </div>
+              
+                        </div>
           </div>
+
+          {activeChips.length > 0 && (
+            <div className="bg-slate-50/50 border-b border-slate-50 px-8 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              <span className="text-xs font-bold text-slate-500 shrink-0">
+                {activeChips.length} filtre aktif:
+              </span>
+              <div className="flex flex-wrap items-center gap-2 flex-1">
+                {activeChips.map(chip => (
+                  <div 
+                    key={chip.id} 
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-lg shadow-sm"
+                  >
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{chip.label}:</span>
+                    <span 
+                      className="text-xs font-bold text-slate-700 max-w-[150px] truncate"
+                      title={chip.value}
+                    >
+                      {chip.value}
+                    </span>
+                    <button
+                      onClick={chip.onClear}
+                      className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-0.5 rounded transition-colors ml-1"
+                      title={chip.label + ' filtresini kaldır'}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={clearFilters}
+                  className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline px-2 py-1 ml-1"
+                >
+                  Tümünü Temizle
+                </button>
+              </div>
+            </div>
+          )}
 
           {!loading && !error && selectedIds.size > 0 && (
             <div className="bg-blue-50/50 border-b border-blue-50 px-8 py-3 flex flex-wrap items-center justify-between gap-4">

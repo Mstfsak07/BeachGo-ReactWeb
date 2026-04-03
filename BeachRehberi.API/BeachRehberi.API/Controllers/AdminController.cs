@@ -85,11 +85,19 @@ namespace BeachRehberi.API.Controllers
                 .OrderByDescending(r => r.CreatedAt)
                 .Select(r => new {
                     r.Id,
-                    BeachName = r.Beach.Name,
-                    UserEmail = r.User != null ? r.User.Email : "Bilinmiyor",
+                    BeachName = r.Beach != null ? r.Beach.Name : "Bilinmiyor",
+                    CustomerName = r.IsGuest 
+                        ? (r.GuestFirstName + " " + r.GuestLastName).Trim() 
+                        : (r.User != null ? (r.User.ContactName ?? r.User.Email) : "Bilinmiyor"),
+                    Phone = r.IsGuest ? r.GuestPhone : "Bilinmiyor",
                     r.ReservationDate,
-                    r.CreatedAt,
-                    r.Status
+                    ReservationTime = r.ReservationTime != null ? r.ReservationTime.ToString() : null,
+                    r.PersonCount,
+                    ReservationType = r.ReservationType ?? "Standart",
+                    r.Status,
+                    r.IsGuest,
+                    r.ConfirmationCode,
+                    r.CreatedAt
                 })
                 .ToListAsync();
 

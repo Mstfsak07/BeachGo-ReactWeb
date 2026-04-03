@@ -4,7 +4,7 @@ import {
   CalendarCheck, Search, Filter, CheckCircle2, XCircle, Loader
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
-import { getBusinessReservations, approveReservation, rejectReservation } from '../services/businessService';
+import { getBusinessReservations, approveReservation, rejectReservation, cancelReservation } from '../services/businessService';
 import { toast } from 'react-hot-toast';
 
 const DashboardReservations = () => {
@@ -12,49 +12,36 @@ const DashboardReservations = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [search, setSearch] = useState('');
-
-  useEffect(() => {
-    const fetchReservations = async () => {
-      try {
-        const data = await getBusinessReservations();
-        setReservations(data);
-      } catch (err) {
-        if (err.response?.status === 404) {
-          setReservations([]);
-        } else {
-          // Reservations fetch failed
-          toast.error('Rezervasyonlar yüklenemedi.');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchReservations();
-  }, []);
+  const [filterType, setFilterType] = useState('All'); // All, Guest, User
+  const [filterStatus, setFilterStatus] = useState('All'); // All, Active, Cancelled
 
   const handleStatus = async (id, action) => {
     setActionLoadingId(id);
     try {
       if (action === 'Approved') {
         await approveReservation(id);
-      } else {
+      } else if (action === 'Rejected') {
         await rejectReservation(id);
+      } else if (action === 'Cancelled') {
+        await cancelReservation(id);
       }
       setReservations(prev =>
         prev.map(r => r.id === id ? { ...r, status: action } : r)
       );
-      toast.success(action === 'Approved' ? 'Rezervasyon onaylandı.' : 'Rezervasyon reddedildi.');
+      toast.success(action === 'Approved' ? 'Rezervasyon onaylandı.' : 'İşlem başarılı.');
     } catch (err) {
-      // Status update failed
       toast.error('İşlem başarısız.');
     } finally {
       setActionLoadingId(null);
     }
   };
 
-  const filtered = reservations.filter(r =>
-    r.userEmail?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = reservations.filter(r => {
+    const matchesSearch = r.userEmail?.toLowerCase().includes(search.toLowerCase()) || r.guestName?.toLowerCase().includes(search.toLowerCase());
+    const matchesType = filterType === 'All' ? true : filterType === 'Guest' ? r.isGuest : !r.isGuest;
+    const matchesStatus = filterStatus === 'All' ? true : filterStatus === 'Active' ? (r.status !== 'Cancelled' && r.status !== 'Rejected') : (r.status === 'Cancelled' || r.status === 'Rejected');
+    return matchesSearch && matchesType && matchesStatus;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -87,9 +74,24 @@ const DashboardReservations = () => {
                   className="w-full bg-slate-50 border-none rounded-xl py-2.5 pl-12 pr-4 focus:ring-2 focus:ring-blue-100 outline-none font-medium"
                 />
               </div>
-              <button className="p-2.5 bg-slate-50 rounded-xl text-slate-500 hover:bg-slate-100">
-                <Filter size={20} />
-              </button>
+              <select 
+                value={filterType} 
+                onChange={e => setFilterType(e.target.value)}
+                className="bg-slate-50 border-none rounded-xl py-2.5 px-4 outline-none font-bold text-sm text-slate-600 cursor-pointer"
+              >
+                <option value="All">Tümü (Tür)</option>
+                <option value="Guest">Misafir</option>
+                <option value="User">Üye</option>
+              </select>
+              <select 
+                value={filterStatus} 
+                onChange={e => setFilterStatus(e.target.value)}
+                className="bg-slate-50 border-none rounded-xl py-2.5 px-4 outline-none font-bold text-sm text-slate-600 cursor-pointer"
+              >
+                <option value="All">Tümü (Durum)</option>
+                <option value="Active">Aktif</option>
+                <option value="Cancelled">İptal/Red</option>
+              </select>
             </div>
           </div>
 
@@ -127,7 +129,10 @@ const DashboardReservations = () => {
                           </div>
                           <div>
                             <span className="font-bold text-slate-700 block">{res.guestName || res.userEmail}</span>
-                            {res.isGuest && <span className="text-[9px] font-black bg-purple-100 text-purple-600 px-2 py-0.5 rounded uppercase tracking-widest mt-1 inline-block">Guest</span>}
+                            {res.isGuest 
+                              ? <span className="text-[9px] font-black bg-purple-100 text-purple-600 px-2 py-0.5 rounded uppercase tracking-widest mt-1 inline-block">Misafir</span>
+                              : <span className="text-[9px] font-black bg-blue-100 text-blue-600 px-2 py-0.5 rounded uppercase tracking-widest mt-1 inline-block">Üye</span>
+                            }
                           </div>
                         </div>
                       </td>
@@ -162,24 +167,41 @@ const DashboardReservations = () => {
                         )}
                       </td>
                       <td className="px-8 py-5 text-right">
-                        {res.status === 'Pending' && (
-                          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {res.status === 'Pending' && (
+                            <>
+                              <button
+                                onClick={() => handleStatus(res.id, 'Approved')}
+                                disabled={actionLoadingId === res.id}
+                                className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                                title="Onayla"
+                              >
+                                {actionLoadingId === res.id ? <Loader size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                              </button>
+                              <button
+                                onClick={() => handleStatus(res.id, 'Rejected')}
+                                disabled={actionLoadingId === res.id}
+                                className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+                                title="Reddet"
+                              >
+                                {actionLoadingId === res.id ? <Loader size={18} className="animate-spin" /> : <XCircle size={18} />}
+                              </button>
+                            </>
+                          )}
+                          {(res.status === 'Approved' || res.status === 'Pending') && (
                             <button
-                              onClick={() => handleStatus(res.id, 'Approved')}
-                              disabled={actionLoadingId === res.id}
-                              className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              {actionLoadingId === res.id ? <Loader size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                                onClick={() => {
+                                  if(window.confirm('Bu rezervasyonu iptal etmek istediğinize emin misiniz?')) {
+                                    handleStatus(res.id, 'Cancelled');
+                                  }
+                                }}
+                                disabled={actionLoadingId === res.id}
+                                className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 text-rose-600 border border-rose-200 hover:bg-rose-50 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition"
+                              >
+                                {actionLoadingId === res.id ? 'Bekleyin...' : 'İptal Et'}
                             </button>
-                            <button
-                              onClick={() => handleStatus(res.id, 'Rejected')}
-                              disabled={actionLoadingId === res.id}
-                              className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              {actionLoadingId === res.id ? <Loader size={18} className="animate-spin" /> : <XCircle size={18} />}
-                            </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

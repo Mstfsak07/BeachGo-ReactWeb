@@ -28,6 +28,11 @@ export const rejectReservation = async (id) => {
   return unwrapResponse(res.data);
 };
 
+export const cancelReservation = async (id) => {
+  const res = await api.put(`/business/reservations/${id}/cancel`);
+  return unwrapResponse(res.data);
+};
+
 /** @returns {Promise<import('../types').BeachDto>} */
 export const getBusinessBeach = async () => {
   const res = await api.get('/business/beach');
@@ -40,5 +45,6 @@ export default {
   getBusinessStats,
   approveReservation,
   rejectReservation,
+  cancelReservation,
   getBusinessBeach
 };

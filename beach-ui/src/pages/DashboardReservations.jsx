@@ -273,6 +273,31 @@ const DashboardReservations = () => {
     });
   }, [filtered]);
 
+  
+  const handleRowClick = (res) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(res.id)) {
+        next.delete(res.id);
+        if (selectedRes && selectedRes.id === res.id) {
+          setSelectedRes(null);
+        }
+      } else {
+        next.add(res.id);
+        setSelectedRes(res);
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setSelectedRes(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const toggleSelection = (id, e) => {
     e.stopPropagation();
     setSelectedIds(prev => {
@@ -595,7 +620,7 @@ const DashboardReservations = () => {
                   paginatedItems.map(res => (
                     <tr
                         key={res.id}
-                        onClick={() => toggleSelection(res.id)}
+                        onClick={() => handleRowClick(res)}
                         className={`transition-colors group cursor-pointer border-b ${
                           selectedIds.has(res.id) 
                             ? 'bg-blue-50/40 border-blue-200 hover:bg-blue-50/60' 
@@ -764,134 +789,104 @@ const DashboardReservations = () => {
         </motion.section>
       </main>
 
-      {/* DETAY MODALI */}
+      {/* DETAY PANELİ (DRAWER) */}
       <AnimatePresence>
-        {selectedRes && (
+        {selectedRes && !loading && !error && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedRes(null)}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40"
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white rounded-3xl shadow-2xl z-50 overflow-hidden"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 right-0 w-full sm:w-[400px] bg-white shadow-2xl z-50 flex flex-col border-l border-slate-100"
             >
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                  <Info className="text-blue-600" size={24} />
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Info className="text-blue-600" size={20} />
                   Rezervasyon Detayı
                 </h3>
                 <button
                   onClick={() => setSelectedRes(null)}
-                  className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"
+                  className="p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 rounded-full transition-colors"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* ID ve Kopyalama */}
+                {selectedRes.confirmationCode && (
+                  <div className="flex items-center justify-between bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                    <div>
+                      <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Onay Kodu</p>
+                      <p className="font-mono text-lg font-black text-blue-700">#{selectedRes.confirmationCode}</p>
+                    </div>
+                    <button
+                      onClick={(e) => handleCopyId(e, selectedRes.confirmationCode, 'panel-' + selectedRes.id)}
+                      className="flex items-center gap-2 px-3 py-2 bg-white text-blue-600 font-bold text-xs rounded-xl shadow-sm hover:bg-blue-600 hover:text-white transition-colors"
+                    >
+                      {copiedId === 'panel-' + selectedRes.id ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                      {copiedId === 'panel-' + selectedRes.id ? 'Kopyalandı' : 'Kopyala'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Müşteri */}
                 <div className="bg-slate-50 p-4 rounded-2xl">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Müşteri</p>
-                      <p className="text-lg font-black text-slate-900">{selectedRes.customerName}</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Müşteri</p>
+                      <p className="text-base font-black text-slate-900">{selectedRes.customerName}</p>
                     </div>
                     {selectedRes.isGuestReservation 
-                      ? <span className="text-[10px] font-black bg-purple-100 text-purple-600 px-2.5 py-1 rounded-md uppercase tracking-widest">Misafir</span>
-                      : <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-2.5 py-1 rounded-md uppercase tracking-widest">Üye</span>
+                      ? <span className="text-[10px] font-black bg-purple-100 text-purple-600 px-2 py-1 rounded-lg uppercase tracking-widest">Misafir</span>
+                      : <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-2 py-1 rounded-lg uppercase tracking-widest">Üye</span>
                     }
                   </div>
                   <p className="text-sm font-medium text-slate-600">{selectedRes.phone || 'Telefon Yok'}</p>
                   <p className="text-sm font-medium text-slate-500">{selectedRes.guestEmail || selectedRes.userEmail || 'Email Yok'}</p>
+                  {selectedRes.notes && (
+                    <div className="mt-3 p-3 bg-white rounded-xl border border-slate-100">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Not</p>
+                      <p className="text-sm text-slate-700">{selectedRes.notes}</p>
+                    </div>
+                  )}
                 </div>
 
+                {/* Detaylar */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50 p-4 rounded-2xl">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Plaj & Tarih</p>
-                    <p className="font-bold text-slate-800">{selectedRes.beachName || '-'}</p>
-                    <p className="text-sm font-medium text-slate-600">{selectedRes.reservationDate?.slice(0,10)}</p>
-                    <p className="text-xs font-bold text-slate-500 mt-2">{selectedRes.personCount ?? selectedRes.sunbedCount ?? '-'} Kişi</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tarih</p>
+                    <p className="text-sm font-bold text-slate-800">{selectedRes.reservationDate?.slice(0,10)}</p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl flex flex-col justify-between">
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Durum</p>
-                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest inline-block ${
-                        selectedRes.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
-                        selectedRes.status === 'Rejected' ? 'bg-rose-100 text-rose-700' :
-                        selectedRes.status === 'Cancelled' ? 'bg-slate-200 text-slate-600' :
-                        'bg-amber-100 text-amber-700'
-                      }`}>
-                        {selectedRes.status === 'Approved' ? 'Onaylandı' : 
-                         selectedRes.status === 'Rejected' ? 'Reddedildi' : 
-                         selectedRes.status === 'Cancelled' ? 'İptal Edildi' : 'Beklemede'}
-                      </span>
-                    </div>
-                    {selectedRes.confirmationCode && (
-                      <div className="mt-2">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Onay Kodu</p>
-                        <p className="font-mono text-sm font-bold text-slate-700">#{selectedRes.confirmationCode}</p>
-                      </div>
-                    )}
+                  <div className="bg-slate-50 p-4 rounded-2xl">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Kişi Sayısı</p>
+                    <p className="text-sm font-bold text-slate-800">{selectedRes.personCount ?? selectedRes.sunbedCount ?? '-'} Kişi</p>
                   </div>
-                </div>
-
-                <div className="bg-slate-50 p-4 rounded-2xl">
-                  <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                    <CreditCard size={14} /> Ödeme Bilgisi
-                  </h4>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-2xl font-black text-slate-900">{selectedRes.totalPrice ? `₺${selectedRes.totalPrice}` : 'Ücretsiz'}</p>
-                      <p className="text-xs font-medium text-slate-500 mt-1">
-                        Oluşturulma: {new Date(selectedRes.createdAt).toLocaleString('tr-TR')}
-                      </p>
-                    </div>
-                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${
-                      selectedRes.paymentStatus === 'Paid' ? 'bg-emerald-100 text-emerald-700' :
-                      selectedRes.paymentStatus === 'Failed' ? 'bg-rose-100 text-rose-700' :
-                      'bg-orange-100 text-orange-700'
+                  <div className="bg-slate-50 p-4 rounded-2xl col-span-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Durum</p>
+                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest inline-block ${
+                      selectedRes.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
+                      selectedRes.status === 'Rejected' ? 'bg-rose-100 text-rose-700' :
+                      selectedRes.status === 'Cancelled' ? 'bg-slate-200 text-slate-600' :
+                      'bg-amber-100 text-amber-700'
                     }`}>
-                      {selectedRes.paymentStatus === 'Paid' ? 'Ödendi' : selectedRes.paymentStatus === 'Failed' ? 'Başarısız' : 'Bekliyor'}
+                      {selectedRes.status === 'Approved' ? 'Onaylandı' : 
+                       selectedRes.status === 'Rejected' ? 'Reddedildi' : 
+                       selectedRes.status === 'Cancelled' ? 'İptal Edildi' : 'Beklemede'}
                     </span>
                   </div>
                 </div>
 
-                {selectedRes.isGuestReservation && (
-                  <div className="bg-slate-50 p-4 rounded-2xl">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                      <MessageSquare size={14} /> SMS / Doğrulama
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gönderim Durumu</p>
-                        <p className="font-bold text-sm text-slate-700">
-                          {selectedRes.smsSent ? 'Gönderildi' : 'Gönderilmedi'}
-                        </p>
-                        {selectedRes.smsLastSentTime && (
-                          <p className="text-[10px] font-medium text-slate-500 mt-1">
-                            {new Date(selectedRes.smsLastSentTime).toLocaleString('tr-TR')}
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Doğrulama</p>
-                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest inline-block ${
-                          selectedRes.smsVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                        }`}>
-                          {selectedRes.smsVerified ? 'Doğrulandı' : 'Doğrulanmadı'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* İŞLEM GEÇMİŞİ (TIMELINE) */}
-                <div className="bg-slate-50 p-4 rounded-2xl mt-4">
+                <div className="bg-slate-50 p-4 rounded-2xl">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                     <Activity size={14} /> İşlem Geçmişi
                   </h4>
@@ -963,13 +958,39 @@ const DashboardReservations = () => {
                 </div>
               </div>
               
-              <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
-                <button
-                  onClick={() => setSelectedRes(null)}
-                  className="px-6 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-colors text-sm"
-                >
-                  Kapat
-                </button>
+              {/* Action Footer */}
+              <div className="p-6 border-t border-slate-100 bg-white grid grid-cols-2 gap-3">
+                {selectedRes.status === 'Pending' && (
+                  <>
+                    <button
+                      onClick={(e) => handleStatus(selectedRes.id, 'Approved', e)}
+                      disabled={actionLoadingId === selectedRes.id}
+                      className="flex items-center justify-center gap-2 py-3 bg-emerald-50 text-emerald-600 font-bold rounded-xl hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                    >
+                      {actionLoadingId === selectedRes.id ? <Loader size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Onayla
+                    </button>
+                    <button
+                      onClick={(e) => handleStatus(selectedRes.id, 'Rejected', e)}
+                      disabled={actionLoadingId === selectedRes.id}
+                      className="flex items-center justify-center gap-2 py-3 bg-rose-50 text-rose-600 font-bold rounded-xl hover:bg-rose-100 transition-colors disabled:opacity-50"
+                    >
+                      {actionLoadingId === selectedRes.id ? <Loader size={16} className="animate-spin" /> : <XCircle size={16} />} Reddet
+                    </button>
+                  </>
+                )}
+                {(selectedRes.status === 'Approved' || selectedRes.status === 'Pending') && (
+                  <button
+                    onClick={(e) => {
+                      if(window.confirm('Bu rezervasyonu iptal etmek istediğinize emin misiniz?')) {
+                        handleStatus(selectedRes.id, 'Cancelled', e);
+                      }
+                    }}
+                    disabled={actionLoadingId === selectedRes.id}
+                    className="col-span-2 flex items-center justify-center gap-2 py-3 border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-50 transition-colors disabled:opacity-50 mt-2"
+                  >
+                    İptal Et
+                  </button>
+                )}
               </div>
             </motion.div>
           </>

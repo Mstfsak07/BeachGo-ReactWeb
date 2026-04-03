@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import {
-  CalendarCheck, Search, Filter, CheckCircle2, XCircle, Loader, X, Info, CreditCard, MessageSquare, Activity, ChevronLeft, ChevronRight, AlertCircle, RefreshCw
+  CalendarCheck, Search, Filter, CheckCircle2, XCircle, Loader, X, Info, CreditCard, MessageSquare, Activity, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Copy
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { getBusinessReservations, approveReservation, rejectReservation, cancelReservation } from '../services/businessService';
@@ -13,6 +13,7 @@ const DashboardReservations = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+    const [copiedId, setCopiedId] = useState(null);
     const [searchParams, setSearchParams] = useSearchParams();
   const STORAGE_KEY = 'beachgo_admin_reservations_state';
 
@@ -152,7 +153,31 @@ const DashboardReservations = () => {
     setSearchParams({}, { replace: true });
   };
 
-  const handleStatus = async (id, action, e) => {
+  
+    const handleCopyId = (e, text, id) => {
+      e.stopPropagation();
+      const fallbackCopy = (text) => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try { document.execCommand('copy'); } catch (err) { }
+        document.body.removeChild(textArea);
+      };
+      if (!navigator.clipboard) {
+        fallbackCopy(text);
+      } else {
+        navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+      }
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    };
+
+    const handleStatus = async (id, action, e) => {
     if (e) e.stopPropagation();
     setActionLoadingId(id);
     try {
@@ -568,11 +593,15 @@ const DashboardReservations = () => {
                   </tr>
                 ) : (
                   paginatedItems.map(res => (
-                    <tr 
-                      key={res.id} 
-                      onClick={() => setSelectedRes(res)}
-                      className="hover:bg-slate-50/50 transition-colors group cursor-pointer"
-                    >
+                    <tr
+                        key={res.id}
+                        onClick={() => toggleSelection(res.id)}
+                        className={`transition-colors group cursor-pointer border-b ${
+                          selectedIds.has(res.id) 
+                            ? 'bg-blue-50/40 border-blue-200 hover:bg-blue-50/60' 
+                            : 'border-slate-50 hover:bg-slate-50/50'
+                        }`}
+                      >
                       <td className="px-8 py-5" onClick={(e) => e.stopPropagation()}>
                         <input 
                           type="checkbox" 
@@ -602,7 +631,21 @@ const DashboardReservations = () => {
                       <td className="px-8 py-5">
                         <span className="font-bold text-slate-700 text-sm block">{res.reservationDate?.slice(0, 10)}</span>
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{res.personCount ?? res.sunbedCount ?? '—'} Kişi</span>
-                        {res.confirmationCode && <span className="ml-2 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold">#{res.confirmationCode}</span>}
+                        {res.confirmationCode && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold">
+                                #{res.confirmationCode}
+                              </span>
+                              <button
+                                onClick={(e) => handleCopyId(e, res.confirmationCode, res.id)}
+                                className="text-slate-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-blue-50"
+                                title="Kodu Kopyala"
+                              >
+                                {copiedId === res.id ? <CheckCircle2 size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                              </button>
+                              {copiedId === res.id && <span className="text-[9px] font-bold text-emerald-500 animate-fade-in-out">Kopyalandı</span>}
+                            </div>
+                          )}
                       </td>
                       <td className="px-8 py-5 space-y-1">
                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest block w-fit ${
@@ -627,6 +670,13 @@ const DashboardReservations = () => {
                       </td>
                       <td className="px-8 py-5 text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setSelectedRes(res); }}
+                              className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition"
+                              title="Detayları Gör"
+                            >
+                              <Info size={18} />
+                            </button>
                           {res.status === 'Pending' && (
                             <>
                               <button

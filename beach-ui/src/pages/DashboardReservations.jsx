@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import {
   CalendarCheck, Search, Filter, CheckCircle2, XCircle, Loader, X, Info, CreditCard, MessageSquare, Activity, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Copy, Phone
-} from 'lucide-react';
+, CalendarDays, Eye, CheckSquare, Undo2 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { getBusinessReservations, approveReservation, rejectReservation, cancelReservation } from '../services/businessService';
 import { toast } from 'react-hot-toast';
@@ -17,6 +17,28 @@ const DashboardReservations = () => {
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [copiedDate, setCopiedDate] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
+
+  const [lastChangedFilter, setLastChangedFilter] = useState(null);
+  const prevFilters = React.useRef({ search: initialState.search, filterType: initialState.filterType, filterStatus: initialState.filterStatus, sortType: initialState.sortType });
+
+  useEffect(() => {
+    if (search !== prevFilters.current.search) setLastChangedFilter('search');
+    else if (filterType !== prevFilters.current.filterType) setLastChangedFilter('type');
+    else if (filterStatus !== prevFilters.current.filterStatus) setLastChangedFilter('status');
+    else if (sortType !== prevFilters.current.sortType) setLastChangedFilter('sort');
+
+    prevFilters.current = { search, filterType, filterStatus, sortType };
+  }, [search, filterType, filterStatus, sortType]);
+
+  const undoLastFilter = () => {
+    if (lastChangedFilter === 'search') setSearch(initialState.search);
+    else if (lastChangedFilter === 'type') setFilterType('All');
+    else if (lastChangedFilter === 'status') setFilterStatus('All');
+    else if (lastChangedFilter === 'sort') setSortType('Newest');
+    setLastChangedFilter(null);
+    setCurrentPage(1);
+  };
+
   const [showFullNote, setShowFullNote] = useState(false);
 
   const handleGenericCopy = (e, text, setCopiedState) => {
@@ -437,6 +459,28 @@ const DashboardReservations = () => {
           <p className="text-slate-500 font-medium mt-1">Tüm rezervasyonları görüntüleyin ve yönetin.</p>
         </header>
 
+        {/* ÖZET KARTLARI */}
+        {!loading && !error && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white p-5 rounded-2xl shadow-xl shadow-slate-200/40 border border-slate-50 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><CalendarDays size={20}/></div>
+              <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Toplam</p><p className="text-xl font-black text-slate-800">{reservations.length}</p></div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl shadow-xl shadow-slate-200/40 border border-slate-50 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><Eye size={20}/></div>
+              <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Görünen</p><p className="text-xl font-black text-slate-800">{filtered.length}</p></div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl shadow-xl shadow-slate-200/40 border border-slate-50 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0"><CheckSquare size={20}/></div>
+              <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Seçili</p><p className="text-xl font-black text-slate-800">{selectedIds.size}</p></div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl shadow-xl shadow-slate-200/40 border border-slate-50 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0"><Filter size={20}/></div>
+              <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aktif Filtre</p><p className="text-xl font-black text-slate-800">{activeChips.length}</p></div>
+            </div>
+          </div>
+        )}
+
         <motion.section
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -524,13 +568,14 @@ const DashboardReservations = () => {
             </div>
           )}
 
-          {!loading && !error && selectedIds.size > 0 && (
+          {!loading && !error && reservations.length > 0 && (
             <div className="bg-blue-50/50 border-b border-blue-50 px-8 py-3 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <span className="bg-blue-600 text-white min-w-[24px] h-6 rounded-full flex items-center justify-center text-xs font-bold px-2">
                   {selectedIds.size}
                 </span>
                 <span className="text-sm font-bold text-blue-900">kayıt seçildi</span>
+                {selectedIds.size > 10 && <span className="hidden sm:inline-block text-[10px] font-black bg-amber-100 text-amber-700 px-2 py-1 rounded-lg uppercase tracking-widest ml-2 animate-pulse">10+ rezervasyon seçildi</span>}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -572,8 +617,8 @@ const DashboardReservations = () => {
                     />
                   </th>
                   <th className="px-8 py-5 text-left">Müşteri</th>
-                  <th className="px-8 py-5 text-left">İletişim</th>
-                  <th className="px-8 py-5 text-left">Rezervasyon</th>
+                  <th className="px-8 py-5 text-left hidden md:table-cell">İletişim</th>
+                  <th className="px-8 py-5 text-left hidden sm:table-cell">Rezervasyon</th>
                   <th className="px-8 py-5 text-left">Durum</th>
                   <th className="px-8 py-5 text-right">İşlemler</th>
                 </tr>

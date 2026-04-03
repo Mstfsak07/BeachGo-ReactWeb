@@ -59,6 +59,8 @@ const DashboardReservations = () => {
   const [selectedRes, setSelectedRes] = useState(null);
   const [currentPage, setCurrentPage] = useState(initialState.currentPage);
   const itemsPerPage = 10;
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   // Sync: State -> URL & LS
   useEffect(() => {
@@ -213,6 +215,93 @@ const DashboardReservations = () => {
     return pages;
   };
 
+  useEffect(() => {
+    setSelectedIds(prev => {
+      if (prev.size === 0) return prev;
+      const next = new Set(prev);
+      let changed = false;
+      const filteredIds = new Set(filtered.map(r => r.id));
+      for (const id of next) {
+        if (!filteredIds.has(id)) {
+          next.delete(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [filtered]);
+
+  const toggleSelection = (id, e) => {
+    e.stopPropagation();
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllCurrentPage = (e) => {
+    const isChecked = e.target.checked;
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      paginatedItems.forEach(r => {
+        if (isChecked) next.add(r.id);
+        else next.delete(r.id);
+      });
+      return next;
+    });
+  };
+
+  const headerCheckboxRef = React.useRef(null);
+  const currentPageIds = paginatedItems.map(r => r.id);
+  const isAllSelected = currentPageIds.length > 0 && currentPageIds.every(id => selectedIds.has(id));
+  const isSomeSelected = currentPageIds.length > 0 && currentPageIds.some(id => selectedIds.has(id)) && !isAllSelected;
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = isSomeSelected;
+    }
+  }, [isSomeSelected]);
+
+  const handleBulkCancel = async () => {
+    if (!window.confirm(`${selectedIds.size} kaydı iptal etmek istediğinize emin misiniz?`)) return;
+    setBulkLoading(true);
+    try {
+      const idsToCancel = Array.from(selectedIds).filter(id => {
+        const res = reservations.find(r => r.id === id);
+        return res && res.status !== 'Cancelled' && res.status !== 'Rejected';
+      });
+      await Promise.all(idsToCancel.map(id => cancelReservation(id)));
+      setReservations(prev => prev.map(r => idsToCancel.includes(r.id) ? { ...r, status: 'Cancelled' } : r));
+      toast.success(`${idsToCancel.length} rezervasyon iptal edildi.`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.error('Toplu iptal işlemi sırasında hata oluştu.');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkRestore = async () => {
+    if (!window.confirm(`${selectedIds.size} kaydı geri yüklemek (onaylamak) istediğinize emin misiniz?`)) return;
+    setBulkLoading(true);
+    try {
+      const idsToRestore = Array.from(selectedIds).filter(id => {
+        const res = reservations.find(r => r.id === id);
+        return res && (res.status === 'Cancelled' || res.status === 'Rejected');
+      });
+      await Promise.all(idsToRestore.map(id => approveReservation(id)));
+      setReservations(prev => prev.map(r => idsToRestore.includes(r.id) ? { ...r, status: 'Approved' } : r));
+      toast.success(`${idsToRestore.length} rezervasyon geri yüklendi ve onaylandı.`);
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.error('Toplu geri yükleme işlemi sırasında hata oluştu.');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <Sidebar role="Business" />
@@ -291,10 +380,53 @@ const DashboardReservations = () => {
             </div>
           </div>
 
+          {selectedIds.size > 0 && (
+            <div className="bg-blue-50/50 border-b border-blue-50 px-8 py-3 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="bg-blue-600 text-white min-w-[24px] h-6 rounded-full flex items-center justify-center text-xs font-bold px-2">
+                  {selectedIds.size}
+                </span>
+                <span className="text-sm font-bold text-blue-900">kayıt seçildi</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleBulkCancel}
+                  disabled={bulkLoading}
+                  className="px-4 py-2 bg-white border border-rose-200 text-rose-600 rounded-xl text-xs font-bold hover:bg-rose-50 transition disabled:opacity-50"
+                >
+                  Toplu İptal
+                </button>
+                <button
+                  onClick={handleBulkRestore}
+                  disabled={bulkLoading}
+                  className="px-4 py-2 bg-white border border-emerald-200 text-emerald-600 rounded-xl text-xs font-bold hover:bg-emerald-50 transition disabled:opacity-50"
+                >
+                  Toplu Geri Yükle
+                </button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  disabled={bulkLoading}
+                  className="px-4 py-2 text-slate-500 rounded-xl text-xs font-bold hover:bg-slate-200 transition disabled:opacity-50 ml-2"
+                >
+                  Seçimi Temizle
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50/50 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em]">
                 <tr>
+                  <th className="px-8 py-5 text-left w-12">
+                    <input 
+                      type="checkbox" 
+                      ref={headerCheckboxRef}
+                      checked={isAllSelected}
+                      onChange={toggleAllCurrentPage}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                  </th>
                   <th className="px-8 py-5 text-left">Müşteri</th>
                   <th className="px-8 py-5 text-left">İletişim</th>
                   <th className="px-8 py-5 text-left">Rezervasyon</th>
@@ -305,13 +437,13 @@ const DashboardReservations = () => {
               <tbody className="divide-y divide-slate-50">
                 {loading ? (
                   <tr>
-                    <td colSpan="5" className="py-20 text-center text-slate-400">
+                    <td colSpan="6" className="py-20 text-center text-slate-400">
                       <Loader className="animate-spin mx-auto mb-2" /> Yükleniyor...
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="py-20 text-center text-slate-400 font-medium">
+                    <td colSpan="6" className="py-20 text-center text-slate-400 font-medium">
                       Rezervasyon bulunamadı.
                     </td>
                   </tr>
@@ -322,6 +454,14 @@ const DashboardReservations = () => {
                       onClick={() => setSelectedRes(res)}
                       className="hover:bg-slate-50/50 transition-colors group cursor-pointer"
                     >
+                      <td className="px-8 py-5" onClick={(e) => e.stopPropagation()}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedIds.has(res.id)}
+                          onChange={(e) => toggleSelection(res.id, e)}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                      </td>
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">

@@ -78,11 +78,25 @@ builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IWeatherService, WeatherService>();
 
-// Guest Reservation + OTP + SMS (Mock)
-builder.Services.AddScoped<ISmsService, MockSmsService>();
+// Provider Configurations
+var smsProvider = builder.Configuration["Providers:Sms"] ?? "Mock";
+if (smsProvider == "NetGsm" || smsProvider == "Twilio") {
+    // TODO: Register real SMS provider
+    builder.Services.AddScoped<ISmsService, MockSmsService>();
+} else {
+    builder.Services.AddScoped<ISmsService, MockSmsService>();
+}
+
+var paymentProvider = builder.Configuration["Providers:Payment"] ?? "Mock";
+if (paymentProvider == "Iyzipay" || paymentProvider == "PayTR") {
+    // TODO: Register real Payment provider
+    builder.Services.AddScoped<IPaymentService, MockPaymentService>();
+} else {
+    builder.Services.AddScoped<IPaymentService, MockPaymentService>();
+}
+
 builder.Services.AddScoped<IOtpService, OtpService>();
-builder.Services.AddScoped<IGuestReservationService, GuestReservationService>();
-builder.Services.AddScoped<IStoryService, StoryService>();
+builder.Services.AddScoped<IGuestReservationService, GuestReservationService>();builder.Services.AddScoped<IStoryService, StoryService>();
 
 // ─────────────────────────────────────────
 // 5. MAPSTER – IMapper DI

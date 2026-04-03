@@ -111,12 +111,18 @@ public class BusinessService : IBusinessService
             .Select(r => new BusinessReservationDto
             {
                 Id = r.Id,
-                UserEmail = r.User.Email,
+                UserEmail = r.User != null ? r.User.Email : (r.GuestEmail ?? ""),
                 ReservationDate = r.ReservationDate,
                 PersonCount = r.PersonCount,
                 SunbedCount = r.SunbedCount,
                 Status = r.Status.ToString(),
-                CreatedAt = r.CreatedAt
+                CreatedAt = r.CreatedAt,
+                IsGuest = r.IsGuest,
+                GuestName = (r.GuestFirstName + " " + r.GuestLastName).Trim(),
+                GuestPhone = r.GuestPhone ?? "",
+                GuestEmail = r.GuestEmail ?? "",
+                ConfirmationCode = r.ConfirmationCode ?? "",
+                PaymentStatus = "Mock" // Phase 13'te eklenecek
             })
             .ToListAsync();
 

@@ -104,4 +104,28 @@ public class ReservationService : IReservationService
 
         return ServiceResult<bool>.SuccessResult(true, "Rezervasyon iptal edildi.");
     }
+
+    public async Task<ReservationLookupDto?> GetByCodeAsync(string code)
+    {
+        var r = await _context.Reservations
+            .Include(x => x.Beach)
+            .Include(x => x.User)
+            .FirstOrDefaultAsync(x => x.ConfirmationCode == code && !x.IsDeleted);
+
+        if (r == null) return null;
+
+        return new ReservationLookupDto
+        {
+            Id = r.Id,
+            Code = r.ConfirmationCode ?? "",
+            BeachName = r.Beach.Name,
+            CustomerName = r.IsGuest ? $"{r.GuestFirstName} {r.GuestLastName}".Trim() : (r.User?.Email ?? ""),
+            Pax = r.PersonCount,
+            ReservationDate = r.ReservationDate,
+            Status = r.Status.ToString(),
+            PaymentStatus = r.PaymentStatus ?? "Pending",
+            GuestPhone = r.GuestPhone ?? "",
+            GuestEmail = r.GuestEmail ?? ""
+        };
+    }
 }

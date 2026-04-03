@@ -51,9 +51,21 @@ public class ReservationsController : ControllerBase
         if (userIdStr == null) return Unauthorized();
 
         var userId = int.Parse(userIdStr);
-        
+
         // Owner verification is now strictly handled and communicated via ServiceResult
         var cancelResult = await _reservationService.CancelAsync(id, userId);
         return cancelResult.ToActionResult();
     }
-}
+
+    [AllowAnonymous]
+    [HttpGet("check/{code}")]
+    public async Task<IActionResult> CheckByCode(string code)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return BadRequest();
+
+        var data = await _reservationService.GetByCodeAsync(code.ToUpper());
+        if (data == null) return NotFound(new { success = false, message = "Rezervasyon bulunamadı." });
+
+        return Ok(new { success = true, data });
+    }
+    }

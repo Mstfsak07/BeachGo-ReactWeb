@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import {
-  CalendarCheck, Search, Filter, CheckCircle2, XCircle, Loader, X, Info, CreditCard, MessageSquare, Activity, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Copy
+  CalendarCheck, Search, Filter, CheckCircle2, XCircle, Loader, X, Info, CreditCard, MessageSquare, Activity, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Copy, Phone
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
 import { getBusinessReservations, approveReservation, rejectReservation, cancelReservation } from '../services/businessService';
@@ -14,6 +14,48 @@ const DashboardReservations = () => {
   const [error, setError] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
     const [copiedId, setCopiedId] = useState(null);
+  const [copiedPhone, setCopiedPhone] = useState(false);
+  const [copiedDate, setCopiedDate] = useState(false);
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [showFullNote, setShowFullNote] = useState(false);
+
+  const handleGenericCopy = (e, text, setCopiedState) => {
+    if (e) e.stopPropagation();
+    const fallbackCopy = (t) => {
+      const textArea = document.createElement("textarea");
+      textArea.value = t;
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.position = "fixed";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try { document.execCommand('copy'); } catch (err) { }
+      document.body.removeChild(textArea);
+    };
+    if (!navigator.clipboard) fallbackCopy(text);
+    else navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+    setCopiedState(true);
+    setTimeout(() => setCopiedState(false), 2000);
+  };
+
+  const handlePhoneAction = (e, phone) => {
+    e.stopPropagation();
+    if (/Mobi|Android/i.test(navigator.userAgent)) {
+      window.location.href = 'tel:' + phone;
+    } else {
+      handleGenericCopy(e, phone, setCopiedPhone);
+    }
+  };
+
+  const handleCopyAll = (e) => {
+    e.stopPropagation();
+    if (!selectedRes) return;
+    const statusText = selectedRes.status === 'Approved' ? 'Onaylandı' : selectedRes.status === 'Rejected' ? 'Reddedildi' : selectedRes.status === 'Cancelled' ? 'İptal Edildi' : 'Beklemede';
+    const text = `Rezervasyon Detayı\nID: #${selectedRes.confirmationCode || selectedRes.id}\nAd Soyad: ${selectedRes.customerName}\nTelefon: ${selectedRes.phone || '-'}\nTarih: ${selectedRes.reservationDate?.slice(0,10)}\nDurum: ${statusText}\nKişi Sayısı: ${selectedRes.personCount ?? selectedRes.sunbedCount ?? '-'}\nNot: ${selectedRes.notes || '-'}`;
+    handleGenericCopy(e, text, setCopiedAll);
+  };
+
     const [searchParams, setSearchParams] = useSearchParams();
   const STORAGE_KEY = 'beachgo_admin_reservations_state';
 
@@ -810,7 +852,17 @@ const DashboardReservations = () => {
               <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
                   <Info className="text-blue-600" size={20} />
-                  Rezervasyon Detayı
+                  <span className="truncate max-w-[120px]">Detay</span>
+                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest inline-block shrink-0 ${
+                    selectedRes.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
+                    selectedRes.status === 'Rejected' ? 'bg-rose-100 text-rose-700' :
+                    selectedRes.status === 'Cancelled' ? 'bg-slate-200 text-slate-600' :
+                    'bg-amber-100 text-amber-700'
+                  }`}>
+                    {selectedRes.status === 'Approved' ? 'Onaylandı' : 
+                     selectedRes.status === 'Rejected' ? 'Reddedildi' : 
+                     selectedRes.status === 'Cancelled' ? 'İptal Edildi' : 'Beklemede'}
+                  </span>
                 </h3>
                 <button
                   onClick={() => setSelectedRes(null)}
@@ -850,12 +902,34 @@ const DashboardReservations = () => {
                       : <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-2 py-1 rounded-lg uppercase tracking-widest">Üye</span>
                     }
                   </div>
-                  <p className="text-sm font-medium text-slate-600">{selectedRes.phone || 'Telefon Yok'}</p>
+                                    <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-slate-600">{selectedRes.phone || 'Telefon Yok'}</p>
+                    {selectedRes.phone && (
+                      <button
+                        onClick={(e) => handlePhoneAction(e, selectedRes.phone)}
+                        className="text-slate-400 hover:text-blue-600 transition-colors p-1 rounded hover:bg-blue-50 flex items-center gap-1"
+                        title="Ara / Kopyala"
+                      >
+                        {copiedPhone ? <CheckCircle2 size={12} className="text-emerald-500" /> : /Mobi|Android/i.test(navigator.userAgent) ? <Phone size={12} /> : <Copy size={12} />}
+                        <span className="text-[9px] font-bold text-slate-400 uppercase">{copiedPhone ? <span className="text-emerald-500">Kopyalandı</span> : /Mobi|Android/i.test(navigator.userAgent) ? 'Ara' : 'Kopyala'}</span>
+                      </button>
+                    )}
+                  </div>
                   <p className="text-sm font-medium text-slate-500">{selectedRes.guestEmail || selectedRes.userEmail || 'Email Yok'}</p>
                   {selectedRes.notes && (
                     <div className="mt-3 p-3 bg-white rounded-xl border border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Not</p>
-                      <p className="text-sm text-slate-700">{selectedRes.notes}</p>
+                      <p className={`text-sm text-slate-700 break-words ${!showFullNote && selectedRes.notes.length > 100 ? 'line-clamp-3' : ''}`}>
+                        {selectedRes.notes}
+                      </p>
+                      {selectedRes.notes.length > 100 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowFullNote(!showFullNote); }}
+                          className="text-[10px] text-blue-600 font-bold mt-1 hover:underline"
+                        >
+                          {showFullNote ? 'Daha Az Göster' : 'Devamını Gör'}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -863,26 +937,23 @@ const DashboardReservations = () => {
                 {/* Detaylar */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50 p-4 rounded-2xl">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tarih</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tarih</p>
+                      <button
+                        onClick={(e) => handleGenericCopy(e, `${selectedRes.reservationDate?.slice(0,10)}`.trim(), setCopiedDate)}
+                        className="text-slate-400 hover:text-blue-600 transition-colors p-0.5 rounded hover:bg-blue-50 flex items-center gap-1"
+                      >
+                        {copiedDate ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Copy size={10} />}
+                        <span className="text-[8px] font-bold text-slate-400 uppercase">{copiedDate ? <span className="text-emerald-500">Kopyalandı</span> : 'Kopyala'}</span>
+                      </button>
+                    </div>
                     <p className="text-sm font-bold text-slate-800">{selectedRes.reservationDate?.slice(0,10)}</p>
                   </div>
                   <div className="bg-slate-50 p-4 rounded-2xl">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Kişi Sayısı</p>
                     <p className="text-sm font-bold text-slate-800">{selectedRes.personCount ?? selectedRes.sunbedCount ?? '-'} Kişi</p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl col-span-2">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Durum</p>
-                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest inline-block ${
-                      selectedRes.status === 'Approved' ? 'bg-emerald-100 text-emerald-700' :
-                      selectedRes.status === 'Rejected' ? 'bg-rose-100 text-rose-700' :
-                      selectedRes.status === 'Cancelled' ? 'bg-slate-200 text-slate-600' :
-                      'bg-amber-100 text-amber-700'
-                    }`}>
-                      {selectedRes.status === 'Approved' ? 'Onaylandı' : 
-                       selectedRes.status === 'Rejected' ? 'Reddedildi' : 
-                       selectedRes.status === 'Cancelled' ? 'İptal Edildi' : 'Beklemede'}
-                    </span>
-                  </div>
+                  
                 </div>
 
                 {/* İŞLEM GEÇMİŞİ (TIMELINE) */}
@@ -956,41 +1027,47 @@ const DashboardReservations = () => {
                     )}
                   </div>
                 </div>
-              </div>
-              
-              {/* Action Footer */}
-              <div className="p-6 border-t border-slate-100 bg-white grid grid-cols-2 gap-3">
-                {selectedRes.status === 'Pending' && (
-                  <>
+                {/* Action Footer Moved Inside */}
+                <div className="pt-6 mt-4 border-t border-slate-100 grid grid-cols-2 gap-3 pb-6">
+                  {selectedRes.status === 'Pending' && (
+                    <>
+                      <button
+                        onClick={(e) => handleStatus(selectedRes.id, 'Approved', e)}
+                        disabled={actionLoadingId === selectedRes.id}
+                        className="flex items-center justify-center gap-2 py-3 bg-emerald-50 text-emerald-600 font-bold rounded-xl hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                      >
+                        {actionLoadingId === selectedRes.id ? <Loader size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Onayla
+                      </button>
+                      <button
+                        onClick={(e) => handleStatus(selectedRes.id, 'Rejected', e)}
+                        disabled={actionLoadingId === selectedRes.id}
+                        className="flex items-center justify-center gap-2 py-3 bg-rose-50 text-rose-600 font-bold rounded-xl hover:bg-rose-100 transition-colors disabled:opacity-50"
+                      >
+                        {actionLoadingId === selectedRes.id ? <Loader size={16} className="animate-spin" /> : <XCircle size={16} />} Reddet
+                      </button>
+                    </>
+                  )}
+                  {(selectedRes.status === 'Approved' || selectedRes.status === 'Pending') && (
                     <button
-                      onClick={(e) => handleStatus(selectedRes.id, 'Approved', e)}
+                      onClick={(e) => {
+                        if(window.confirm('Bu rezervasyonu iptal etmek istediğinize emin misiniz?')) {
+                          handleStatus(selectedRes.id, 'Cancelled', e);
+                        }
+                      }}
                       disabled={actionLoadingId === selectedRes.id}
-                      className="flex items-center justify-center gap-2 py-3 bg-emerald-50 text-emerald-600 font-bold rounded-xl hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                      className="col-span-2 flex items-center justify-center gap-2 py-3 border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-50 transition-colors disabled:opacity-50 mt-2"
                     >
-                      {actionLoadingId === selectedRes.id ? <Loader size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Onayla
+                      İptal Et
                     </button>
-                    <button
-                      onClick={(e) => handleStatus(selectedRes.id, 'Rejected', e)}
-                      disabled={actionLoadingId === selectedRes.id}
-                      className="flex items-center justify-center gap-2 py-3 bg-rose-50 text-rose-600 font-bold rounded-xl hover:bg-rose-100 transition-colors disabled:opacity-50"
-                    >
-                      {actionLoadingId === selectedRes.id ? <Loader size={16} className="animate-spin" /> : <XCircle size={16} />} Reddet
-                    </button>
-                  </>
-                )}
-                {(selectedRes.status === 'Approved' || selectedRes.status === 'Pending') && (
+                  )}
                   <button
-                    onClick={(e) => {
-                      if(window.confirm('Bu rezervasyonu iptal etmek istediğinize emin misiniz?')) {
-                        handleStatus(selectedRes.id, 'Cancelled', e);
-                      }
-                    }}
-                    disabled={actionLoadingId === selectedRes.id}
-                    className="col-span-2 flex items-center justify-center gap-2 py-3 border border-rose-200 text-rose-600 font-bold rounded-xl hover:bg-rose-50 transition-colors disabled:opacity-50 mt-2"
+                    onClick={handleCopyAll}
+                    className="col-span-2 flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors mt-2"
                   >
-                    İptal Et
+                    {copiedAll ? <CheckCircle2 size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                    {copiedAll ? <span className="text-emerald-600">Kopyalandı!</span> : 'Rezervasyonu Kopyala'}
                   </button>
-                )}
+                </div>
               </div>
             </motion.div>
           </>

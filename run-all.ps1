@@ -1,0 +1,2 @@
+Start-Process powershell -ArgumentList '-NoExit','-ExecutionPolicy Bypass','-File planner-watcher.ps1'
+Start-Process powershell -ArgumentList '-NoExit','-ExecutionPolicy Bypass','-File coder-watcher.ps1'

@@ -1,0 +1,9 @@
+﻿1. Faz 1: Backend Altyapısının Misafir Rezervasyonlarına Uyarlanması
+   1.1. `BeachRehberi.Domain` katmanında bulunan `Reservation` (Rezervasyon) varlık sınıfını (entity) tespit et ve oturum açmış kullanıcıyı temsil eden `UserId` alanını isteğe bağlı (nullable) hale getir.
+   1.2. `Reservation` sınıfına misafir kullanıcılardan alınacak `GuestFirstName` (Ad), `GuestLastName` (Soyad), `GuestPhone` (Telefon) ve `GuestEmail` (E-posta) özelliklerini (properties) ekle.
+   1.3. `BeachRehberi.Application` veya `BeachRehberi.API` katmanındaki rezervasyon oluşturma veri transfer nesnelerine (örn. `CreateReservationDto` veya `CreateReservationCommand`) ilgili misafir iletişim alanlarını dahil et.
+   1.4. Validasyon (FluentValidation vb.) kurallarını, sisteme kayıtlı bir `UserId` sağlanmadığı durumlarda misafir ad, soyad, telefon ve e-posta bilgilerinin kesinlikle doldurulması gerekecek şekilde güncelle.
+   1.5. `BeachRehberi.API` projesi içerisindeki `ReservationsController` API uç noktalarını kontrol et. Rezervasyon oluşturma (POST) metodunun yetkilendirme kısıtlamalarını esneterek kayıtlı olmayan kullanıcıların da istek yapabilmesini sağla.
+   1.6. Entity Framework Core migration mekanizmasını kullanarak veritabanı modelindeki değişiklikleri kapsayan yeni bir migration oluştur ve veritabanına uygula.
+   1.7. Projeyi derle (build) ve backend katmanındaki mevcut birim/entegrasyon testlerini çalıştırarak işlemlerin sistemi bozmadığını doğrula.
+   1.8. Faz 1 değişikliklerini git versiyon kontrol sistemine ekle (add) ve "feat: enable guest reservations with contact details" mesajı ile commit oluştur.

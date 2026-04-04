@@ -1,0 +1,5 @@
+BeachGo projesinde kullanıcı login olmadan rezervasyon yapabilsin.
+Rezervasyon sırasında ad, soyad, telefon ve e-posta alınsın.
+Sadece ilk fazı planla ve uygula.
+Kod sonunda test çalıştır ve commit oluştur.
+UTF-8 kullan.

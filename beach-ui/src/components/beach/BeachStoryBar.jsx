@@ -5,6 +5,7 @@ import BeachStoryViewer from './BeachStoryViewer';
 const BeachStoryBar = ({ stories }) => {
   const [activeStoryIndex, setActiveStoryIndex] = useState(null);
   const [viewedStories, setViewedStories] = useState(new Set());
+  const [loadedImages, setLoadedImages] = useState(new Set());
 
   if (!stories || stories.length === 0) return null;
 
@@ -18,6 +19,7 @@ const BeachStoryBar = ({ stories }) => {
       <div className="max-w-7xl mx-auto flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory hide-scrollbar">
         {stories.map((story, index) => {
           const isViewed = viewedStories.has(index);
+          const isLoaded = loadedImages.has(index);
           return (
             <motion.button
               key={story.id}
@@ -31,11 +33,13 @@ const BeachStoryBar = ({ stories }) => {
                   isViewed ? 'bg-slate-200' : 'bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600'
                 }`}
               >
-                <div className="w-full h-full bg-white rounded-full p-[2px]">
+                <div className={`w-full h-full bg-white rounded-full p-[2px] ${!isLoaded ? 'animate-pulse' : ''}`}>
                   <img
                     src={story.coverImage}
                     alt={story.title}
-                    className="w-full h-full rounded-full object-cover border border-slate-100"
+                    loading="lazy"
+                    onLoad={() => setLoadedImages(prev => new Set(prev).add(index))}
+                    className={`w-full h-full rounded-full object-cover border border-slate-100 transition-opacity duration-300 ${!isLoaded ? 'opacity-0' : 'opacity-100'}`}
                   />
                 </div>
               </div>

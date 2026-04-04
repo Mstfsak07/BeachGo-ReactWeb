@@ -7,19 +7,41 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
   const [mediaIndex, setMediaIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const closeBtnRef = useRef(null);
 
   const currentStory = stories[storyIndex];
   const currentMedia = currentStory.media[mediaIndex];
   
-  // Body scroll lock
+  // Body scroll lock & Focus trap
   useEffect(() => {
     document.body.style.overflow = 'hidden';
+    
+    const trapFocus = (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        closeBtnRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', trapFocus);
+    
+    // History popstate
+    window.history.pushState({ modalOpen: true }, '');
+    const handlePopState = () => onClose();
+    window.addEventListener('popstate', handlePopState);
+
     return () => {
       document.body.style.overflow = 'unset';
+      document.removeEventListener('keydown', trapFocus);
+      window.removeEventListener('popstate', handlePopState);
+      if (window.history.state?.modalOpen) {
+        window.history.back();
+      }
     };
-  }, []);
+  }, [onClose]);
 
   const handleNext = useCallback(() => {
+    setIsLoaded(false);
     if (mediaIndex < currentStory.media.length - 1) {
       setMediaIndex(prev => prev + 1);
       setProgress(0);
@@ -33,6 +55,7 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
   }, [mediaIndex, storyIndex, currentStory.media.length, stories.length, onClose]);
 
   const handlePrev = useCallback(() => {
+    setIsLoaded(false);
     if (mediaIndex > 0) {
       setMediaIndex(prev => prev - 1);
       setProgress(0);
@@ -56,7 +79,7 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
 
   // Progress logic
   useEffect(() => {
-    if (isPaused) return;
+    if (isPaused || !isLoaded) return;
 
     const duration = (currentMedia.duration || 5) * 1000;
     const interval = 50; 
@@ -74,7 +97,7 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
     }, interval);
 
     return () => clearInterval(timer);
-  }, [currentMedia, isPaused, handleNext]);
+  }, [currentMedia, isPaused, isLoaded, handleNext]);
 
   return (
     <motion.div
@@ -86,7 +109,6 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
       <div 
         className="relative w-full h-full sm:max-w-md sm:h-[85vh] sm:rounded-[2rem] overflow-hidden bg-black shadow-2xl flex flex-col"
         onPointerDown={(e) => {
-            // Check if clicking close button, do not pause
             if(e.target.closest('button')) return;
             setIsPaused(true);
         }}
@@ -115,8 +137,9 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
             <span className="text-white font-bold drop-shadow-md text-sm">{currentStory.title}</span>
           </div>
           <button 
+            ref={closeBtnRef}
             onClick={onClose}
-            className="p-2 text-white/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-full transition-all backdrop-blur-md"
+            className="p-2 text-white/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-full transition-all backdrop-blur-md focus:outline-none focus:ring-2 focus:ring-white"
           >
             <X size={24} />
           </button>
@@ -124,6 +147,7 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
 
         {/* Media Content */}
         <div className="relative flex-1 bg-slate-900 w-full h-full flex items-center justify-center">
+          {!isLoaded && <div className="absolute inset-0 flex items-center justify-center"><div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin"></div></div>}
           <AnimatePresence mode="wait">
             <motion.img
               key={`${storyIndex}-${mediaIndex}`}
@@ -133,7 +157,8 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
               transition={{ duration: 0.2 }}
               src={currentMedia.url}
               alt="Story"
-              className="w-full h-full object-contain sm:object-cover"
+              onLoad={() => setIsLoaded(true)}
+              className={`w-full h-full object-contain sm:object-cover ${!isLoaded ? 'opacity-0' : 'opacity-100'}`}
               drag="y"
               dragConstraints={{ top: 0, bottom: 0 }}
               onDragEnd={(e, info) => {

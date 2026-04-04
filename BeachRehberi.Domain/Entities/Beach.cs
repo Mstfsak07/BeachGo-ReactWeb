@@ -16,6 +16,8 @@ public class Beach : BaseEntity
     public string? Phone { get; private set; }
     public string? Website { get; private set; }
     public string? Instagram { get; private set; }
+    public string? InstagramUsername { get; private set; }
+    public string SocialContentSource { get; private set; } = "mock";
     public string? OpenTime { get; private set; }
     public string? CloseTime { get; private set; }
 

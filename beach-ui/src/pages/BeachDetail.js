@@ -23,7 +23,7 @@ import {
 import GoogleReviewsPlaceholder from '../components/GoogleReviewsPlaceholder';
 import BeachStoryBar from '../components/beach/BeachStoryBar';
 import BeachGallery from '../components/beach/BeachGallery';
-import { mockBeachStories, mockBeachGallery } from '../lib/mock/beachSocial';
+import { getBeachSocialProvider } from '../lib/social/getBeachSocialProvider';
 
 const BeachDetail = () => {
   const { id } = useParams();
@@ -39,6 +39,7 @@ const BeachDetail = () => {
   const [personCount, setPersonCount] = useState(1);
   const [sunbedCount, setSunbedCount] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [socialContent, setSocialContent] = useState({ stories: [], gallery: [] });
 
   const fetchBeach = useCallback(async () => {
     try {
@@ -152,7 +153,7 @@ const BeachDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
           
           <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="lg:col-span-8 space-y-12 order-1">
-            <BeachStoryBar stories={mockBeachStories} />
+            <BeachStoryBar stories={socialContent.stories} />
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               {[
                 { icon: Users, label: 'Kapasite', val: beach.capacity > 0 ? beach.capacity : '-', bg: 'bg-blue-50', c: 'text-blue-600' },
@@ -189,7 +190,7 @@ const BeachDetail = () => {
               </div>
             )}
 
-              <BeachGallery images={mockBeachGallery} />
+              <BeachGallery images={socialContent.gallery} />
 
             {/* Price Info */}
             {(beach.hasEntryFee || beach.sunbedPrice > 0) && (

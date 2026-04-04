@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import InstagramContentPreviewModal from '../components/admin/InstagramContentPreviewModal';
+
 import {
   Save,
   Palmtree,
@@ -47,6 +49,7 @@ const FACILITIES = [
 
 const BeachSettings = () => {
   const [loading, setLoading] = useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [beach, setBeach] = useState({
     name: '',
     address: '',
@@ -244,6 +247,20 @@ const BeachSettings = () => {
                         <p className="text-[10px] font-bold text-blue-600 mt-1 pl-2">Bu kullanıcı adı ileride Instagram story ve galeri içeriğini otomatik doldurmak için kullanılacak.</p>
                       )}
                     </div>
+
+                    <div className="col-span-1 md:col-span-2 mt-4">
+                      <button
+                        type="button"
+                        onClick={() => setIsPreviewModalOpen(true)}
+                        disabled={beach.socialContentSource !== 'instagram' || !beach.instagramUsername || beach.instagramUsername.length < 2}
+                        className="flex items-center justify-center gap-2 w-full py-4 bg-gradient-to-r from-purple-600 to-rose-500 text-white font-black rounded-xl uppercase tracking-widest text-sm shadow-xl shadow-purple-500/30 hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Camera size={20} /> Instagram İçeriğini Önizle
+                      </button>
+                      {(beach.socialContentSource !== 'instagram' || !beach.instagramUsername || beach.instagramUsername.length < 2) && (
+                        <p className="text-[10px] text-slate-400 mt-2 text-center">Önizleme için önce geçerli bir Instagram kullanıcı adı girin.</p>
+                      )}
+                    </div>
                 </div>
               </div>
 
@@ -374,6 +391,13 @@ const BeachSettings = () => {
           </motion.div>
         </div>
       </main>
+    
+      <CameraContentPreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        username={beach.instagramUsername}
+        beachId={beach.id}
+      />
     </div>
   );
 };

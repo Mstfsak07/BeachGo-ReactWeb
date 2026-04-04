@@ -1,3 +1,4 @@
+// Developer: mustafa sak
 import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
@@ -68,63 +69,4 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyReservations />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Business + Admin only */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute allowedRoles={["Business", "Admin"]}>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/beach-settings"
-            element={
-              <ProtectedRoute allowedRoles={["Business", "Admin"]}>
-                <BeachSettings />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/stats"
-            element={
-              <ProtectedRoute allowedRoles={["Business", "Admin"]}>
-                <DashboardStats />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/reservations"
-            element={
-              <ProtectedRoute allowedRoles={["Business", "Admin"]}>
-                <DashboardReservations />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Admin only */}
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute allowedRoles={["Admin"]}>
-                <AdminPanel />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Catch-all — bilinmeyen route'lar anasayfaya */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        </Suspense>
-
-        <Footer />
-      </Router>
-    </AuthProvider>
-  );
-}
-
-export default App;
+              </Protected

@@ -21,6 +21,9 @@ import {
   ChevronRight
 } from 'lucide-react';
 import GoogleReviewsPlaceholder from '../components/GoogleReviewsPlaceholder';
+import BeachStoryBar from '../components/beach/BeachStoryBar';
+import BeachGallery from '../components/beach/BeachGallery';
+import { mockBeachStories, mockBeachGallery } from '../lib/mock/beachSocial';
 
 const BeachDetail = () => {
   const { id } = useParams();
@@ -149,7 +152,8 @@ const BeachDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
           
           <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="lg:col-span-8 space-y-12 order-1">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+            <BeachStoryBar stories={mockBeachStories} />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               {[
                 { icon: Users, label: 'Kapasite', val: beach.capacity > 0 ? beach.capacity : '-', bg: 'bg-blue-50', c: 'text-blue-600' },
                 { icon: TrendingUp, label: 'Doluluk', val: `%${occupancy}`, bg: 'bg-rose-50', c: 'text-rose-600' },
@@ -184,6 +188,8 @@ const BeachDetail = () => {
                 </div>
               </div>
             )}
+
+              <BeachGallery images={mockBeachGallery} />
 
             {/* Price Info */}
             {(beach.hasEntryFee || beach.sunbedPrice > 0) && (

@@ -9,8 +9,8 @@ public class VerificationCode
     public int Id { get; set; }
 
     [Required]
-    [MaxLength(20)]
-    public string Phone { get; set; } = string.Empty;
+    [MaxLength(150)]
+    public string Email { get; set; } = string.Empty;
 
     [Required]
     [MaxLength(6)]

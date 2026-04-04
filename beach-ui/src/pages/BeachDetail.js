@@ -59,30 +59,15 @@ const BeachDetail = () => {
     fetchBeach();
   }, [fetchBeach]);
 
-  const handleReservation = async (e) => {
+  const handleReservation = (e) => {
     e.preventDefault();
-    if (!isAuthenticated) {
-      toast.error('Rezervasyon yapmak icin giris yapmalisiniz.');
-      navigate('/login', { state: { from: location.pathname } });
-      return;
-    }
-    setResLoading(true);
-    try {
-      const result = await reservationService.create(parseInt(id), resDate, personCount, sunbedCount);
-      if (
-        result.status === 200 ||
-        result.status === 201 ||
-        result.data?.success === true
-      ) {
-        toast.success('Rezervasyonunuz basariyla olusturuldu!');
-      } else {
-        toast.error(result.data?.message || 'Rezervasyon olusturulamadi.');
+    navigate(`/reservation/${id}`, {
+      state: {
+        reservationDate: resDate,
+        personCount: personCount,
+        sunbedCount: sunbedCount
       }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Rezervasyon olusturulamadi. Lutfen tekrar deneyin.');
-    } finally {
-      setResLoading(false);
-    }
+    });
   };
 
   if (loading) return <BeachDetailSkeleton />;
@@ -262,22 +247,7 @@ const BeachDetail = () => {
                     <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white p-4 rounded-2xl shadow-xl shadow-blue-200/50"><Calendar size={24} strokeWidth={2.5} /></div>
                   </div>
 
-                  {!isAuthenticated ? (
-                    <div className="space-y-4">
-                      <div className="bg-white/50 border border-dashed border-slate-200 rounded-[2rem] p-8 text-center backdrop-blur-sm">
-                        <Users className="mx-auto text-blue-400 mb-4" size={40} strokeWidth={1.5} />
-                        <p className="text-slate-600 font-bold leading-snug text-sm">Hemen giris yapin ve yerinizi simdiden ayirtin.</p>
-                      </div>
-                      <button onClick={() => navigate('/login')} className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-blue-600 transition-all shadow-xl active:scale-95 uppercase tracking-widest text-xs">Giris Yap</button>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-px bg-slate-200" />
-                        <span className="text-xs text-slate-400 font-bold">veya</span>
-                        <div className="flex-1 h-px bg-slate-200" />
-                      </div>
-                      <button onClick={() => navigate(`/reservation/${id}`)} className="w-full py-4 bg-white text-slate-900 font-black rounded-2xl hover:bg-slate-50 transition-all border-2 border-slate-200 active:scale-95 uppercase tracking-widest text-xs">Giris yapmadan devam et</button>
-                    </div>
-                  ) : (
-                    <form onSubmit={handleReservation} className="space-y-6">
+                  <form onSubmit={handleReservation} className="space-y-6">
                       <div className="space-y-4">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Ziyaret Tarihiniz</label>
                         <input type="date" value={resDate} onChange={(e) => setResDate(e.target.value)} min={new Date().toISOString().split('T')[0]} disabled={resLoading} required className="w-full px-6 py-5 rounded-[1.5rem] border-2 border-slate-100 bg-white/50 focus:bg-white focus:border-blue-500 outline-none transition-all text-slate-800 font-bold text-lg" />
@@ -296,7 +266,6 @@ const BeachDetail = () => {
                         {resLoading ? <Loader className="animate-spin" size={24} /> : <>SIMDI REZERVE ET <TrendingUp size={20} /></>}
                       </motion.button>
                     </form>
-                  )}
 
                   <div className="mt-10 pt-8 border-t border-slate-100 space-y-5">
                     <div className="flex items-center gap-4 group/item cursor-default">

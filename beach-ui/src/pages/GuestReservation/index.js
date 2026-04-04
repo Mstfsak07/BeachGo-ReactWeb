@@ -1,18 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { getBeachById } from '../../services/api';
 import reservationService from '../../services/reservationService';
 import { AlertCircle, MapPin, Calendar, Clock, Users, Check } from 'lucide-react';
 
-import StepDateType from './StepDateType';
 import StepPersonalInfo from './StepPersonalInfo';
-import StepPhoneVerify from './StepPhoneVerify';
-import StepPayment from './StepPayment';
+import StepEmailVerify from './StepEmailVerify';
 import StepSuccess from './StepSuccess';
 
-const STEP_LABELS = ['Tarih & Tip', 'Bilgiler', 'Doğrulama', 'Ödeme', 'Onay'];
+const STEP_LABELS = ['Bilgiler', 'Doğrulama', 'Onay'];
 
 const GuestReservation = () => {
   const { beachId } = useParams();
@@ -24,11 +23,13 @@ const GuestReservation = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
+  const location = useLocation();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [formData, setFormData] = useState({
-    reservationDate: '',
-    reservationTime: '',
-    reservationType: '',
-    personCount: 1,
+    reservationDate: location.state?.reservationDate || new Date().toISOString().split('T')[0],
+    reservationTime: '10:00',
+    reservationType: 'Standart',
+    personCount: location.state?.personCount || 1,
     note: '',
     firstName: '',
     lastName: '',
@@ -36,11 +37,22 @@ const GuestReservation = () => {
     email: '',
     verificationId: '',
     otpCode: '',
-    phoneVerified: false,
-    paymentAccepted: false,
+    emailVerified: false,
+    paymentAccepted: true,
     confirmationCode: '',
     reservationId: null,
   });
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+       setFormData(prev => ({
+         ...prev,
+         firstName: prev.firstName || user.firstName || (user.contactName ? user.contactName.split(' ')[0] : ''),
+         lastName: prev.lastName || user.lastName || (user.contactName ? user.contactName.split(' ').slice(1).join(' ') : ''),
+         email: prev.email || user.email || ''
+       }));
+    }
+  }, [authLoading, isAuthenticated, user]);
 
   const updateForm = useCallback((fields) => {
     setFormData((prev) => ({ ...prev, ...fields }));
@@ -68,11 +80,11 @@ const GuestReservation = () => {
   const handleBack = () => setStep((s) => Math.max(s - 1, 1));
 
   // Step 2 → 3: Send OTP then advance
-  const handlePersonalInfoNext = async (normalizedPhone) => {
+  const handlePersonalInfoNext = async (email) => {
     setLoading(true);
     try {
-      const result = await reservationService.sendOtp(normalizedPhone);
-      updateForm({ verificationId: result.verificationId, phone: normalizedPhone });
+      const result = await reservationService.sendOtp(email);
+      updateForm({ verificationId: result.verificationId, email: email });
       handleNext();
     } catch {
       toast.error('Doğrulama kodu gönderilemedi. Lütfen tekrar deneyin.');
@@ -82,7 +94,7 @@ const GuestReservation = () => {
   };
 
   // Step 4 → 5: Create guest reservation
-  const handlePaymentNext = async () => {
+  const handleCreateReservation = async () => {
     setLoading(true);
     try {
       const dto = {
@@ -194,47 +206,27 @@ const GuestReservation = () => {
           <div className="bg-white shadow-2xl ring-1 ring-slate-100 rounded-2xl p-6 sm:p-8">
             <AnimatePresence mode="wait">
               {step === 1 && (
-                <StepDateType
+                <StepPersonalInfo
                   key="step1"
                   formData={formData}
                   updateForm={updateForm}
-                  onNext={handleNext}
-                  beach={beach}
+                  onNext={handlePersonalInfoNext}
+                  onBack={() => navigate(-1)}
+                  loading={loading}
                 />
               )}
               {step === 2 && (
-                <StepPersonalInfo
+                <StepEmailVerify
                   key="step2"
                   formData={formData}
                   updateForm={updateForm}
-                  onNext={handlePersonalInfoNext}
+                  onNext={handleCreateReservation}
                   onBack={handleBack}
-                  loading={loading}
                 />
               )}
               {step === 3 && (
-                <StepPhoneVerify
-                  key="step3"
-                  formData={formData}
-                  updateForm={updateForm}
-                  onNext={handleNext}
-                  onBack={handleBack}
-                />
-              )}
-              {step === 4 && (
-                <StepPayment
-                  key="step4"
-                  formData={formData}
-                  updateForm={updateForm}
-                  onNext={handlePaymentNext}
-                  onBack={handleBack}
-                  beach={beach}
-                  loading={loading}
-                />
-              )}
-              {step === 5 && (
                 <StepSuccess
-                  key="step5"
+                  key="step3"
                   formData={formData}
                   beach={beach}
                 />

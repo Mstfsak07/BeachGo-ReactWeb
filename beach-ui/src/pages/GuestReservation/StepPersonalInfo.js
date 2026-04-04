@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { User, Phone, Mail, ChevronLeft } from 'lucide-react';
+import { User, Phone, Mail, ChevronLeft, MessageSquare } from 'lucide-react';
 
 const normalizePhone = (raw) => {
   const digits = raw.replace(/\D/g, '');
@@ -17,15 +17,11 @@ const StepPersonalInfo = ({ formData, updateForm, onNext, onBack, loading }) => 
     if (!formData.lastName.trim()) return toast.error('Lütfen soyadınızı girin.');
     if (!formData.phone.trim()) return toast.error('Lütfen telefon numaranızı girin.');
 
-    const normalized = normalizePhone(formData.phone);
-    if (!/^\+905\d{9}$/.test(normalized)) return toast.error('Geçerli bir Türk cep telefonu numarası girin.');
-
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       return toast.error('Geçerli bir e-posta adresi girin.');
     }
 
-    updateForm({ phone: normalized });
-    onNext(normalized);
+    onNext(formData.email);
   };
 
   return (
@@ -86,7 +82,7 @@ const StepPersonalInfo = ({ formData, updateForm, onNext, onBack, loading }) => 
 
       <div>
         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-1 block">
-          <Mail size={12} className="inline mr-1" /> E-posta (Opsiyonel)
+          <Mail size={12} className="inline mr-1" /> E-posta
         </label>
         <input
           type="email"
@@ -94,6 +90,20 @@ const StepPersonalInfo = ({ formData, updateForm, onNext, onBack, loading }) => 
           onChange={(e) => updateForm({ email: e.target.value })}
           placeholder="ornek@email.com"
           className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-slate-800 font-bold"
+        />
+      </div>
+
+
+      <div>
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-1 block">
+          <MessageSquare size={12} className="inline mr-1" /> İsteğe Bağlı Not
+        </label>
+        <textarea
+          value={formData.note}
+          onChange={(e) => updateForm({ note: e.target.value })}
+          placeholder="Özel istekleriniz veya notunuz..."
+          rows={3}
+          className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-slate-800 font-bold resize-none"
         />
       </div>
 

@@ -42,6 +42,8 @@ public class CreateGuestReservationDto
 
     [Required]
     public string VerificationId { get; set; } = string.Empty;
+
+    public int? LoggedInUserId { get; set; }
 }
 
 public class GuestReservationResponseDto
@@ -56,13 +58,15 @@ public class GuestReservationResponseDto
 public class SendOtpDto
 {
     [Required]
-    [MaxLength(20)]
-    public string Phone { get; set; } = string.Empty;
+    [MaxLength(150)]
+    public string Email { get; set; } = string.Empty;
 }
 
 public class SendOtpResponseDto
 {
     public string VerificationId { get; set; } = string.Empty;
+
+    public int? LoggedInUserId { get; set; }
 }
 
 public class VerifyOtpDto

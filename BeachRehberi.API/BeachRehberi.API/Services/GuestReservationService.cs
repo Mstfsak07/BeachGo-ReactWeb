@@ -24,9 +24,9 @@ public class GuestReservationService : IGuestReservationService
     public async Task<ServiceResult<GuestReservationResponseDto>> CreateAsync(CreateGuestReservationDto dto)
     {
         // 1. Telefon doğrulaması kontrolü
-        var isVerified = await _otpService.IsPhoneVerifiedAsync(dto.VerificationId);
+        var isVerified = await _otpService.IsEmailVerifiedAsync(dto.VerificationId);
         if (!isVerified)
-            return ServiceResult<GuestReservationResponseDto>.FailureResult("Telefon doğrulaması tamamlanmamış.");
+            return ServiceResult<GuestReservationResponseDto>.FailureResult("E-posta doğrulaması tamamlanmamış.");
 
         // 2. Beach kontrolü
         var beach = await _db.Beaches.FindAsync(dto.BeachId);
@@ -52,14 +52,14 @@ public class GuestReservationService : IGuestReservationService
         var reservation = new Reservation
         {
             BeachId = dto.BeachId,
-            UserId = beach.OwnerId, // Guest
+            UserId = dto.LoggedInUserId ?? beach.OwnerId,
             ReservationDate = dto.ReservationDate,
             PersonCount = dto.PersonCount,
             SunbedCount = 0,
             Notes = dto.Note,
             TotalPrice = price,
             Status = ReservationStatus.Pending,
-            IsGuest = true,
+            IsGuest = !dto.LoggedInUserId.HasValue,
             GuestFirstName = dto.FirstName,
             GuestLastName = dto.LastName,
             GuestPhone = dto.Phone,

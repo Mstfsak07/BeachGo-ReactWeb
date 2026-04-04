@@ -132,9 +132,9 @@ public class BusinessService : IBusinessService
                 BeachName = r.Beach != null ? r.Beach.Name : "",
                 TotalPrice = r.TotalPrice,
                 
-                SmsSent = r.IsGuest && _db.VerificationCodes.Any(v => v.Phone == r.GuestPhone),
-                SmsVerified = r.IsGuest && _db.VerificationCodes.Any(v => v.Phone == r.GuestPhone && v.IsUsed),
-                SmsLastSentTime = r.IsGuest ? _db.VerificationCodes.Where(v => v.Phone == r.GuestPhone).Max(v => (DateTime?)v.CreatedAt) : null,
+                EmailSent = r.IsGuest && _db.VerificationCodes.Any(v => v.Email == r.GuestEmail),
+                EmailVerified = r.IsGuest && _db.VerificationCodes.Any(v => v.Email == r.GuestEmail && v.IsUsed),
+                EmailLastSentTime = r.IsGuest ? _db.VerificationCodes.Where(v => v.Email == r.GuestEmail).Max(v => (DateTime?)v.CreatedAt) : null,
 
                 PaymentCreatedAt = _db.ReservationPayments.Where(p => p.ReservationId == r.Id).Select(p => (DateTime?)p.CreatedAt).FirstOrDefault(),
                 CancelledAt = r.CancelledAt

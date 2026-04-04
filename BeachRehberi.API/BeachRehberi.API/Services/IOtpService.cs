@@ -9,9 +9,9 @@ namespace BeachRehberi.API.Services;
 
 public interface IOtpService
 {
-    Task<string> SendOtpAsync(string phone);
+    Task<string> SendOtpAsync(string email);
     Task<bool> VerifyOtpAsync(string verificationId, string code);
-    Task<bool> IsPhoneVerifiedAsync(string verificationId);
+    Task<bool> IsEmailVerifiedAsync(string verificationId);
 }
 
 public class OtpService : IOtpService
@@ -25,11 +25,11 @@ public class OtpService : IOtpService
         _smsService = smsService;
     }
 
-    public async Task<string> SendOtpAsync(string phone)
+    public async Task<string> SendOtpAsync(string email)
     {
         // Rate limit: aynı telefona son 1 saatte max 3 kod
         var recentCount = await _db.VerificationCodes
-            .CountAsync(v => v.Phone == phone && v.CreatedAt > DateTime.UtcNow.AddHours(-1));
+            .CountAsync(v => v.Email == email && v.CreatedAt > DateTime.UtcNow.AddHours(-1));
 
         if (recentCount >= 3)
             throw new InvalidOperationException("Çok fazla doğrulama kodu gönderildi. Lütfen 1 saat sonra tekrar deneyin.");
@@ -37,7 +37,7 @@ public class OtpService : IOtpService
         var code = GenerateCode();
         var verification = new VerificationCode
         {
-            Phone = phone,
+            Email = email,
             Code = code,
             ExpireDate = DateTime.UtcNow.AddMinutes(5),
             IsUsed = false,
@@ -47,7 +47,7 @@ public class OtpService : IOtpService
         _db.VerificationCodes.Add(verification);
         await _db.SaveChangesAsync();
 
-        await _smsService.SendAsync(phone, $"BeachGo doğrulama kodunuz: {code}");
+        await _smsService.SendAsync(email, $"BeachGo doğrulama kodunuz: {code}");
 
         return verification.Id.ToString();
     }
@@ -85,7 +85,7 @@ public class OtpService : IOtpService
         return true;
     }
 
-    public async Task<bool> IsPhoneVerifiedAsync(string verificationId)
+    public async Task<bool> IsEmailVerifiedAsync(string verificationId)
     {
         if (!int.TryParse(verificationId, out var id))
             return false;

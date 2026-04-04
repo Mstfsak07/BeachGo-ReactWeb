@@ -26,9 +26,9 @@ public class BusinessReservationDto
     public decimal TotalPrice { get; set; }
     
     // SMS / Verification
-    public bool SmsSent { get; set; }
-    public bool SmsVerified { get; set; }
-    public DateTime? SmsLastSentTime { get; set; }
+    public bool EmailSent { get; set; }
+    public bool EmailVerified { get; set; }
+    public DateTime? EmailLastSentTime { get; set; }
     
     // Timeline
     public DateTime? PaymentCreatedAt { get; set; }

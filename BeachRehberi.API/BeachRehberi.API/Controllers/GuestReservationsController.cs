@@ -27,7 +27,7 @@ public class GuestReservationsController : ControllerBase
     {
         try
         {
-            var verificationId = await _otpService.SendOtpAsync(dto.Phone);
+            var verificationId = await _otpService.SendOtpAsync(dto.Email);
             return Ok(new { success = true, data = new SendOtpResponseDto { VerificationId = verificationId } });
         }
         catch (InvalidOperationException ex)
@@ -46,6 +46,14 @@ public class GuestReservationsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateGuestReservationDto dto)
     {
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(userIdClaim, out var userId))
+            {
+                dto.LoggedInUserId = userId;
+            }
+        }
         var result = await _guestReservationService.CreateAsync(dto);
         return result.ToActionResult();
     }

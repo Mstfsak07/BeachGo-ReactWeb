@@ -110,6 +110,7 @@ const AdminPanel = () => {
                   <th className="px-8 py-5 text-left">Konum</th>
                   <th className="px-8 py-5 text-left">Kapasite</th>
                   <th className="px-8 py-5 text-left">Durum</th>
+                  <th className="px-8 py-5 text-left">Social Source</th>
                   <th className="px-8 py-5 text-right">İşlemler</th>
                 </tr>
               </thead>
@@ -132,6 +133,13 @@ const AdminPanel = () => {
                           beach.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
                         }`}>
                           {beach.isActive ? 'Aktif' : 'Pasif'}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                          beach.socialContentSource === 'instagram' ? 'bg-purple-50 text-purple-600' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {beach.socialContentSource === 'instagram' ? `Instagram · ${beach.instagramUsername}` : 'Mock'}
                         </span>
                       </td>
                       <td className="px-8 py-5 text-right">

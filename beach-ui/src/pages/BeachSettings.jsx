@@ -11,6 +11,8 @@ import {
   Phone,
   Globe,
   Camera,
+    Share2,
+    AtSign,
   DollarSign,
   Umbrella,
   ShowerHead,
@@ -55,6 +57,8 @@ const BeachSettings = () => {
     phone: '',
     website: '',
     instagram: '',
+      instagramUsername: '',
+      socialContentSource: 'mock',
     hasEntryFee: false,
     entryFee: 0,
     sunbedPrice: 0,
@@ -88,6 +92,8 @@ const BeachSettings = () => {
           phone: data.phone || '',
           website: data.website || '',
           instagram: data.instagram || '',
+            instagramUsername: data.instagramUsername || '',
+            socialContentSource: data.socialContentSource || 'mock',
           hasEntryFee: data.hasEntryFee || false,
           entryFee: data.entryFee || 0,
           sunbedPrice: data.sunbedPrice || 0,
@@ -204,6 +210,40 @@ const BeachSettings = () => {
                       <Camera className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
                       <input type="text" value={beach.instagram} onChange={(e) => setBeach({...beach, instagram: e.target.value})} placeholder="@plajadi" className={inputClass} />
                     </div>                  </div>
+                    <div className="space-y-2">
+                      <label className={labelClass}>Sosyal İçerik Kaynağı</label>
+                      <div className="relative group">
+                        <Share2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                        <select
+                          value={beach.socialContentSource}
+                          onChange={(e) => setBeach({...beach, socialContentSource: e.target.value, instagramUsername: e.target.value === 'mock' ? '' : beach.instagramUsername})}
+                          className={inputClass}
+                        >
+                          <option value="mock">Mock Veri</option>
+                          <option value="instagram">Instagram</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className={labelClass}>Instagram Kullanıcı Adı</label>
+                      <div className="relative group">
+                        <AtSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                        <input 
+                          type="text" 
+                          value={beach.instagramUsername} 
+                          onChange={(e) => setBeach({...beach, instagramUsername: e.target.value.replace(/^@+/, '').trim()})} 
+                          placeholder="ornekhesap" 
+                          disabled={beach.socialContentSource === 'mock'}
+                          required={beach.socialContentSource === 'instagram'}
+                          minLength={beach.socialContentSource === 'instagram' ? 2 : 0}
+                          pattern="^[^\\s]+$"
+                          className={`${inputClass} ${beach.socialContentSource === 'mock' ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                        />
+                      </div>
+                      {beach.socialContentSource === 'instagram' && (
+                        <p className="text-[10px] font-bold text-blue-600 mt-1 pl-2">Bu kullanıcı adı ileride Instagram story ve galeri içeriğini otomatik doldurmak için kullanılacak.</p>
+                      )}
+                    </div>
                 </div>
               </div>
 

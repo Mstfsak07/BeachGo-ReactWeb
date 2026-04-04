@@ -52,7 +52,9 @@ namespace BeachRehberi.API.Controllers
                     imageUrl = b.CoverImageUrl,
                     b.Capacity,
                     b.IsActive,
-                    b.Rating
+                    b.Rating,
+                    b.InstagramUsername,
+                    b.SocialContentSource
                 })
                 .ToListAsync();
             return Ok(beaches);
@@ -134,6 +136,8 @@ namespace BeachRehberi.API.Controllers
             beach.Phone = dto.Phone;
             beach.Website = dto.Website;
             beach.Instagram = dto.Instagram;
+            beach.InstagramUsername = dto.InstagramUsername;
+            beach.SocialContentSource = dto.SocialContentSource;
             beach.OpenTime = dto.OpenTime;
             beach.CloseTime = dto.CloseTime;
             beach.UpdateFees(dto.HasEntryFee, dto.EntryFee, dto.SunbedPrice);
@@ -176,6 +180,8 @@ namespace BeachRehberi.API.Controllers
                     existing.Phone = dto.Phone;
                     existing.Website = dto.Website;
                     existing.Instagram = dto.Instagram;
+                    existing.InstagramUsername = dto.InstagramUsername;
+                    existing.SocialContentSource = dto.SocialContentSource;
                     existing.OpenTime = dto.OpenTime;
                     existing.CloseTime = dto.CloseTime;
                     existing.UpdateFees(dto.HasEntryFee, dto.EntryFee, dto.SunbedPrice);
@@ -197,6 +203,8 @@ namespace BeachRehberi.API.Controllers
                         Phone = dto.Phone,
                         Website = dto.Website,
                         Instagram = dto.Instagram,
+                        InstagramUsername = dto.InstagramUsername,
+                        SocialContentSource = dto.SocialContentSource,
                         OpenTime = dto.OpenTime,
                         CloseTime = dto.CloseTime,
                         Capacity = dto.Capacity,

@@ -1,71 +1,19 @@
-using System;
-using System.Collections.Generic;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using BeachRehberi.API.DTOs.Reservation;
-using BeachRehberi.API.Services;
-using BeachRehberi.API.Extensions;
-
-namespace BeachRehberi.API.Controllers;
-
 [ApiController]
-[Route("api/[controller]")]
-[Authorize]
 public class ReservationsController : ControllerBase
 {
-    private readonly IReservationService _reservationService;
+    // ...
 
-    public ReservationsController(IReservationService reservationService)
+    [HttpPost("{id:int}/cancel")]
+    public async Task<IActionResult> Cancel(
+        int id,
+        string firstName = null,
+        string lastName = null,
+        string email = null,
+        string phone = null)
     {
-        _reservationService = reservationService;
+        var reservation = await _reservationService.GetByUserAsync(UserId);
+        if (reservation == null) return NotFound(new { success = false, message = "Rezervasyon bulunamadı." });
+
+        // ...
     }
-
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateReservationDto dto)
-    {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userIdStr == null) return Unauthorized();
-        
-        var userId = int.Parse(userIdStr);
-        var result = await _reservationService.CreateAsync(dto, userId);
-        return result.ToActionResult();
-    }
-
-    [HttpGet("my")]
-    public async Task<IActionResult> GetMyReservations()
-    {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userIdStr == null) return Unauthorized();
-
-        var userId = int.Parse(userIdStr);
-        var reservations = await _reservationService.GetByUserAsync(userId);
-        return Ok(new { success = true, data = reservations });
-    }
-
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
-    {
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userIdStr == null) return Unauthorized();
-
-        var userId = int.Parse(userIdStr);
-
-        // Owner verification is now strictly handled and communicated via ServiceResult
-        var cancelResult = await _reservationService.CancelAsync(id, userId);
-        return cancelResult.ToActionResult();
-    }
-
-    [AllowAnonymous]
-    [HttpGet("check/{code}")]
-    public async Task<IActionResult> CheckByCode(string code)
-    {
-        if (string.IsNullOrWhiteSpace(code)) return BadRequest();
-
-        var data = await _reservationService.GetByCodeAsync(code.ToUpper());
-        if (data == null) return NotFound(new { success = false, message = "Rezervasyon bulunamadı." });
-
-        return Ok(new { success = true, data });
-    }
-    }
+}

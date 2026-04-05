@@ -135,31 +135,34 @@ $historySnippet
     $tempPrompt = Join-Path $env:TEMP "planner-prompt-$iteration.txt"
     $fullPrompt | Set-Content $tempPrompt -Encoding UTF8
 
-    $promptText = Get-Content $tempPrompt -Raw -Encoding UTF8
-    
+    $plannerPromptText = Get-Content $tempPrompt -Raw -Encoding UTF8
+
     $plannerArgs = @(
-        "--model", "claude-sonnet-4-6",
         "--dangerously-skip-permissions",
+        "--model", "claude-sonnet-4-6",
         "--add-dir", "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb",
         "--print",
-        "-p", $promptText
+        "-p",
+        $plannerPromptText
     )
 
-    $planOutput = & $claudePath @plannerArgs 2>&1
+    $plannerOutput = & $claudePath @plannerArgs 2>&1
 
     $exitCode = $LASTEXITCODE
     $ErrorActionPreference = $oldEAP
 
-    $planOutput | Set-Content $planPath -Encoding UTF8
+    $plannerOutput | Out-String | Set-Content $planPath -Encoding UTF8
 
     # Instruction dosyasina da kaydet (executor icin)
-    $planOutput | Set-Content $instructPath -Encoding UTF8
+    $plannerOutput | Out-String | Set-Content $instructPath -Encoding UTF8
 
-    if ($exitCode -ne 0) { throw "Claude basarisiz. ExitCode=$exitCode`n$planOutput" }
+    Write-Host "Planner output:"
+    Write-Host $plannerOutput
+
+    if ($exitCode -ne 0) { throw "Claude basarisiz. ExitCode=$exitCode`n$plannerOutput" }
 
     $planContent = Get-Content $planPath -Raw -Encoding UTF8
     if ([string]::IsNullOrWhiteSpace($planContent)) { throw "Claude bos cikti dondu." }
-
     if ($planContent -imatch "SYSTEM_COMPLETE") {
         Set-SP $stateObj "status"      "done"
         Set-SP $stateObj "is_complete" $true

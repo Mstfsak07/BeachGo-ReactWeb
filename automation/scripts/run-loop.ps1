@@ -195,6 +195,11 @@ Write-Log "Max iterations: $MAX_ITERATIONS"
 Write-Log "=========================================="
 Write-History "=== YENI DONGU BASLADI ==="
 
+if (Test-Path (Join-Path $queueDir "*.lock")) {
+    Write-Log "Eski lock dosyalari temizleniyor..."
+    Remove-Item (Join-Path $queueDir "*.lock") -Force -ErrorAction SilentlyContinue
+}
+
 $state = Read-State
 Set-SPFinalState $state "current_iteration"  0
 Set-SPFinalState $state "max_iterations"     $MAX_ITERATIONS

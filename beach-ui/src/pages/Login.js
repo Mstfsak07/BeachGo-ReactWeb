@@ -7,6 +7,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -17,10 +18,21 @@ const Login = () => {
     return <Navigate to="/" replace />;
   }
 
+  const validate = () => {
+    const errs = {};
+    if (!email) errs.email = 'E-posta adresi gereklidir.';
+    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = 'Geçerli bir e-posta adresi girin.';
+    if (!password) errs.password = 'Şifre gereklidir.';
+    else if (password.length < 6) errs.password = 'Şifre en az 6 karakter olmalıdır.';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (isSubmitting) return;
+    if (!validate()) return;
 
     try {
       setIsSubmitting(true);
@@ -68,6 +80,7 @@ const Login = () => {
                 placeholder="isletme@beachgo.com" required
                 value={email} onChange={(e) => setEmail(e.target.value)}
               />
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
             </div>
             <div>
               <div className="flex justify-between mb-1">
@@ -79,6 +92,7 @@ const Login = () => {
                 placeholder="Şifre" required
                 value={password} onChange={(e) => setPassword(e.target.value)}
               />
+              {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
             </div>
 
             <button

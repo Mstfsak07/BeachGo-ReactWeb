@@ -1,1 +1,52 @@
-Faz 1: JWT secret, CORS ve guest reservation güvenliğini düzelt.
+BeachGo projesini uçtan uca incele. Mevcut backend, frontend, admin paneli, authentication, rezervasyon akışı, beach detay sayfası, kullanıcı profili, favoriler, bildirimler, ödeme, e-posta doğrulama, responsive tasarım, hata yönetimi, güvenlik, performans, testler ve deploy hazırlığını değerlendir.
+
+Amaç mevcut projedeki eksik, yarım kalmış, hatalı veya geliştirilebilir alanları bulmak ve bunları uygulanabilir bir geliştirme planına dönüştürmek.
+
+Kurallar:
+
+* Önce projeyi analiz et, hemen kod yazma.
+* Eksikleri önem sırasına göre grupla.
+* Bunları fazlara ayır.
+* Her faz için:
+
+  * Amaç
+  * Yapılacak işler
+  * Etkilenen backend dosyaları
+  * Etkilenen frontend dosyaları
+  * Admin panel etkileri
+  * Gerekli migration / endpoint / UI değişiklikleri
+  * Test senaryoları
+  * Tahmini riskler
+    yaz.
+
+Özellikle şunları kontrol et:
+
+* Eksik veya yarım authentication akışları
+* E-posta doğrulama ve şifre sıfırlama
+* Rezervasyon oluşturma / iptal / geçmiş rezervasyonlar
+* Beach sahipleri ve admin için eksik yönetim ekranları
+* Kullanıcı profil düzenleme eksikleri
+* Arama, filtreleme ve sıralama
+* Bildirim sistemi
+* Hata mesajları ve loading state’leri
+* Mobil uyumluluk
+* API güvenliği, validation ve rate limit
+* Eksik database migration’ları
+* Performans problemleri
+* Eksik testler
+* Production deploy için eksikler
+* UI/UX iyileştirmeleri
+* Kod tekrarları ve refactor ihtiyacı
+
+Çıktı formatı:
+
+1. Projenin mevcut durumu özeti
+2. Bulunan eksikler listesi
+3. Faz 1, Faz 2, Faz 3... şeklinde detaylı geliştirme planı
+4. Her faz için uygulanacak dosyalar ve görevler
+5. Hangi fazdan başlanmasının en mantıklı olduğu
+6. Sadece tüm proje gerçekten tamamlandıysa “GÖREV TAMAMLANDI” yaz.
+7. Eğer yapılacak başka iş varsa ASLA “GÖREV TAMAMLANDI” yazma.
+8. Kod yazman gerekirse bunu daha sonra executor aşamasına bırak; bu aşamada sadece analiz ve plan üret.
+
+Türkçe karakter kullanılan dosyalarda UTF-8 kullan. Daha sonra uygulanacak değişiklikler için commit mesajı önerileri de ver.

@@ -1,5 +1,14 @@
-{
-  "status": "idle",
-  "phase": null,
-  "error": null
+﻿{
+    "status":  "halted",
+    "retryCount":  0,
+    "maxRetry":  3,
+    "scope":  "web",
+    "last_error":  null,
+    "consecutive_errors":  0,
+    "current_iteration":  20,
+    "max_iterations":  20,
+    "is_complete":  false,
+    "last_result_summary":  "Registering notification handlers for server \u0027browsermcp\u0027. Capabilities: { resources: {}, tools: {} }\r\nServer \u0027browsermcp\u0027 has tools but did not declare \u0027listChanged\u0027 capability. Listening anyway for robustness...\r\nServer \u0027browsermcp\u0027 has resources but did not declare \u0027listChanged\u0027 capability. Listening anyway for robustness...\r\nScheduling MCP context refresh...\r\nExecuting MCP context refresh...\r\n...",
+    "lastUpdated":  "2026-04-05T22:50:07",
+    "last_error_hash":  null
 }

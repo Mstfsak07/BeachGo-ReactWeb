@@ -1,11 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(del /f \"C:\\\\Users\\\\akMuratNET\\\\Desktop\\\\BeachGo\\\\BeachGo-ReactWeb\\\\src\\\\api\\\\client.js\")",
-      "Bash(del /f \"C:\\\\Users\\\\akMuratNET\\\\Desktop\\\\BeachGo\\\\BeachGo-ReactWeb\\\\src\\\\store\\\\useAuthStore.js\")",
+      "Bash(del:*)",
       "Bash(dotnet build:*)",
       "Bash(dotnet ef:*)",
-      "Bash(del:*)"
-    ]
-  }
+      "Bash(powershell:*)",
+      "Bash(cmd.exe:*)",
+      "Write(C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\**)"
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "allow_paths": [
+    "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\**"
+  ]
 }

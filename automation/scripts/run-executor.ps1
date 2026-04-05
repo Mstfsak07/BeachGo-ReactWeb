@@ -142,11 +142,6 @@ $planText
     Set-SP $stateObj "last_result_summary" $summary
     Set-SP $stateObj "lastUpdated" (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")
     $stateObj | ConvertTo-Json -Depth 10 | Set-Content $statePath -Encoding UTF8
-
-    # Kisa test
-    Write-Log "Gemini kisa test calistiriliyor..."
-    $testOutput = & $geminiPath --model gemini-3-flash -p "test" 2>&1
-    Write-Log "Kisa test sonucu: ExitCode=$LASTEXITCODE, Cikti=$($testOutput.Trim())"
 }
 catch {
     $err = $_ | Out-String

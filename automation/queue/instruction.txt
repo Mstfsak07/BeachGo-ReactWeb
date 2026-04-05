@@ -1,5 +1,56 @@
-BeachGo projesinde kullanıcı login olmadan rezervasyon yapabilsin.
-Rezervasyon sırasında ad, soyad, telefon ve e-posta alınsın.
-Sadece ilk fazı planla ve uygula.
-Kod sonunda test çalıştır ve commit oluştur.
-UTF-8 kullan.
+﻿### Proje Mevcut Durumu Özeti
+BeachGo projesi, .NET Backend ve React Frontend mimarisiyle kurgulanmış bir rezervasyon platformudur. Mevcut dosya yapısı incelendiğinde, kök dizinde bir `BeachRehberi.API` projesi bulunmasına rağmen, `beach-ui` klasörü altında da başka bir `BeachRehberi.API` dizini olduğu görülmektedir. Bu durum, projenin hangi API üzerinden yürüdüğü konusunda ciddi bir belirsizlik yaratmaktadır. Önceki aşamada (Iteration 19) talep edilen analizler gerçekleştirilmediği için projenin güvenlik, veritabanı standartları ve frontend koruma mekanizmaları hakkında somut veri bulunmamaktadır.
+
+### Bulunan Eksikler Listesi (Ön Tespit)
+1. **Mimari Karmaşa:** Mükerrer API klasörleri (kök dizin vs beach-ui içi).
+2. **Güvenlik Belirsizliği:** `Program.cs` içinde Rate Limiting, Exception Handling ve CORS politikalarının durumu bilinmiyor.
+3. **Veri Standartları:** Soft-delete (`IsDeleted`) ve Audit (`CreatedAt/UpdatedAt`) mekanizmalarının varlığı teyit edilmedi.
+4. **Auth Eksikleri:** E-posta aktivasyonu ve şifre sıfırlama gibi kritik akışların UI/Backend entegrasyon durumu belirsiz.
+5. **Frontend Güvenliği:** Role-based access control (RBAC) yapısının (`ProtectedRoute`) varlığı bilinmiyor.
+
+---
+
+### Geliştirme Planı
+
+#### Faz 1: Teknik Denetim ve Mimari Netleştirme (Şu anki odak)
+* **Amaç:** Projenin "Source of Truth" (Gerçek Kaynak) noktasını belirlemek ve mevcut "TODO"ları raporlamak.
+* **Yapılacak İşler:**
+    1. İki farklı konumdaki `.csproj` dosyalarını karşılaştırarak güncel backend projesini seç.
+    2. Ana API projesindeki `Program.cs` middleware zincirini analiz et.
+    3. `AppDbContext.cs` içindeki global sorgu filtrelerini ve save logic'ini incele.
+    4. Frontend tarafında rotaların nasıl korunduğunu (`App.js`) kontrol et.
+    5. Proje genelinde kritik eksikleri (`TODO:`, `FIXME:`) tarat.
+* **Etkilenen Backend Dosyaları:** `Program.cs`, `AppDbContext.cs`, `BeachRehberi.API.csproj`
+* **Etkilenen Frontend Dosyaları:** `beach-ui/src/App.js`, `beach-ui/src/services/authService.js`
+* **Test Senaryosu:** Statik analiz ve dosya okuma işlemleri.
+* **Riskler:** Yanlış klasör üzerinden geliştirme yapılması, projenin derleme hataları içermesi.
+
+#### Faz 2: Güvenlik ve Standardizasyon (Gelecek)
+* **Amaç:** Tespit edilen mimari eksikleri gidermek, Rate Limiting ve Global Error Handling eklemek.
+
+#### Faz 3: Yarım Kalan Özelliklerin Tamamlanması (Gelecek)
+* **Amaç:** E-posta doğrulama, rezervasyon iptal akışı ve admin yönetim ekranlarını bitirmek.
+
+---
+
+### Uygulama Talimatı (Instruction - Iteration 20)
+
+Lütfen aşağıdaki analiz görevlerini **Gemini CLI araçlarını kullanarak** gerçekleştirin. Bu veriler projenin geri kalanı için temel oluşturacaktır:
+
+1. **API Lokasyon Tespiti:** 
+   * `BeachRehberi.API/BeachRehberi.API/BeachRehberi.API.csproj` ve `beach-ui/BeachRehberi.API/BeachRehberi.API/BeachRehberi.API.csproj` dosyalarını `read_file` ile oku. Bağımlılık (NuGet) sürümlerini ve proje referanslarını karşılaştır. Hangisi ana proje?
+2. **Backend Güvenlik Analizi:** 
+   * Tespit ettiğin ana API projesindeki `Program.cs` dosyasını oku. 
+   * `UseRateLimiting`, `UseAuthentication`, `UseAuthorization` ve `UseExceptionHandler` satırlarını kontrol et.
+3. **Veritabanı Standartları:** 
+   * `AppDbContext.cs` dosyasını bul (`grep_search` ile yerini onayla) ve oku. 
+   * `OnModelCreating` içinde `HasQueryFilter` (Soft Delete için) ve `SaveChangesAsync` override'ı (Audit log için) var mı?
+4. **Frontend Koruma Mekanizması:** 
+   * `beach-ui/src/App.js` dosyasını oku. Rotalar (Route) sarmalanmış mı? (Örn: `ProtectedRoute`, `RequireAuth` vb.)
+5. **Kritik Eksik Taraması:** 
+   * Tüm çözümde (root) `grep_search` ile `pattern: "TODO:|FIXME:|NotImplementedException"` aramasını yap ve sonuçları raporla.
+
+**Önerilen Commit Mesajı:**
+`docs: complete technical audit and identify main API structure (Iteration 20)`
+
+**En mantıklı başlangıç noktası:** Faz 1 (Analiz) tamamlanmadan kod değişikliği yapılmamalıdır. Sonuçlara göre Faz 2 planlanacaktır.

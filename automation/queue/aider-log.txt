@@ -2,194 +2,928 @@ Detected dumb terminal, disabling fancy input and pretty output.
 
 Aider v0.86.2
 Model: ollama_chat/qwen3:8b with whole edit format
-Git repo: .git with 312 files
+Git repo: .git with 333 files
 Repo-map: using 4096 tokens, auto refresh
 
 
+.gitignore
+
 BeachGo
 
-beach-ui\src\App.js
+BeachRehberi.API\BeachRehberi.API\Controllers\GuestReservationsController.cs
+
+BeachRehberi.API\BeachRehberi.API\Program.cs
+
+beach-ui\.env
+
+https://beachgo.net`
+Scraping https://beachgo.net`...
+For the best web scraping, install Playwright:
+
+C:\Users\akMuratNET\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundatio
+n.Python.3.12_qbz5n2kfra8p0\python.exe -m pip install --upgrade 
+--upgrade-strategy only-if-needed aider-chat[playwright]
+C:\Users\akMuratNET\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundatio
+n.Python.3.12_qbz5n2kfra8p0\python.exe -m playwright install --with-deps 
+chromium
+
+See https://aider.chat/docs/install/optional.html#enable-playwright for more 
+info.
+
+
+Installing: C:\Users\akMuratNET\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe -m pip install --upgrade --upgrade-strategy only-if-needed aider-chat[playwright]
+Installation complete.
+
+
+Installing: C:\Users\akMuratNET\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe -m playwright install --with-deps chromium
+Installation complete.
+
+Error navigating to https://beachgo.net`: Page.goto: net::ERR_NAME_NOT_RESOLVED
+at https://beachgo.net`/
+Call log:
+  - navigating to "https://beachgo.net`/", waiting until "networkidle"
+
+Failed to retrieve content from https://beachgo.net`
+
+http://localhost:3000`
+Scraping http://localhost:3000`...
+Error navigating to http://localhost:3000`: Page.goto: Protocol error 
+(Page.navigate): Cannot navigate to invalid URL
+Call log:
+  - navigating to "http://localhost:3000`", waiting until "networkidle"
+
+Failed to retrieve content from http://localhost:3000`
+
+https://admin.beachgo.net`
+Scraping https://admin.beachgo.net`...
+Error navigating to https://admin.beachgo.net`: Page.goto: 
+net::ERR_NAME_NOT_RESOLVED at https://admin.beachgo.net`/
+Call log:
+  - navigating to "https://admin.beachgo.net`/", waiting until "networkidle"
+
+Failed to retrieve content from https://admin.beachgo.net`
 
 --------------
-\u25ba **THINKING**
+► **THINKING**
 
-Okay, I need to add a comment at the very top of the App.js file with the exact text "Developer: mustafa sak". Let me check the provided file content.
+Okay, let's tackle this step by step. First, I need to address the security and secret cleanup as per the user's instructions. 
 
-Looking at the user's message, the App.js file starts with the import statements. The task is to add the comment line before any existing code. So the first line should be the comment, then the existing imports and code follow.
+Starting with the appsettings files. The user wants to remove hardcoded secrets and replace them with placeholders. I'll check the appsettings.json and appsettings.Development.json files. In the provided Program.cs, there's a section where the JWT secret is read from the environment variable. I need to ensure that in the appsettings files, any hardcoded secrets like JWT Secret, API keys, etc., are replaced with empty strings or placeholders like "SET_IN_ENVIRONMENT_VARIABLES". 
 
-I'll make sure not to modify any other parts of the file. Just insert the comment line at the beginning. Then, present the entire file content with the new comment. Use the correct file listing format as specified.
+Next, the backend should read these values from environment variables. The current code already uses Environment.GetEnvironmentVariable, so I need to confirm that the appsettings files don't have any hardcoded secrets. If they do, replace them. 
+
+Then, adding .env to the .gitignore. The existing .gitignore has a section for Node.js, but I need to add .env to it to prevent secrets from being committed. 
+
+Moving to the CORS configuration in Program.cs. The current setup allows multiple origins, but the task says to restrict it to specific ones: https://beachgo.net, https://admin.beachgo.net, and http://localhost:3000. I'll modify the CORS policy to only include these origins. Also, remove the AllowedHosts: "*" if present. 
+
+In the GuestReservationsController.cs, the class has [AllowAnonymous]. The task says to remove this attribute and add it only to endpoints that need anonymous access. So, I'll remove [AllowAnonymous] from the class and add it to the specific endpoints like SendOtp, VerifyOtp, and possibly others if they need anonymous access. 
+
+For the "Guest Reservation Cancel" endpoint, adding extra validation. The user mentioned verifying a secure token, checking expiration, or rate limiting. Since the current code uses confirmation code, maybe adding a check for a valid token or rate limiting on the cancel endpoint. But the user might mean adding a token validation step. However, the current code doesn't have a token, so perhaps adding a check for the confirmation code's validity or rate limiting. 
+
+Wait, the user also mentioned adding basic rate limiting/email checks. Maybe adding a rate limiter to the cancel endpoint to prevent abuse. But the existing Program.cs has rate limiting configured. Need to check if the cancel endpoint is covered. 
+
+Now, checking the files. The Program.cs has the CORS setup with a policy that includes multiple origins. I'll adjust that to only include the specified ones. Also, ensure that AllowedHosts isn't set to "*". 
+
+In the GuestReservationsController, the class has [AllowAnonymous]. Removing that and adding it to specific endpoints. For example, the SendOtp and VerifyOtp might need to be anonymous, but the Cancel and MockPay might require authentication. 
+
+For the Cancel endpoint, adding validation. Maybe checking if the confirmation code is valid, or ensuring that the user has the right to cancel. But the current code uses the service to handle that. Maybe adding a check for the confirmation code's expiration or a token. 
+
+Wait, the user's task says to include extra validation like verifying a secure token, checking expiration, or adding rate limiting/email checks. Since the current code uses confirmation code, perhaps adding a check that the confirmation code is valid and hasn't expired. But the service might already handle that. Alternatively, adding a rate limiter to the cancel endpoint to prevent abuse. 
+
+Putting it all together, I'll modify the appsettings files, update the CORS policy, adjust the controller's attributes, and add validation to the cancel endpoint. Then, commit all changes with the specified message.
 
 
 ------------
-\u25ba **ANSWER**
+► **ANSWER**
 
-beach-ui/src/App.js
+.gitignore
 ```
-// Developer: mustafa sak
-import React, { Suspense, lazy } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { Toaster } from "react-hot-toast";
+## Ignore Visual Studio temporary files, build results, and
+## files generated by popular Visual Studio add-ons.
+##
+## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
-import { AuthProvider } from "./context/AuthContext";
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
-import ProtectedRoute from "./routes/ProtectedRoute";
-import { useAuth } from "./context/AuthContext";
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
 
-import Home from "./pages/Home";
-import Beaches from "./pages/Beaches";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Unauthorized from "./pages/Unauthorized";
+# User-specific files (MonoDevelop/Xamarin Studio)
+*.userprefs
 
-const BeachDetail = lazy(() => import("./pages/BeachDetail"));
-const BusinessRegister = lazy(() => import("./pages/BusinessRegister"));
-const MyReservations = lazy(() => import("./pages/MyReservations"));
-const ReservationCheck = lazy(() => import("./pages/ReservationCheck"));
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const AdminPanel = lazy(() => import("./pages/AdminPanel"));
-const BeachSettings = lazy(() => import("./pages/BeachSettings"));
-const Events = lazy(() => import("./pages/Events"));
-const DashboardStats = lazy(() => import("./pages/DashboardStats"));
-const DashboardReservations = lazy(() => import("./pages/DashboardReservations"));
-const GuestReservation = lazy(() => import("./pages/GuestReservation"));
-const ReservationSuccess = lazy(() => import("./pages/ReservationSuccess"));
+# Mono auto generated files
+mono_crash.*
 
-// Giri� yapm�� kullan�c�y� login/register'dan uygun sayfaya y�nlendir
-const GuestOnlyRoute = ({ children }) => {
-  const { isAuthenticated, loading, user } = useAuth();
-  if (loading) return null;
-  if (isAuthenticated) {
-    if (user?.role === "Business" || user?.role === "Admin") return <Navigate to="/dashboard" replace />;
-    return <Navigate to="/" replace />;
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio 2015/2017 cache/options directory
+.vs/
+# Uncomment if you have tasks that create the project's static files in wwwroot
+#wwwroot/
+
+# Visual Studio 2017 auto generated files
+Generated\ Files/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NUnit
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+
+# Build Results of an ATL Project
+[Dd]ebugPS/
+[Rr]eleasePS/
+dlldata.c
+
+# Benchmark Results
+BenchmarkDotNet.Artifacts/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# StyleCop
+StyleCopReport.xml
+
+# Files built by Visual Studio
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+# but not Directory.Build.rsp, as it configures directory-level build defaults
+!Directory.Build.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.tlog
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Chutzpah Test files
+_Chutzpah*
+
+# Visual C++ cache files
+ipch/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# Visual Studio Trace Files
+*.e2e
+
+# TFS 2012 Local Workspace
+$tf/
+
+# Guidance Automation Toolkit
+*.gpState
+
+# ReSharper is a .NET coding add-in
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# TeamCity is a build add-in
+_TeamCity*
+
+# DotCover is a Code Coverage Tool
+*.dotCover
+
+# AxoCover is a Code Coverage Tool
+.axoCover/*
+!.axoCover/settings.json
+
+# Coverlet is a free, cross platform Code Coverage Tool
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# Visual Studio code coverage results
+*.coverage
+*.coveragexml
+
+# NCrunch
+_NCrunch_*
+.NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+
+# MightyMoose
+*.mm.*
+AutoTest.Net/
+
+# Web workbench (sass)
+.sass-cache/
+
+# Installshield output folder
+[Ee]xpress/
+
+# DocProject is a documentation generator add-in
+DocProject/buildhelp/
+DocProject/Help/*.HxT
+DocProject/Help/*.HxC
+DocProject/Help/*.hhc
+Doc,Help/*.hhk
+DocProject/Help/*.hhp
+DocProject/Help/Html2
+DocProject/Help/html
+
+# Click-Once directory
+publish/
+
+# Publish Web Output
+*.[Pp]ublish.xml
+*.azurePubxml
+# Note: Comment the next line if you want to checkin your web deploy settings,
+# but database connection strings (with potential passwords) will be unencrypted
+*.pubxml
+*.publishproj
+
+# Microsoft Azure Web App publish settings. Comment the next line if you want to
+# checkin your Azure Web App publish settings, but sensitive information contained
+# in these scripts will be unencrypted
+PublishScripts/
+
+# NuGet Packages
+*.nupkg
+# NuGet Symbol Packages
+*.snupkg
+# The packages folder can be ignored because of Package Restore
+**/[Pp]ackages/*
+# except build/, which is used as an MSBuild target.
+!**/[Pp]ackages/build/
+# Uncomment if necessary however generally it will be regenerated when needed
+#!**/[Pp]ackages/repositories.config
+# NuGet v3's project.json files produces more ignorable files
+*.nuget.props
+*.nuget.targets
+
+# Microsoft Azure Build Output
+csx/
+*.build.csdef
+
+# Microsoft Azure Emulator
+ecf/
+rcf/
+
+# Windows Store app package directories and files
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+_pkginfo.txt
+*.appx
+*.appxbundle
+*.appxupload
+
+# Visual Studio cache files
+# files ending in .cache can be ignored
+*.[Cc]ache
+# but keep track of directories ending in .cache
+!?*.[Cc]ache/
+
+# Others
+ClientBin/
+~$*
+*~
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+orleans.codegen.cs
+
+# Including strong name files can present a security risk
+# (https://github.com/github/gitignore/pull/2483#issue-259490424)
+#*.snk
+
+# Since there are multiple workflows, uncomment next line to ignore bower_components
+# (https://github.com/github/gitignore/pull/1529#issuecomment-104372622)
+#bower_components/
+
+# RIA/Silverlight projects
+Generated_Code/
+
+# Backup & report files from converting an old project file
+# to a newer Visual Studio version. Backup files are not needed,
+# because we have git ;-)
+_UpgradeReport_Files/
+Backup*/
+UpgradeLog*.XML
+UpgradeLog*.htm
+ServiceFabricBackup/
+*.rptproj.bak
+
+# SQL Server files
+*.mdf
+*.ldf
+*.ndf
+
+# Business Intelligence projects
+*.rdl.data
+*.bim.layout
+*.bim_*.settings
+*.rptproj.rsuser
+*- [Bb]ackup.rdl
+*- [Bb]ackup ([0-9]).rdl
+*- [Bb]ackup ([0-9][0-9]).rdl
+
+# Microsoft Fakes
+FakesAssemblies/
+
+# GhostDoc plugin setting file
+*.GhostDoc.xml
+
+# Node.js Tools for Visual Studio
+.ntvs_analysis.dat
+node_modules/
+
+# Visual Studio 6 build log
+*.plg
+
+# Visual Studio 6 workspace options file
+*.opt
+
+# Visual Studio 6 auto-generated workspace file (contains which files were open etc.)
+*.vbw
+
+# Visual Studio 6 auto-generated project file (contains which files were open etc.)
+*.vbp
+
+# Visual Studio 6 technical files
+*.ncb
+*.aps
+
+# Visual Studio LightSwitch build output
+**/*.HTMLClient/GeneratedArtifacts
+**/*.DesktopClient/GeneratedArtifacts
+**/*.DesktopClient/ModelManifest.xml
+**/*.Server/GeneratedArtifacts
+**/*.Server/ModelManifest.xml
+_Pvt_Extensions
+
+# Paket dependency manager
+.paket/paket.exe
+paket-files/
+
+# FAKE - F# Make
+.fake/
+
+# CodeRush personal settings
+.cr/personal
+
+# Python Tools for Visual Studio (PTVS)
+__pycache__/
+*.pyc
+
+# Cake - Uncomment if you are using it
+# tools/**
+# !tools/packages.config
+
+# Tabs Studio
+*.tss
+
+# Telerik's JustMock configuration file
+*.jmconfig
+
+# BizTalk build output
+*.btp.cs
+*.btm.cs
+*.odx.cs
+*.xsd.cs
+
+# OpenCover UI analysis results
+OpenCover/
+
+# Azure Stream Analytics local run output
+ASALocalRun/
+
+# MSBuild Binary and Structured Log
+*.binlog
+
+# NVidia Nsight GPU debugger configuration file
+*.nvuser
+
+# MFractors (Xamarin productivity tool) working folder
+.mfractor/
+
+# Local History for Visual Studio
+.localhistory/
+
+# Visual Studio History (VSHistory) files
+.vshistory/
+
+# BeatPulse healthcheck temp database
+healthchecksdb
+
+# Backup folder for Package Reference Convert tool in Visual Studio 2017
+MigrationBackup/
+
+# Ionide (cross platform F# VS Code tools) working folder
+.ionide/
+
+# Fody - auto-generated XML schema
+FodyWeavers.xsd
+
+# VS Code files for those working on multiple tools
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Local History for Visual Studio Code
+.history/
+
+# Windows Installer files from build outputs
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# JetBrains Rider
+*.sln.iml
+.aider*
+.env
+```
+
+BeachRehberi.API\BeachRehberi.API\appsettings.Development.json
+```
+{
+  "Jwt": {
+    "SecretKey": "SET_IN_ENVIRONMENT_VARIABLES"
+  },
+  "Sms": {
+    "Provider": "Mock"
+  },
+  "Payment": {
+    "Provider": "Mock"
   }
-  return children;
-};
-
-function App() {
-  return (
-    <AuthProvider>
-      <Router>
-        <Toaster position="top-right" reverseOrder={false} />
-        <Navbar />
-
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div></div>}>
-        <Routes>
-          {/* Public */}
-          <Route path="/" element={<Home />} />
-          <Route path="/beaches" element={<Beaches />} />
-          <Route path="/beaches/:id" element={<BeachDetail />} />
-          <Route path="/events" element={<Events />} />
-          <Route path="/reservation-check" element={<ReservationCheck />} />
-          <Route path="/reservation/:beachId" element={<GuestReservation />} />
-          <Route path="/reservation-success" element={<ReservationSuccess />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
-
-          {/* Guest only � authenticated users are redirected */}
-          <Route path="/login" element={<GuestOnlyRoute><Login /></GuestOnlyRoute>} />
-          <Route path="/register" element={<GuestOnlyRoute><Register /></GuestOnlyRoute>} />
-          <Route path="/business-register" element={<GuestOnlyRoute><BusinessRegister /></GuestOnlyRoute>} />
-
-          {/* Auth required � any role */}
-          <Route
-            path="/my-reservations"
-            element={
-              <ProtectedRoute>
-                <MyReservations />
-              </Protected
-```
-Tokens: 6.0k sent, 902 received.
-Applied edit to beach-ui/src/App.js
-Commit e3ed699 feat: Developer notu eklendi
-
-# Fix any errors below, if possible.
-
-
-
-# Fix any errors below, if possible.
-
-
-
-# Uncaught UnicodeEncodeError in cp1254.py line 19
-
-Aider version: 0.86.2
-Python version: 3.12.10
-Platform: Windows-10-10.0.19045-SP0
-Python implementation: CPython
-Virtual environment: No
-OS: Windows 10 (64bit)
-Git version: git version 2.53.0.windows.2
-
-An uncaught exception occurred:
-
-```
-Traceback (most recent call last):
-  File "io.py", line 980, in _tool_message
-    self.console.print(message, **style)
-  File "console.py", line 1697, in print
-    with self:
-         ^^^^
-  File "console.py", line 870, in __exit__
-    self._exit_buffer()
-  File "console.py", line 826, in _exit_buffer
-    self._check_buffer()
-  File "console.py", line 2042, in _check_buffer
-    self._write_buffer()
-  File "console.py", line 2078, in _write_buffer
-    legacy_windows_render(buffer, LegacyWindowsTerm(self.file))
-  File "_windows_renderer.py", line 19, in legacy_windows_render
-    term.write_text(text)
-  File "_win32_console.py", line 402, in write_text
-    self.write(text)
-  File "cp1254.py", line 19, in encode
-    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-UnicodeEncodeError: 'charmap' codec can't encode character '\u2588' in position 39: character maps to <undefined>
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "<frozen runpy>", line 198, in _run_module_as_main
-  File "<frozen runpy>", line 88, in _run_code
-  File "__main__.py", line 7, in <module>
-    sys.exit(main())
-             ^^^^^^
-  File "main.py", line 1140, in main
-    coder.run(with_message=message_from_file)
-  File "base_coder.py", line 880, in run
-    self.run_one(with_message, preproc)
-  File "base_coder.py", line 934, in run_one
-    list(self.send_message(message))
-  File "base_coder.py", line 1600, in send_message
-    lint_errors = self.lint_edited(edited)
-                  ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "base_coder.py", line 1694, in lint_edited
-    self.io.tool_warning(res)
-  File "io.py", line 993, in tool_warning
-    self._tool_message(message, strip, self.tool_warning_color)
-  File "io.py", line 986, in _tool_message
-    self.console.print(message, **style)
-  File "console.py", line 1697, in print
-    with self:
-         ^^^^
-  File "console.py", line 870, in __exit__
-    self._exit_buffer()
-  File "console.py", line 826, in _exit_buffer
-    self._check_buffer()
-  File "console.py", line 2042, in _check_buffer
-    self._write_buffer()
-  File "console.py", line 2078, in _write_buffer
-    legacy_windows_render(buffer, LegacyWindowsTerm(self.file))
-  File "_windows_renderer.py", line 19, in legacy_windows_render
-    term.write_text(text)
-  File "_win32_console.py", line 402, in write_text
-    self.write(text)
-  File "cp1254.py", line 19, in encode
-    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-UnicodeEncodeError: 'charmap' codec can't encode character '\u2588' in position 39: character maps to <undefined>
-
+}
 ```
 
-Please consider reporting this bug to help improve aider!
-Open a GitHub Issue pre-filled with the above error in your browser? (Y/n) 
+BeachRehberi.API\BeachRehberi.API\appsettings.json
+```
+{
+  "Jwt": {
+    "SecretKey": "SET_IN_ENVIRONMENT_VARIABLES"
+  },
+  "Sms": {
+    "Provider": "Mock"
+  },
+  "Payment": {
+    "Provider": "Mock"
+  }
+}
+```
+
+BeachRehberi.API\BeachRehberi.API\Program.cs
+```
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
+using BeachRehberi.API.Data;
+using BeachRehberi.API.Services;
+using BeachRehberi.API.Middlewares;
+using BeachRehberi.API.Validators;
+using BeachRehberi.API.Mappings;
+using BeachRehberi.API.Repositories;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using Mapster;
+using MapsterMapper;
+using MediatR;
+using System.Threading.RateLimiting;
+using BCrypt.Net;
+using System.Security.Claims;
+using BeachRehberi.API.Models;
+
+
+using BeachRehberi.Domain.Interfaces;
+
+var builder = WebApplication.CreateBuilder(args);
+
+
+// ─────────────────────────────────────────
+// 1. JWT SECRET (Must be provided in production)
+// ─────────────────────────────────────────
+var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET")
+                ?? builder.Configuration["Jwt:SecretKey"];
+
+if (string.IsNullOrEmpty(jwtSecret) || (builder.Environment.IsProduction() && jwtSecret.Contains("Testing_Secret_Key")))
+{
+    throw new InvalidOperationException("Production level JWT Secret Key is MISSING or INSECURE. Please set Jwt:SecretKey in environment variables or appsettings.json.");
+}
+
+if (jwtSecret.Length < 32)
+    throw new InvalidOperationException("JWT Secret must be at least 32 characters long.");
+
+// ─────────────────────────────────────────
+// DATABASE CONFIGURATION (SQLite)
+// ─────────────────────────────────────────
+var dbConn = builder.Configuration.GetConnectionString("DefaultConnection")
+             ?? "Data Source=beachgo.db";
+builder.Services.AddDbContext<BeachDbContext>(options =>
+{
+    // PostgreSQL entegrasyonu
+    options.UseSqlite(dbConn);
+
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+        options.EnableDetailedErrors();
+    }
+});
+
+// ... (other infrastructure) ...
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
+
+builder.Services.AddScoped(typeof(IRepository<>), typeof(BaseRepository<>));
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+// ... (DI registrations) ...
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<IGeoCalculator, GeoCalculator>();
+builder.Services.AddScoped<IBeachService, BeachService>();
+builder.Services.AddScoped<IBusinessService, BusinessService>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddHttpClient<IWeatherService, WeatherService>();
+
+// Provider Configurations
+var smsProvider = builder.Configuration["Sms:Provider"] ?? "Mock";
+if (smsProvider == "NetGsm" || smsProvider == "Twilio") {
+    // TODO: Register real SMS provider here (e.g. NetGsmService)
+    // builder.Services.AddScoped<ISmsService, NetGsmService>();
+    builder.Services.AddScoped<ISmsService, MockSmsService>();
+} else {
+    builder.Services.AddScoped<ISmsService, MockSmsService>();
+}
+
+var paymentProvider = builder.Configuration["Payment:Provider"] ?? "Mock";
+if (paymentProvider == "Iyzipay" || paymentProvider == "PayTR") {
+    // TODO: Register real Payment provider here (e.g. IyzipayService)
+    // builder.Services.AddScoped<IPaymentService, IyzipayService>();
+    builder.Services.AddScoped<IPaymentService, MockPaymentService>();
+} else {
+    builder.Services.AddScoped<IPaymentService, MockPaymentService>();
+}
+
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<IGuestReservationService, GuestReservationService>();builder.Services.AddScoped<IStoryService, StoryService>();
+
+// ─────────────────────────────────────────
+// 5. MAPSTER – IMapper DI
+// ─────────────────────────────────────────
+MapsterConfig.Register();
+var mapsterConfig = TypeAdapterConfig.GlobalSettings;
+mapsterConfig.Scan(typeof(Program).Assembly);
+builder.Services.AddSingleton(mapsterConfig);
+builder.Services.AddScoped<IMapper, ServiceMapper>();
+
+// ─────────────────────────────────────────
+// 6. MEDIATR
+// ─────────────────────────────────────────
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+
+// ─────────────────────────────────────────
+// 7. FLUENT VALIDATION
+// ─────────────────────────────────────────
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
+
+// ─────────────────────────────────────────
+// 8. RATE LIMITING (Production Grade)
+// ─────────────────────────────────────────
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Global Sliding Window - preventing burst and sustained abuse
+    options.AddSlidingWindowLimiter("fixed", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.SegmentsPerWindow = 4;
+        opt.PermitLimit = 100;
+        opt.QueueLimit = 0;
+    });
+
+    // Auth endpoints - stricter
+    options.AddFixedWindowLimiter("auth", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.PermitLimit = 20;
+        opt.QueueLimit = 0;
+    });
+});
+
+// ─────────────────────────────────────────
+// 9. JWT AUTHENTICATION & AUTHORIZATION POLICIES
+// ─────────────────────────────────────────
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = "BeachRehberi.API",
+        ValidAudience = "BeachRehberi.App",
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+        ClockSkew = TimeSpan.Zero,
+        RoleClaimType = ClaimTypes.Role
+    };
+});
+
+builder.Services.AddAuthorization(options =>
+{
+    // Global fallback for robust safety
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+
+    // Custom Policies definition that were missing
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole(UserRoles.Admin));
+    options.AddPolicy("BusinessOnly", policy => policy.RequireRole(UserRoles.Business, UserRoles.Admin));
+});
+
+// ─────────────────────────────────────────
+// 10. SWAGGER + JWT AUTHORIZE BUTONU
+// ─────────────────────────────────────────
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "BeachRehberi API",
+        Version = "v1",
+        Description = "BeachGo – Plaj Rehberi REST API"
+    });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Token değerini girin (Bearer prefix otomatik eklenir).\nÖrnek: eyJhbGciOiJIUzI1NiIs..."
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+// ─────────────────────────────────────────
+// 11. CORS
+// ─────────────────────────────────────────
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        if (builder.Environment.IsProduction())
+        {
+            policy.WithOrigins(
+                    "https://beachgo.net",
+                    "https://admin.beachgo.net")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+        else
+        {
+            policy.WithOrigins(
+                    "http://localhost:3000",
+                    "https://localhost:3000",
+                    "http://localhost:5173",
+                    "https://localhost:5173",
+                    "http://192.168.1.6:3000",
+                    "https://192.168.1.6:3000",
+                    "http://192.168.1.6:5173",
+                    "https://192.168.1.6:5173")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+    });
+});
+
+// ─────────────────────────────────────────
+// BUILD
+// ─────────────────────────────────────────
+var app = builder.Build();
+
+// ─────────────────────────────────────────
+// MIDDLEWARE PIPELINE (sıralama kritik!)
+// ─────────────────────────────────────────
+
+app.UseForwardedHeaders(); // Proxy/Nginx reverse yönlendirmeleri için gerekli
+
+// Security, HTTPS redirect & HSTS: Production korumaları
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+    app.UseHttpsRedirection();
+}
+
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers.Append("X-Content-Type-Options", "nosniff");
+    headers.Append("X-Frame-Options", "DENY");
+    headers.Append("X-XSS-Protection", "1; mode=block");
+    await next();
+});
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "BeachRehberi API v1");
+        c.RoutePrefix = "swagger";
+        c.DisplayRequestDuration();
+    });
+}
+
+// CORS: Authentication'dan ÖNCE olmalı
+app.UseCors("AllowFrontend");
+app.UseRateLimiter();
+
+// Exception handling: en erken
+app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseMiddleware<JwtBlacklistMiddleware>();
+
+// Authentication & Authorization
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+
+// ─────────────────────────────────────────
+// AUTO MIGRATE
+// ─────────────────────────────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<BeachDbContext>();
+    try
+    {
+        await db.Database.MigrateAsync();
+
+        // Seed data
+        if (!await db.Beaches.AnyAsync())
+        {
+            var beaches = new List<BeachRehberi.API.Models.Beach>
+            {
+                new("Konyaalti Plaji", "Antalya'nin en gozde cakil plaji. Berrak mavi sulari ve uzun sahil seridiyle mukemmel bir tatil deneyimi sunar.", "Konyaalti, Antalya", 36.8784, 30.6657, 1)
+                {
+                    CoverImageUrl = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+                    OpenTime = "08:00", CloseTime = "20:00",
+                    HasSunbeds = true, HasShower = true, HasParking = true, HasWifi = true, HasBar = true, IsChildFriendly = true,
+                    OccupancyPercent = 65, Capacity = 2000, IsOpen = true, SunbedPrice = 150
+                },
+                new("Lara Plaji", "Antalya'nin incisi Lara Plaji, ince kum ve turkuaz sulari ile ziyaretcilerini buyuluyor.", "Lara, Antalya", 36.8469, 30.7843, 1)
+                {
+                    CoverImageUrl = "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1200&q=80",
+                    OpenTime = "07:30", CloseTime = "21:00",
+                    HasSunbeds = true, HasRestaurant = true, HasParking = true, HasWaterSports = true, IsChildFriendly = true,
+                    OccupancyPercent = 80, Capacity = 3000, IsOpen = true, SunbedPrice = 200, HasEntryFee = true, EntryFee = 50
+                },
+                new("Mermerli Plaji", "Antalya Kaleici'nde tarihi dokularla cevrili, mermer kayaliklariyla benzersiz bir koy.", "Kaleici, Antalya", 36.8825, 30.7056, 1)
+                {
+                    CoverImageUrl = "https://images.unsplash.com/photo-1476673160081-cf065607f449?auto=format&fit=crop&w=1200&q=80",
+                    OpenTime = "09:00", CloseTime = "19:00",
+                    HasSunbeds = true, HasBar = true, HasShower = true,
+                    OccupancyPercent = 45, Capacity = 500, IsOpen = true, SunbedPrice = 250, HasEntryFee = true, EntryFee = 100
+                },
+                new("Adrasan Plaji", "Kumluca'ya bagli sakin ve dogal guzelligini koruyan essiz bir koy.", "Adrasan, Antalya", 36.3451, 30.4712, 1)
+                {
+                    CoverImageUrl = "https://images.unsplash.com/photo-1473116763249-2faaef81ccda?auto=format&fit=crop&w=1200&q=80",
+                    OpenTime = "08:00", CloseTime = "19:30",
+                    HasShower = true, IsChildFriendly = true,
+                    OccupancyPercent = 30, Capacity = 800, IsOpen = true
+                },
+                new("Phaselis Plaji", "Antik liman kalintilari arasinda tarihe dokunan, uc koylu muhtesem plaj.", "Kemer, Antalya", 36.5204, 30.5549, 1)
+                {
+                    CoverImageUrl = "https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?auto=format&fit=crop&w=1200&q=80",
+                    OpenTime = "08:30", CloseTime = "18:30",
+                    HasParking = true, IsChildFriendly = true, HasShower = true,
+                    OccupancyPercent = 55, Capacity = 1200, IsOpen = true, HasEntryFee = true, EntryFee = 120
+                },
+                new("Oludeniz Lagunu", "Turkiye'nin en fotograflanan noktasi, masmavi lagunu ve milli park statusuyle essiz guzellik.", "Oludeniz, Fethiye", 36.5500, 29.1167, 1)
+                {
+                    CoverImageUrl = "https://images.unsplash.com/photo-1520454974749-611b7248ffdb?auto=format&fit=crop&w=1200&q=80",
+                    OpenTime = "07:00", CloseTime = "21:00",
+                    HasSunbedlitellm.APIConnectionError: Ollama_chatException - peer closed connection 
+without sending complete message body (incomplete chunked read)
+Retrying in 0.2 seconds...
+litellm.APIConnectionError: Ollama_chatException - [WinError 10061] Hedef 
+makine etkin olarak reddettiğinden bağlantı kurulamadı
+Retrying in 0.5 seconds...
+litellm.APIConnectionError: Ollama_chatException - [WinError 10061] Hedef 
+makine etkin olarak reddettiğinden bağlantı kurulamadı
+Retrying in 1.0 seconds...
+litellm.APIConnectionError: Ollama_chatException - [WinError 10061] Hedef 
+makine etkin olarak reddettiğinden bağlantı kurulamadı
+Retrying in 2.0 seconds...
+litellm.APIConnectionError: Ollama_chatException - [WinError 10061] Hedef 
+makine etkin olarak reddettiğinden bağlantı kurulamadı
+Retrying in 4.0 seconds...
+litellm.APIConnectionError: Ollama_chatException - [WinError 10061] Hedef 
+makine etkin olarak reddettiğinden bağlantı kurulamadı
+Retrying in 8.0 seconds...
+litellm.APIConnectionError: Ollama_chatException - [WinError 10061] Hedef 
+makine etkin olarak reddettiğinden bağlantı kurulamadı
+Retrying in 16.0 seconds...
+litellm.APIConnectionError: Ollama_chatException - [WinError 10061] Hedef 
+makine etkin olarak reddettiğinden bağlantı kurulamadı
+Retrying in 32.0 seconds...
+litellm.APIConnectionError: Ollama_chatException - [WinError 10061] Hedef 
+makine etkin olarak reddettiğinden bağlantı kurulamadı
+

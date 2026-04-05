@@ -160,7 +160,7 @@ $historySnippet
     $planContent = Get-Content $planPath -Raw -Encoding UTF8
     if ([string]::IsNullOrWhiteSpace($planContent)) { throw "Claude bos cikti dondu." }
 
-    if ($planContent -imatch "GÖREV TAMAMLANDI") {
+    if ($planContent -imatch "SYSTEM_COMPLETE") {
         Set-SP $stateObj "status"      "done"
         Set-SP $stateObj "is_complete" $true
         Write-Log "Gorev tamamlandi sinyali alindi."

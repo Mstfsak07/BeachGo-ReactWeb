@@ -105,17 +105,12 @@ function Test-IsComplete($resultText, $planText) {
     if ([string]::IsNullOrWhiteSpace($resultText)) { return $false }
 
     $completePatterns = @(
-        "GOREV TAMAMLANDI",
-        "COMPLETE",
-        "ALL DONE",
-        "TUM TESTLER BASARILI",
-        "tum isler tamamlandi",
-        "is bitti"
+        "SYSTEM_COMPLETE"
     )
     foreach ($p in $completePatterns) {
         if ($resultText -imatch [regex]::Escape($p)) { return $true }
     }
-    if ($planText -imatch "GOREV TAMAMLANDI") { return $true }
+    if ($planText -imatch "SYSTEM_COMPLETE") { return $true }
 
     return $false
 }

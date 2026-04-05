@@ -130,16 +130,13 @@ $historySnippet
 
     $plannerPromptText = Get-Content $tempPrompt -Raw -Encoding UTF8
 
-    $geminiExe = "gemini"
     $plannerArgs = @(
-        "--model", "gemini-3-flash",
-        "-p",
-        $plannerPromptText
+        "-m", "gemini-3-flash",
+        "-p", $plannerPromptText
     )
 
-    $plannerOutput = & $geminiExe @plannerArgs 2>&1
+    $plannerOutput = & gemini @plannerArgs 2>&1
 
-    $exitCode = $LASTEXITCODE
     $ErrorActionPreference = $oldEAP
 
     $plannerOutput | Out-String | Set-Content $planPath -Encoding UTF8
@@ -150,7 +147,9 @@ $historySnippet
     Write-Host "Planner output:"
     Write-Host $plannerOutput
 
-    if ($exitCode -ne 0) { throw "Gemini basarisiz. ExitCode=$exitCode`n$plannerOutput" }
+    if ($LASTEXITCODE -ne 0) {
+        throw "Gemini başarısız. ExitCode=$LASTEXITCODE`n$plannerOutput"
+    }
 
     $planContent = Get-Content $planPath -Raw -Encoding UTF8
     if ([string]::IsNullOrWhiteSpace($planContent)) { throw "Gemini bos cikti dondu." }
@@ -169,7 +168,7 @@ $historySnippet
 
     # Kisa test
     Write-Log "Gemini kisa test calistiriliyor..."
-    $testOutput = & $geminiExe --model gemini-3-flash -p "test" 2>&1
+    $testOutput = & gemini -m gemini-3-flash -p "test" 2>&1
     Write-Log "Kisa test sonucu: ExitCode=$LASTEXITCODE, Cikti=$($testOutput.Trim())"
 }
 catch {

@@ -86,8 +86,7 @@ $planText
         $ErrorActionPreference = "Continue"
 
         $executorArgs = @(
-            "--model", "gemini-3-pro",
-            "--approval-mode", "yolo",
+            "-m", "gemini-3-pro",
             "-p", $promptText
         )
         $executorOutput = & $geminiPath @executorArgs 2>&1

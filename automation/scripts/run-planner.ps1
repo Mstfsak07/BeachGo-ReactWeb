@@ -128,28 +128,28 @@ $historySnippet
     $tempPrompt = Join-Path $env:TEMP "planner-prompt-$iteration.txt"
     $fullPrompt | Set-Content $tempPrompt -Encoding UTF8
 
-    $plannerPromptText = Get-Content $tempPrompt -Raw -Encoding UTF8
+    $plannerPrompt = $tempPrompt
+    $planFile = $planPath
 
+    $plannerPromptText = Get-Content $plannerPrompt -Raw -Encoding UTF8
     $plannerArgs = @(
         "-m", "gemini-3-flash",
         "-p", $plannerPromptText
     )
-
+    Write-Host "Planner args:"
+    $plannerArgs | ForEach-Object { Write-Host $_ }
     $plannerOutput = & gemini @plannerArgs 2>&1
-
-    $ErrorActionPreference = $oldEAP
-
-    $plannerOutput | Out-String | Set-Content $planPath -Encoding UTF8
-
-    # Instruction dosyasina da kaydet (executor icin)
-    $plannerOutput | Out-String | Set-Content $instructPath -Encoding UTF8
-
     Write-Host "Planner output:"
     Write-Host $plannerOutput
-
     if ($LASTEXITCODE -ne 0) {
         throw "Gemini başarısız. ExitCode=$LASTEXITCODE`n$plannerOutput"
     }
+    $plannerOutput | Out-String | Set-Content $planFile -Encoding UTF8
+
+    $ErrorActionPreference = $oldEAP
+
+    # Instruction dosyasina da kaydet (executor icin)
+    $plannerOutput | Out-String | Set-Content $instructPath -Encoding UTF8
 
     $planContent = Get-Content $planPath -Raw -Encoding UTF8
     if ([string]::IsNullOrWhiteSpace($planContent)) { throw "Gemini bos cikti dondu." }

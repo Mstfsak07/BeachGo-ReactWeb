@@ -120,14 +120,7 @@ $historySnippet
 
     Write-Log "Planner baslatiliyor (iteration=$iteration, scope=$scope)..."
 
-    $env:ANTHROPIC_API_KEY  = "sk-1ea2056fc84442c59efcd5fd6fe30f5b"
-    $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:8045"
-    $env:CLAUDE_CONFIG_DIR  = "$env:USERPROFILE\.claude-antigravity"
-
-    $claudePath = "$env:APPDATA\npm\claude.cmd"
-    if (-not (Test-Path $claudePath)) { throw "Claude bulunamadi: $claudePath" }
-
-    Write-Log "Claude cagiriliyor..."
+    Write-Log "Gemini cagiriliyor..."
 
     $oldEAP = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
@@ -137,16 +130,14 @@ $historySnippet
 
     $plannerPromptText = Get-Content $tempPrompt -Raw -Encoding UTF8
 
+    $geminiExe = "gemini"
     $plannerArgs = @(
-        "--dangerously-skip-permissions",
-        "--model", "claude-sonnet-4-6",
-        "--add-dir", "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb",
-        "--print",
+        "--model", "gemini-3-flash",
         "-p",
         $plannerPromptText
     )
 
-    $plannerOutput = & $claudePath @plannerArgs 2>&1
+    $plannerOutput = & $geminiExe @plannerArgs 2>&1
 
     $exitCode = $LASTEXITCODE
     $ErrorActionPreference = $oldEAP
@@ -159,10 +150,10 @@ $historySnippet
     Write-Host "Planner output:"
     Write-Host $plannerOutput
 
-    if ($exitCode -ne 0) { throw "Claude basarisiz. ExitCode=$exitCode`n$plannerOutput" }
+    if ($exitCode -ne 0) { throw "Gemini basarisiz. ExitCode=$exitCode`n$plannerOutput" }
 
     $planContent = Get-Content $planPath -Raw -Encoding UTF8
-    if ([string]::IsNullOrWhiteSpace($planContent)) { throw "Claude bos cikti dondu." }
+    if ([string]::IsNullOrWhiteSpace($planContent)) { throw "Gemini bos cikti dondu." }
     if ($planContent -imatch "SYSTEM_COMPLETE") {
         Set-SP $stateObj "status"      "done"
         Set-SP $stateObj "is_complete" $true
@@ -177,8 +168,8 @@ $historySnippet
     $stateObj | ConvertTo-Json -Depth 10 | Set-Content $statePath -Encoding UTF8
 
     # Kisa test
-    Write-Log "Claude kisa test calistiriliyor..."
-    $testOutput = & $claudePath --model claude-sonnet-4-6 -p "test" 2>&1
+    Write-Log "Gemini kisa test calistiriliyor..."
+    $testOutput = & $geminiExe --model gemini-3-flash -p "test" 2>&1
     Write-Log "Kisa test sonucu: ExitCode=$LASTEXITCODE, Cikti=$($testOutput.Trim())"
 }
 catch {

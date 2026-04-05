@@ -99,30 +99,57 @@ function Get-ErrorHash($errText) {
     return [BitConverter]::ToString($hash) -replace '-',''
 }
 
-# Completion Check
+# Analyzer (Claude Sonnet 4.6)
+function Invoke-Analyzer($resultText, $planText) {
+    Write-Log "Analyzer baslatiliyor (Claude Sonnet 4.6)..."
+    
+    $prompt = @"
+Sen bir kod analizörüsün (Claude). Görevin, uygulayıcının (Gemini) yaptığı işi ve planı değerlendirmektir.
 
-function Test-IsComplete($resultText, $planText) {
-    if ([string]::IsNullOrWhiteSpace($resultText)) { return $false }
+PLAN:
+$planText
 
-    $completePatterns = @(
-        "SYSTEM_COMPLETE"
-    )
-    foreach ($p in $completePatterns) {
-        if ($resultText -imatch [regex]::Escape($p)) { return $true }
-    }
-    if ($planText -imatch "SYSTEM_COMPLETE") { return $true }
+SONUÇ:
+$resultText
 
-    return $false
+Şu kararı ver:
+1. "SYSTEM_COMPLETE": Eğer plandaki iş yapıldıysa ve genel GÖREV tamamen bittiyse (veya plan zaten SYSTEM_COMPLETE diyorsa).
+2. "CONTINUE": Eğer görev henüz tam bitmediyse, plandaki aşama bittiyse (sonraki plan aşamasına geçilecekse) veya onarıma geçmek gerekiyorsa.
+
+Aşağıdaki JSON formatında SADECE JSON döndür:
+{
+  "status": "SYSTEM_COMPLETE" veya "CONTINUE",
+  "reason": "Karar nedeni (kısa)"
 }
+"@
+    $tempPrompt = Join-Path $env:TEMP "analyzer-prompt.txt"
+    $prompt | Set-Content $tempPrompt -Encoding UTF8
+    
+    $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:8045"
+    $env:CLAUDE_CONFIG_DIR  = "$env:USERPROFILE\.claude-antigravity"
 
-function Test-NeedsContinue($resultText) {
-    $continuePatterns = @(
-        "TODO", "Remaining", "Next step", "Still needs", "Eksik", "Devam edilmeli"
-    )
-    foreach ($p in $continuePatterns) {
-        if ($resultText -imatch $p) { return $true }
+    $oldEAP = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+
+    $outputRaw = Get-Content $tempPrompt -Raw -Encoding UTF8 | & claude --model sonnet-4.6 -p 2>&1
+    
+    $exitCode = $LASTEXITCODE
+    $ErrorActionPreference = $oldEAP
+
+    if ($exitCode -ne 0) {
+        Write-Log "Analyzer Claude hatası. Varsayılan CONTINUE..."
+        return @{ status = "CONTINUE"; reason = "Analyzer API Hatası" }
     }
-    return $false
+
+    $output = ($outputRaw | Where-Object { $_ -is [string] }) -join "`n"
+    try {
+        if ($output -match '(?s)\{.*\}') {
+            return ConvertFrom-Json $matches[0]
+        }
+        return ConvertFrom-Json $output
+    } catch {
+        return @{ status = "CONTINUE"; reason = "JSON parse error" }
+    }
 }
 
 # Planner Call
@@ -278,11 +305,26 @@ for ($i = 1; $i -le $MAX_ITERATIONS; $i++) {
     Write-History "Git diff: $gitDiff"
     Write-History "Result ozeti: $summary"
 
-    # 4. Completion Check
-    if (Test-IsComplete -resultText $resultText -planText $planText) {
-        Write-StatusLine "Is tamamlandi! Dongu sonlandiriliyor."
+    # Git Auto Commit
+    if ($gitDiff -notmatch "Git diff temiz" -and $gitDiff -notmatch "Git diff alinamadi") {
+        $commitMsg = "Geliştirme: Otomatik tamamlama"
+        if ($planText -match '(?is)<commit_message>(.*?)</commit_message>') {
+            $commitMsg = $matches[1].Trim()
+        }
+        Write-Log "Degisiklikler algilandi, git commit yapiliyor..."
+        & git -c core.safecrlf=false -C (Split-Path $automationDir -Parent) add .
+        & git -c core.safecrlf=false -C (Split-Path $automationDir -Parent) commit -m $commitMsg
+        Write-History "Commit basarili: $commitMsg"
+    }
+
+    # 4. Analyze with Claude
+    $analysis = Invoke-Analyzer -resultText $resultText -planText $planText
+    Write-Log "Analyzer Sonucu: $($analysis.status) - $($analysis.reason)"
+    Write-History "Analyzer Sonucu: $($analysis.status) - $($analysis.reason)"
+
+    if ($analysis.status -eq "SYSTEM_COMPLETE" -or $planText -imatch "SYSTEM_COMPLETE") {
+        Write-StatusLine "Is tamamlandi (Analyzer Onayi)! Dongu sonlandiriliyor."
         Write-Log "Iteration ${i}: COMPLETE sinyali alindi. Dongu bitiyor."
-        Write-History "Iteration ${i}: TAMAMLANDI"
         Set-SPFinalState $state "is_complete" $true
         Set-SPFinalState $state "status"      "done"
         Set-SPFinalState $state "consecutive_errors" 0
@@ -290,7 +332,7 @@ for ($i = 1; $i -le $MAX_ITERATIONS; $i++) {
         break
     }
 
-    # 5. Error / Continue Check
+    # 5. Check Executor errors just in case
     if (-not $executorOk) {
         $errText = if ($state.last_error) { $state.last_error } else { $resultText }
         $errHash = Get-ErrorHash $errText
@@ -331,24 +373,11 @@ for ($i = 1; $i -le $MAX_ITERATIONS; $i++) {
         continue
     }
 
-    if (Test-NeedsContinue -resultText $resultText) {
-        $reason = "Result'ta devam gerektiren pattern bulundu"
-        Write-Log "Iteration ${i}: $reason. Yeni tur baslatiliyor."
-        Write-History "Iteration ${i}: DEVAM = $reason"
-        Set-SPFinalState $state "consecutive_errors" 0
-        Set-SPFinalState $state "last_error_hash"    $null
-        Save-State $state
-        Write-StatusLine "Continuing because $reason (iteration ${i})..."
-        continue
-    }
-
-    Write-Host "[LOOP] İş tamamlandı."
-    Write-Log "Iteration ${i}: Result temiz, iş tamamlandı."
-    Write-History "Iteration ${i}: İş tamamlandı (Devam patterni yok)"
-    Set-SPFinalState $state "is_complete" $true
-    Set-SPFinalState $state "status"      "done"
+    Write-Log "Iteration ${i}: Sonraki asama baslatiliyor. Status: $($analysis.status)"
+    Set-SPFinalState $state "consecutive_errors" 0
+    Set-SPFinalState $state "last_error_hash"    $null
     Save-State $state
-    break
+    continue
 }
 
 # Loop finished

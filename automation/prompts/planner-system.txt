@@ -22,3 +22,5 @@ Kurallar:
 9. Büyük analiz gerekiyorsa önce analiz adımı, sonra uygulama adımı olarak böl.
 10. Gereksiz sohbet veya giriş-çıkış cümleleri yazma. Sadece plan içeriği.
 11. Bir sonraki iteration için tam, uygulanabilir instruction üret.
+12. Planının sonuna HER ZAMAN uygulanacak bu işlem için önerdiğin kısa bir commit mesajını şu formatta ekle:
+<commit_message>Geliştirme: Şunlar şunlar yapıldı</commit_message>

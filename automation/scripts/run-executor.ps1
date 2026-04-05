@@ -38,10 +38,12 @@ if (Test-Path $lockFile) {
 New-Item -ItemType File -Path $lockFile -Force | Out-Null
 
 try {
-    $statePath   = Join-Path $queueDir "state.json"
-    $planPath    = Join-Path $queueDir "plan.txt"
-    $resultPath  = Join-Path $queueDir "result.txt"
-    $outputPath  = Join-Path $queueDir "executor-output.txt"
+    $statePath       = Join-Path $queueDir "state.json"
+    $planPath        = Join-Path $queueDir "plan.txt"
+    $instructionPath = Join-Path $queueDir "instruction.txt"
+    $coderPromptPath = Join-Path $queueDir "coder-prompt.txt"
+    $resultPath      = Join-Path $queueDir "result.txt"
+    $outputPath      = Join-Path $queueDir "executor-output.txt"
 
     if (-not (Test-Path $planPath))  { throw "plan.txt bulunamadi." }
     if (-not (Test-Path $statePath)) { throw "state.json bulunamadi." }
@@ -56,20 +58,32 @@ try {
     Set-SP $stateObj "lastUpdated" (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")
     $stateObj | ConvertTo-Json -Depth 10 | Set-Content $statePath -Encoding UTF8
 
-    $planText = Get-Content $planPath -Raw -Encoding UTF8
+    $planText        = Get-Content $planPath -Raw -Encoding UTF8
+    $instructionText = if (Test-Path $instructionPath) { Get-Content $instructionPath -Raw -Encoding UTF8 } else { "" }
 
-    $executorSystemPath = Join-Path $promptsDir "executor-system.txt"
-    if (-not (Test-Path $executorSystemPath)) { throw "executor-system.txt bulunamadi." }
-    $systemPrompt = Get-Content $executorSystemPath -Raw -Encoding UTF8
+    # coder-prompt.txt'i burada uret (extract-coder-prompt.ps1 mantigi entegre)
+    $coderSystemPath = Join-Path $promptsDir "coder-system.txt"
+    if (-not (Test-Path $coderSystemPath)) { throw "coder-system.txt bulunamadi." }
+    $coderSystem = Get-Content $coderSystemPath -Raw -Encoding UTF8
 
-    $fullPrompt = @"
-$systemPrompt
+    $coderPrompt = @"
+$coderSystem
 
---- ITERATION: $iteration ---
+Task:
 
---- PLAN ---
+$instructionText
+
 $planText
+
+Final response requirements:
+- Briefly list the files changed.
+- Mention any remaining issue or follow-up work.
+- Show the git commit message used.
 "@
+    $coderPrompt | Set-Content $coderPromptPath -Encoding UTF8
+    Write-Log "coder-prompt.txt olusturuldu."
+
+    $fullPrompt = $coderPrompt
 
     Write-Log "Executor baslatiliyor (Gemini yolo mode, iteration=$iteration)..."
 
@@ -85,14 +99,15 @@ $planText
         $oldEAP = $ErrorActionPreference
         $ErrorActionPreference = "Continue"
 
-        $executorArgs = @(
-            "-m", "gemini-3-pro",
-            "-p", $promptText
-        )
-        $executorOutput = & $geminiPath @executorArgs 2>&1
-        
+        $env:GEMINI_MODEL = "gemini-3-pro"
+
+        # Prompt'u stdin üzerinden geç — komut satırı uzunluk sınırını aşmamak için
+        Write-Log "Gemini cagiriliyor (stdin, model=gemini-3-pro, prompt=$($tempPrompt))..."
+        $executorOutput = Get-Content $tempPrompt -Raw -Encoding UTF8 | & $geminiPath -m gemini-3-pro 2>&1
+
         $exitCode = $LASTEXITCODE
         $ErrorActionPreference = $oldEAP
+        Write-Log "Gemini tamamlandi. ExitCode=$exitCode Cikti uzunlugu=$($executorOutput.Count) satir"
 
         $executorOutput | Set-Content $outputPath -Encoding UTF8
     }

@@ -1,56 +1,228 @@
-﻿### Proje Mevcut Durumu Özeti
-BeachGo projesi, .NET Backend ve React Frontend mimarisiyle kurgulanmış bir rezervasyon platformudur. Mevcut dosya yapısı incelendiğinde, kök dizinde bir `BeachRehberi.API` projesi bulunmasına rağmen, `beach-ui` klasörü altında da başka bir `BeachRehberi.API` dizini olduğu görülmektedir. Bu durum, projenin hangi API üzerinden yürüdüğü konusunda ciddi bir belirsizlik yaratmaktadır. Önceki aşamada (Iteration 19) talep edilen analizler gerçekleştirilmediği için projenin güvenlik, veritabanı standartları ve frontend koruma mekanizmaları hakkında somut veri bulunmamaktadır.
+﻿## Faz 1 — Kritik 4 Dosya Düzeltmesi
 
-### Bulunan Eksikler Listesi (Ön Tespit)
-1. **Mimari Karmaşa:** Mükerrer API klasörleri (kök dizin vs beach-ui içi).
-2. **Güvenlik Belirsizliği:** `Program.cs` içinde Rate Limiting, Exception Handling ve CORS politikalarının durumu bilinmiyor.
-3. **Veri Standartları:** Soft-delete (`IsDeleted`) ve Audit (`CreatedAt/UpdatedAt`) mekanizmalarının varlığı teyit edilmedi.
-4. **Auth Eksikleri:** E-posta aktivasyonu ve şifre sıfırlama gibi kritik akışların UI/Backend entegrasyon durumu belirsiz.
-5. **Frontend Güvenliği:** Role-based access control (RBAC) yapısının (`ProtectedRoute`) varlığı bilinmiyor.
+**Sorun:** Önceki instruction doğruydu ancak executor "command line too long" hatasıyla başarısız oldu. Bu instruction kasıtlı olarak kısa tutulmuştur — executor her dosyayı ayrı bir komutla yazacak.
+
+**Executor için kritik not:** Gemini CLI'ya tek seferde uzun prompt gönderme. Her dosya için ayrı işlem yap.
 
 ---
 
-### Geliştirme Planı
+## INSTRUCTION
 
-#### Faz 1: Teknik Denetim ve Mimari Netleştirme (Şu anki odak)
-* **Amaç:** Projenin "Source of Truth" (Gerçek Kaynak) noktasını belirlemek ve mevcut "TODO"ları raporlamak.
-* **Yapılacak İşler:**
-    1. İki farklı konumdaki `.csproj` dosyalarını karşılaştırarak güncel backend projesini seç.
-    2. Ana API projesindeki `Program.cs` middleware zincirini analiz et.
-    3. `AppDbContext.cs` içindeki global sorgu filtrelerini ve save logic'ini incele.
-    4. Frontend tarafında rotaların nasıl korunduğunu (`App.js`) kontrol et.
-    5. Proje genelinde kritik eksikleri (`TODO:`, `FIXME:`) tarat.
-* **Etkilenen Backend Dosyaları:** `Program.cs`, `AppDbContext.cs`, `BeachRehberi.API.csproj`
-* **Etkilenen Frontend Dosyaları:** `beach-ui/src/App.js`, `beach-ui/src/services/authService.js`
-* **Test Senaryosu:** Statik analiz ve dosya okuma işlemleri.
-* **Riskler:** Yanlış klasör üzerinden geliştirme yapılması, projenin derleme hataları içermesi.
+### ADIM 1 — `beach-ui/src/api/axios.js` dosyasını oku ve sil, yenisini yaz
 
-#### Faz 2: Güvenlik ve Standardizasyon (Gelecek)
-* **Amaç:** Tespit edilen mimari eksikleri gidermek, Rate Limiting ve Global Error Handling eklemek.
+Dosyayı şu içerikle **tamamen değiştir** (overwrite):
 
-#### Faz 3: Yarım Kalan Özelliklerin Tamamlanması (Gelecek)
-* **Amaç:** E-posta doğrulama, rezervasyon iptal akışı ve admin yönetim ekranlarını bitirmek.
+```js
+import axios from 'axios';
+
+let accessToken = null;
+
+export function setAccessToken(token) { accessToken = token; }
+export function clearAccessToken() { accessToken = null; }
+export function getAccessToken() { return accessToken; }
+
+const api = axios.create({
+  baseURL: process.env.REACT_APP_API_URL,
+  withCredentials: true,
+});
+
+api.interceptors.request.use((config) => {
+  if (accessToken) config.headers['Authorization'] = `Bearer ${accessToken}`;
+  return config;
+});
+
+let isRefreshing = false;
+let failedQueue = [];
+
+function processQueue(error, token = null) {
+  failedQueue.forEach((p) => error ? p.reject(error) : p.resolve(token));
+  failedQueue = [];
+}
+
+api.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const orig = error.config;
+    if (error.response?.status === 401 && !orig._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => failedQueue.push({ resolve, reject }))
+          .then((token) => { orig.headers['Authorization'] = `Bearer ${token}`; return api(orig); });
+      }
+      orig._retry = true;
+      isRefreshing = true;
+      try {
+        const res = await axios.post(`${process.env.REACT_APP_API_URL}/Auth/refresh`, {}, { withCredentials: true });
+        const token = res.data.accessToken;
+        setAccessToken(token);
+        processQueue(null, token);
+        orig.headers['Authorization'] = `Bearer ${token}`;
+        return api(orig);
+      } catch (err) {
+        processQueue(err, null);
+        clearAccessToken();
+        window.dispatchEvent(new CustomEvent('auth:logout'));
+        return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+```
 
 ---
 
-### Uygulama Talimatı (Instruction - Iteration 20)
+### ADIM 2 — `beach-ui/src/types.js` dosyasını oku ve yaz
 
-Lütfen aşağıdaki analiz görevlerini **Gemini CLI araçlarını kullanarak** gerçekleştirin. Bu veriler projenin geri kalanı için temel oluşturacaktır:
+```js
+export function unwrapResponse(responseData) {
+  if (!responseData) return null;
+  if (responseData.success === false) {
+    throw new Error(responseData.message || 'Bir hata olustu');
+  }
+  return responseData.data !== undefined ? responseData.data : responseData;
+}
 
-1. **API Lokasyon Tespiti:** 
-   * `BeachRehberi.API/BeachRehberi.API/BeachRehberi.API.csproj` ve `beach-ui/BeachRehberi.API/BeachRehberi.API/BeachRehberi.API.csproj` dosyalarını `read_file` ile oku. Bağımlılık (NuGet) sürümlerini ve proje referanslarını karşılaştır. Hangisi ana proje?
-2. **Backend Güvenlik Analizi:** 
-   * Tespit ettiğin ana API projesindeki `Program.cs` dosyasını oku. 
-   * `UseRateLimiting`, `UseAuthentication`, `UseAuthorization` ve `UseExceptionHandler` satırlarını kontrol et.
-3. **Veritabanı Standartları:** 
-   * `AppDbContext.cs` dosyasını bul (`grep_search` ile yerini onayla) ve oku. 
-   * `OnModelCreating` içinde `HasQueryFilter` (Soft Delete için) ve `SaveChangesAsync` override'ı (Audit log için) var mı?
-4. **Frontend Koruma Mekanizması:** 
-   * `beach-ui/src/App.js` dosyasını oku. Rotalar (Route) sarmalanmış mı? (Örn: `ProtectedRoute`, `RequireAuth` vb.)
-5. **Kritik Eksik Taraması:** 
-   * Tüm çözümde (root) `grep_search` ile `pattern: "TODO:|FIXME:|NotImplementedException"` aramasını yap ve sonuçları raporla.
+export function unwrapArrayResponse(responseData) {
+  const result = unwrapResponse(responseData);
+  return Array.isArray(result) ? result : [];
+}
+```
 
-**Önerilen Commit Mesajı:**
-`docs: complete technical audit and identify main API structure (Iteration 20)`
+---
 
-**En mantıklı başlangıç noktası:** Faz 1 (Analiz) tamamlanmadan kod değişikliği yapılmamalıdır. Sonuçlara göre Faz 2 planlanacaktır.
+### ADIM 3 — `beach-ui/src/services/reservationService.js` dosyasını yaz
+
+```js
+import api from '../api/axios';
+import { unwrapResponse } from '../types';
+
+const reservationService = {
+  create: async (beachId, reservationDate, personCount, sunbedCount, firstName, lastName, email, phone) => {
+    const res = await api.post('/Reservations', { beachId, reservationDate, personCount, sunbedCount, FirstName: firstName, LastName: lastName, Email: email, Phone: phone });
+    return unwrapResponse(res.data);
+  },
+  sendOtp: async (email) => {
+    const res = await api.post('/Auth/send-otp', { email });
+    return unwrapResponse(res.data);
+  },
+  createGuestReservation: async (dto) => {
+    const res = await api.post('/Reservations/guest', dto);
+    return unwrapResponse(res.data);
+  },
+  getMyReservations: async () => {
+    const res = await api.get('/Reservations/my');
+    return unwrapResponse(res.data);
+  },
+  cancel: async (reservationId) => {
+    const res = await api.delete(`/Reservations/${reservationId}`);
+    return unwrapResponse(res.data);
+  },
+};
+
+export default reservationService;
+```
+
+---
+
+### ADIM 4 — `beach-ui/src/App.js` dosyasını yaz
+
+Mevcut App.js içeriğini şununla değiştir:
+
+```jsx
+import React, { Suspense, lazy } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./context/AuthContext";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import Home from "./pages/Home";
+import Beaches from "./pages/Beaches";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Unauthorized from "./pages/Unauthorized";
+
+const BeachDetail = lazy(() => import("./pages/BeachDetail"));
+const BusinessRegister = lazy(() => import("./pages/BusinessRegister"));
+const MyReservations = lazy(() => import("./pages/MyReservations"));
+const ReservationCheck = lazy(() => import("./pages/ReservationCheck"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const AdminPanel = lazy(() => import("./pages/AdminPanel"));
+const BeachSettings = lazy(() => import("./pages/BeachSettings"));
+const Events = lazy(() => import("./pages/Events"));
+const DashboardStats = lazy(() => import("./pages/DashboardStats"));
+const DashboardReservations = lazy(() => import("./pages/DashboardReservations"));
+const GuestReservation = lazy(() => import("./pages/GuestReservation"));
+const ReservationSuccess = lazy(() => import("./pages/ReservationSuccess"));
+
+const GuestOnlyRoute = ({ children }) => {
+  const { isAuthenticated, loading, user } = useAuth();
+  if (loading) return null;
+  if (isAuthenticated) {
+    if (user?.role === "Business" || user?.role === "Admin") return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
+  }
+  return children;
+};
+
+const Spinner = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+  </div>
+);
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Toaster position="top-right" reverseOrder={false} />
+        <Navbar />
+        <Suspense fallback={<Spinner />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/beaches" element={<Beaches />} />
+            <Route path="/beaches/:id" element={<BeachDetail />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/reservation-check" element={<ReservationCheck />} />
+            <Route path="/reservation/:beachId" element={<GuestReservation />} />
+            <Route path="/reservation-success" element={<ReservationSuccess />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
+            <Route path="/login" element={<GuestOnlyRoute><Login /></GuestOnlyRoute>} />
+            <Route path="/register" element={<GuestOnlyRoute><Register /></GuestOnlyRoute>} />
+            <Route path="/business-register" element={<GuestOnlyRoute><BusinessRegister /></GuestOnlyRoute>} />
+            <Route path="/my-reservations" element={<ProtectedRoute><MyReservations /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["Business","Admin"]}><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/stats" element={<ProtectedRoute allowedRoles={["Business","Admin"]}><DashboardStats /></ProtectedRoute>} />
+            <Route path="/dashboard/reservations" element={<ProtectedRoute allowedRoles={["Business","Admin"]}><DashboardReservations /></ProtectedRoute>} />
+            <Route path="/beach-settings" element={<ProtectedRoute allowedRoles={["Business","Admin"]}><BeachSettings /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute allowedRoles={["Admin"]}><AdminPanel /></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+        <Footer />
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;
+```
+
+---
+
+### ADIM 5 — Build test
+
+```
+cd beach-ui && npm run build 2>&1 | tail -20
+```
+
+Build başarılıysa işlem tamamdır, result.txt'e "SUCCESS" yaz. Hata varsa hata mesajını result.txt'e yaz.
+
+---
+
+<commit_message>fix(web): axios token interceptor, types.js TS syntax temizleme, App.js route fix, reservationService import düzeltme</commit_message>

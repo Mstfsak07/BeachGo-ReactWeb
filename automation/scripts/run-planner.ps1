@@ -167,7 +167,52 @@ $historySnippet
         where.exe bash
         Write-Host "COMSPEC=$env:ComSpec"
         Write-Host "SHELL=$env:SHELL"
-        $plannerOutputRaw = Get-Content $tempInline -Raw -Encoding UTF8 | & claude --model claude-sonnet-4-6 -p 2>&1
+        # claude.cmd yerine dogrudan node ile cagir (bash fork hatasini atar)
+        $nodePath = (Get-Command node.exe -ErrorAction Stop).Source
+        $claudeCmd = (Get-Command claude.cmd -ErrorAction Stop).Source
+        $claudeDir = Split-Path $claudeCmd -Parent
+
+        # claude.cmd icindeki JS entrypoint'i bul ve %~dp0 / %dp0% literal'lerini gercek path'e cevir
+        $claudeJs = $null
+        $claudeCmdContent = Get-Content $claudeCmd -Raw -ErrorAction SilentlyContinue
+        $rawMatch = $null
+        if ($claudeCmdContent -match '"([^"]+cli\.js)"') {
+            $rawMatch = $matches[1]
+        } elseif ($claudeCmdContent -match '(?m)node\s+"?([^\s"]+cli\.js)"?') {
+            $rawMatch = $matches[1]
+        }
+        if ($rawMatch) {
+            # %~dp0 veya %dp0% gibi CMD degiskenlerini gercek klasorle degistir
+            $expanded = $rawMatch -replace '%~dp0\\?', '' -replace '%dp0%\\?', ''
+            $expanded = $expanded.TrimStart('\', '/')
+            if ([System.IO.Path]::IsPathRooted($expanded)) {
+                $claudeJs = $expanded
+            } else {
+                $claudeJs = Join-Path $claudeDir $expanded
+            }
+        }
+        # Fallback: claude.cmd klasorunde node_modules ara
+        if (-not $claudeJs -or -not (Test-Path $claudeJs)) {
+            $candidateJs = Join-Path $claudeDir "node_modules\@anthropic-ai\claude-code\cli.js"
+            if (Test-Path $candidateJs) { $claudeJs = $candidateJs }
+        }
+        # Fallback 2: node.exe klasorunde ara
+        if (-not $claudeJs -or -not (Test-Path $claudeJs)) {
+            $nodeDir = Split-Path $nodePath -Parent
+            $candidateJs = Join-Path $nodeDir "node_modules\@anthropic-ai\claude-code\cli.js"
+            if (Test-Path $candidateJs) { $claudeJs = $candidateJs }
+        }
+
+        if ($claudeJs -and (Test-Path $claudeJs)) {
+            Write-Host "CLAUDE JS: $claudeJs"
+            $plannerOutputRaw = Get-Content $tempInline -Raw -Encoding UTF8 | & $nodePath $claudeJs --model claude-sonnet-4-6 -p 2>&1
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($plannerOutputRaw | Where-Object { $_ -is [string] }) -join "")) {
+                Write-Log "node+cli.js cagrisi basarisiz. ExitCode=$LASTEXITCODE Cikti: $($plannerOutputRaw | Out-String)"
+            }
+        } else {
+            Write-Log "cli.js bulunamadi, claude.cmd fallback deneniyor. claudeDir=$claudeDir rawMatch=$rawMatch"
+            $plannerOutputRaw = Get-Content $tempInline -Raw -Encoding UTF8 | & $claudeCmd --model claude-sonnet-4-6 -p 2>&1
+        }
         
         # Filter out stderr records
         $plannerOutput = ($plannerOutputRaw | Where-Object { $_ -is [string] }) -join "`n"

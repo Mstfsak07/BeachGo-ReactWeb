@@ -120,7 +120,7 @@ $historySnippet
 
     Write-Log "Planner baslatiliyor (iteration=$iteration, scope=$scope)..."
 
-    Write-Log "Gemini cagiriliyor..."
+    Write-Log "Claude Sonnet 4.6 cagiriliyor..."
 
     $oldEAP = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
@@ -130,15 +130,57 @@ $historySnippet
 
     $plannerPromptText = $fullPrompt
     $planFile = $planPath
-
-    $env:GEMINI_DISABLE_MCP = "1"
-    $plannerOutputRaw = Get-Content $tempPrompt -Raw -Encoding UTF8 | & gemini --model gemini-3-flash 2>&1
+     
+    $env:ANTHROPIC_API_KEY="sk-1ea2056fc84442c59efcd5fd6fe30f5b"
+    $env:ANTHROPIC_BASE_URL="http://127.0.0.1:8045"
+    $env:CLAUDE_CONFIG_DIR="$env:USERPROFILE\.claude-antigravity"
     
-    # Filter out stderr records (like browsermcp) from Output
-    $plannerOutput = ($plannerOutputRaw | Where-Object { $_ -is [string] }) -join "`n"
+    $maxRetries = 10
+    $retryCount = 0
+    $success = $false
+    $plannerOutput = ""
 
-    if ($LASTEXITCODE -ne 0) {
-        throw "Planner Gemini hatasi. ExitCode=$LASTEXITCODE`n$plannerOutput"
+    while ($retryCount -lt $maxRetries -and -not $success) {
+        $retryCount++
+        if ($retryCount -gt 1) {
+            Write-Log "Claude cagiriliyor (Deneme $retryCount / $maxRetries)..."
+        }
+
+        $tempInline = Join-Path $env:TEMP "claude-inline.txt"
+        $fullPrompt | Set-Content $tempInline -Encoding UTF8
+
+        Remove-Item Env:MSYSTEM -ErrorAction SilentlyContinue
+        Remove-Item Env:CHERE_INVOKING -ErrorAction SilentlyContinue
+        Remove-Item Env:MSYS -ErrorAction SilentlyContinue
+        Remove-Item Env:MSYS2_PATH_TYPE -ErrorAction SilentlyContinue
+        $env:SHELL = ""
+        $env:TERM  = "dumb"
+        $env:PATH = (($env:PATH -split ';') | Where-Object {
+            $_ -notmatch 'Git\\usr\\bin' -and
+            $_ -notmatch 'Git\\bin' -and
+            $_ -notmatch 'msys64' -and
+            $_ -notmatch 'cygwin'
+        }) -join ';'
+        Write-Host "CLAUDE PATH:"
+        where.exe claude
+        Write-Host "BASH PATH:"
+        where.exe bash
+        Write-Host "COMSPEC=$env:ComSpec"
+        Write-Host "SHELL=$env:SHELL"
+        $plannerOutputRaw = Get-Content $tempInline -Raw -Encoding UTF8 | & claude --model claude-sonnet-4-6 -p 2>&1
+        
+        # Filter out stderr records
+        $plannerOutput = ($plannerOutputRaw | Where-Object { $_ -is [string] }) -join "`n"
+
+        if ($LASTEXITCODE -eq 0 -and (-not [string]::IsNullOrWhiteSpace($plannerOutput))) {
+            $success = $true
+        } else {
+            Write-Log "Claude cagrisi basarisiz oldu. ExitCode=$LASTEXITCODE (Deneme $retryCount / $maxRetries)"
+        }
+    }
+
+    if (-not $success) {
+        throw "Planner Claude hatasi (10 deneme basarisiz oldu). ExitCode=$LASTEXITCODE`n$plannerOutput"
     }
     
     $plannerOutput | Set-Content $planFile -Encoding UTF8

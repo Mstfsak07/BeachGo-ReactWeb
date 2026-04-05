@@ -120,7 +120,13 @@ $planText
     Set-Content -Path $resultPath -Value ($clean -join "`r`n") -Encoding UTF8
 
     if ($exitCode -ne 0) {
-        throw "Gemini basarisiz. ExitCode=$exitCode`n$($executorOutput.Substring(0,[Math]::Min(500,$executorOutput.Length)))"
+        $executorText = if ($executorOutput -is [System.Management.Automation.ErrorRecord]) {
+            $executorOutput.ToString()
+        } else {
+            [string]$executorOutput
+        }
+        $preview = $executorText.Substring(0, [Math]::Min(500, $executorText.Length))
+        throw "Gemini basarisiz. ExitCode=$exitCode`n$preview"
     }
 
     $resultText = Get-Content $resultPath -Raw -Encoding UTF8

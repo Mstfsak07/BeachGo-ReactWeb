@@ -128,30 +128,27 @@ $historySnippet
     $tempPrompt = Join-Path $env:TEMP "planner-prompt-$iteration.txt"
     $fullPrompt | Set-Content $tempPrompt -Encoding UTF8
 
-    $plannerPrompt = $tempPrompt
+    $plannerPromptText = $fullPrompt
     $planFile = $planPath
 
-    $plannerPromptText = Get-Content $plannerPrompt -Raw -Encoding UTF8
-    $plannerArgs = @(
-        "-m", "gemini-3-flash",
-        "-p", $plannerPromptText
-    )
-    Write-Host "Planner args:"
-    $plannerArgs | ForEach-Object { Write-Host $_ }
-    $plannerOutput = & gemini @plannerArgs 2>&1
-    Write-Host "Planner output:"
-    Write-Host $plannerOutput
-    if ($LASTEXITCODE -ne 0) {
-        throw "Gemini başarısız. ExitCode=$LASTEXITCODE`n$plannerOutput"
-    }
-    $plannerOutput | Out-String | Set-Content $planFile -Encoding UTF8
+    $env:GEMINI_DISABLE_MCP = "1"
+    $plannerOutputRaw = Get-Content $tempPrompt -Raw -Encoding UTF8 | & gemini --model gemini-3-flash 2>&1
+    
+    # Filter out stderr records (like browsermcp) from Output
+    $plannerOutput = ($plannerOutputRaw | Where-Object { $_ -is [string] }) -join "`n"
 
+    if ($LASTEXITCODE -ne 0) {
+        throw "Planner Gemini hatasi. ExitCode=$LASTEXITCODE`n$plannerOutput"
+    }
+    
+    $plannerOutput | Set-Content $planFile -Encoding UTF8
+    
     $ErrorActionPreference = $oldEAP
 
     # Instruction dosyasina da kaydet (executor icin)
-    $plannerOutput | Out-String | Set-Content $instructPath -Encoding UTF8
+    $plannerOutput | Set-Content $instructPath -Encoding UTF8
 
-    $planContent = Get-Content $planPath -Raw -Encoding UTF8
+    $planContent = $plannerOutput
     if ([string]::IsNullOrWhiteSpace($planContent)) { throw "Gemini bos cikti dondu." }
     if ($planContent -imatch "SYSTEM_COMPLETE") {
         Set-SP $stateObj "status"      "done"
@@ -166,10 +163,8 @@ $historySnippet
     Set-SP $stateObj "lastUpdated" (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")
     $stateObj | ConvertTo-Json -Depth 10 | Set-Content $statePath -Encoding UTF8
 
-    # Kisa test
-    Write-Log "Gemini kisa test calistiriliyor..."
-    $testOutput = & gemini -m gemini-3-flash -p "test" 2>&1
-    Write-Log "Kisa test sonucu: ExitCode=$LASTEXITCODE, Cikti=$($testOutput.Trim())"
+    Write-Host "[PLANNER] Plan uretildi, executor bekleniyor."
+    return
 }
 catch {
     $err = $_ | Out-String

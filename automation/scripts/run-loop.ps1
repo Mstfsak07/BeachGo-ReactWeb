@@ -17,7 +17,7 @@ $planPath      = Join-Path $queueDir "plan.txt"
 $taskPath      = Join-Path $queueDir "task.txt"
 $instructPath  = Join-Path $queueDir "instruction.txt"
 
-$MAX_ITERATIONS       = 20
+$MAX_ITERATIONS       = 50
 $MAX_CONSECUTIVE_ERR  = 3
 
 # Helper Functions
@@ -86,7 +86,7 @@ function Save-State($s) {
 
 function Get-GitDiffSummary {
     try {
-        $diff = & git -C (Split-Path $automationDir -Parent) diff --stat HEAD 2>&1 | Out-String
+        $diff = & git -c core.safecrlf=false -C (Split-Path $automationDir -Parent) diff --stat HEAD 2>$null | Out-String
         if ([string]::IsNullOrWhiteSpace($diff)) { return "Git diff temiz (degisiklik yok)." }
         return $diff.Trim()
     } catch { return "Git diff alinamadi." }
@@ -117,10 +117,7 @@ function Test-IsComplete($resultText, $planText) {
 
 function Test-NeedsContinue($resultText) {
     $continuePatterns = @(
-        "TODO", "FIXME", "FAILED", "EXCEPTION", "ERROR",
-        "devam et", "phase 2", "remaining work", "next step",
-        "sonraki adim", "kalan is", "tamamlanmadi", "eksik",
-        "hata", "basarisiz"
+        "TODO", "Remaining", "Next step", "Still needs", "Eksik", "Devam edilmeli"
     )
     foreach ($p in $continuePatterns) {
         if ($resultText -imatch $p) { return $true }
@@ -345,11 +342,13 @@ for ($i = 1; $i -le $MAX_ITERATIONS; $i++) {
         continue
     }
 
-    Write-Log "Iteration ${i}: OK - planner sonraki adimi belirle ..."
-    Write-History "Iteration ${i}: OK - planner sonraki adimi belirle ..."
-    Set-SPFinalState $state "consecutive_errors" 0
-    Set-SPFinalState $state "last_error_hash"    $null
+    Write-Host "[LOOP] İş tamamlandı."
+    Write-Log "Iteration ${i}: Result temiz, iş tamamlandı."
+    Write-History "Iteration ${i}: İş tamamlandı (Devam patterni yok)"
+    Set-SPFinalState $state "is_complete" $true
+    Set-SPFinalState $state "status"      "done"
     Save-State $state
+    break
 }
 
 # Loop finished

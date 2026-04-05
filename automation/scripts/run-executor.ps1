@@ -105,6 +105,20 @@ $planText
     # result.txt'e yaz (her iterasyonda üzerine yaz)
     $executorOutput | Set-Content $resultPath -Encoding UTF8
 
+    # Gereksiz MCP loglarini ve bos satirlari temizle
+    $raw = Get-Content $resultPath -Raw
+    $clean = $raw -split "`r`n" | Where-Object {
+        $_.Trim() -ne "" -and
+        $_ -notmatch "Registering notification handlers for server" -and
+        $_ -notmatch "Scheduling MCP context refresh" -and
+        $_ -notmatch "Executing MCP context refresh" -and
+        $_ -notmatch "browsermcp" -and
+        $_ -notmatch "Connected to MCP server" -and
+        $_ -notmatch "MCP server started" -and
+        $_ -notmatch "^(INFO|DEBUG|TRACE)\b"
+    }
+    Set-Content -Path $resultPath -Value ($clean -join "`r`n") -Encoding UTF8
+
     if ($exitCode -ne 0) {
         throw "Gemini basarisiz. ExitCode=$exitCode`n$($executorOutput.Substring(0,[Math]::Min(500,$executorOutput.Length)))"
     }

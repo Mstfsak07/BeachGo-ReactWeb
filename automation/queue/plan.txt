@@ -1,128 +1,239 @@
-﻿# DURUM ANALÄ°ZÄ°
+﻿# FAZ 8 â Kritik Hata DÃ¼zeltmeleri: refreshAccessToken + initialState + Profile SayfasÄ±
 
-Executor'da mevcut araÃ§lar: `list_directory`, `read_file`, `grep_search`, `glob`, `google_web_search`
+## AmaÃ§
 
-Dosya yazma araÃ§larÄ± (`write_file`, `edit_file`, `str_replace_editor`) MEVCUT DEÄÄ°L.
-
-Bu nedenle mevcut pipeline ile kod deÄiÅikliÄi yapÄ±lamÄ±yor. Ama gÃ¶rev analiz + plan Ã¼retmek olduÄu iÃ§in bu iterasyonda **projenin mevcut durumunu okuyarak kapsamlÄ± analiz** yapÄ±labilir.
+Analiz raporunda tespit edilen 3 kritik sorunu kod dÃ¼zeyinde dÃ¼zeltmek:
+1. `axios.js` dosyasÄ±na `refreshAccessToken` fonksiyonu eklemek
+2. `DashboardReservations.jsx` dosyasÄ±nda `initialState` deÄiÅkenini doÄru konuma taÅÄ±mak
+3. Temel `Profile.jsx` sayfasÄ±nÄ± oluÅturmak
 
 ---
-
-# FAZ 7 â Proje Analizi: Mevcut Dosya YapÄ±sÄ±nÄ± Oku ve Eksikleri Tespit Et
 
 ## Executor TalimatlarÄ±
 
-### AdÄ±m 1: Frontend Dizin YapÄ±sÄ±nÄ± Listele
+### AdÄ±m 1: Mevcut DosyalarÄ± Oku
 
-AraÃ§: `list_directory`
-Yollar (sÄ±rayla):
-1. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src`
-2. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages`
-3. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/components`
-4. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api`
-5. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/context`
+AÅaÄÄ±daki dosyalarÄ±n tam iÃ§eriÄini oku:
 
-Her dizin iÃ§in dosya listesini kaydet.
-
----
-
-### AdÄ±m 2: API DosyalarÄ±nÄ± Oku
-
-AraÃ§: `read_file`
-
-SÄ±rayla oku:
 1. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/axios.js`
-2. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/auth.js` (varsa)
-3. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/context/AuthContext.jsx` (veya `.js`)
-
-Her dosyada ÅunlarÄ± kontrol et ve kaydet:
-- `refreshAccessToken` export var mÄ±?
-- Token yenileme interceptor'u var mÄ±?
-- Hata yakalama (try/catch) var mÄ±?
+2. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/context/AuthContext.jsx`
+3. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx`
+4. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/App.js` (varsa, Route tanÄ±mlarÄ± iÃ§in)
 
 ---
 
-### AdÄ±m 3: Kritik Sayfa DosyalarÄ±nÄ± Oku
+### AdÄ±m 2: `axios.js` DÃ¼zeltmesi
 
-AraÃ§: `read_file`
+**Dosya:** `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/axios.js`
 
-SÄ±rayla oku:
-1. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx`
-2. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Login.jsx` (veya `LoginPage.jsx`)
-3. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Register.jsx` (veya `RegisterPage.jsx`)
-4. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Profile.jsx` (varsa)
-5. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/BeachDetail.jsx` (varsa)
+DosyayÄ± `write_file` veya `str_replace_editor` ile dÃ¼zenle. YapÄ±lacaklar:
 
-Her dosyada ÅunlarÄ± tespit et:
-- Loading state var mÄ±? (`isLoading`, `loading`)
-- Error handling var mÄ±? (`error`, `catch`)
-- Form validation var mÄ±?
-- `initialState` tanÄ±mÄ± nasÄ±l? (static mi, useMemo mu?)
+**a)** DosyanÄ±n sonuna (veya interceptor tanÄ±mÄ±ndan Ã¶nce) aÅaÄÄ±daki fonksiyonu **export** olarak ekle:
 
----
-
-### AdÄ±m 4: Backend Dosya YapÄ±sÄ±nÄ± Listele
-
-AraÃ§: `list_directory`
-Yollar:
-1. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGoAPI`
-2. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGoAPI/Controllers` (varsa)
-3. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGoAPI/Models` (varsa)
-
----
-
-### AdÄ±m 5: Package.json Oku
-
-AraÃ§: `read_file`
-Dosya: `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/package.json`
-
-Hangi kÃ¼tÃ¼phaneler var? (`react-query`, `zustand`, `formik`, `yup`, `react-hook-form`, `axios`, `react-router-dom` vb.)
-
----
-
-### AdÄ±m 6: Tespit Edilen Eksikleri result.txt'e Yaz
-
-AÅaÄÄ±daki format ile result.txt'e yaz:
-
-```
-=== PROJE ANALÄ°Z RAPORU ===
-
-## Frontend Dosya YapÄ±sÄ±
-[list_directory sonuÃ§larÄ±]
-
-## API KatmanÄ±
-- refreshAccessToken: [VAR/YOK]
-- Token interceptor: [VAR/YOK]
-- Hata yakalama: [VAR/YOK]
-
-## DashboardReservations.jsx
-- initialState tanÄ±mÄ±: [STATIC/USEMEMO/YOK]
-- Loading state: [VAR/YOK]
-- Error handling: [VAR/YOK]
-
-## Login/Register SayfalarÄ±
-- Form validation: [VAR/YOK]
-- Error mesajlarÄ±: [VAR/YOK]
-
-## Profil SayfasÄ±
-- [VAR/YOK] ve durumu
-
-## Backend YapÄ±sÄ±
-[Controller ve Model listesi]
-
-## YÃ¼klÃ¼ KÃ¼tÃ¼phaneler
-[package.json Ã¶zeti]
-
-## Kritik Eksikler (Ãncelik SÄ±rasÄ±na GÃ¶re)
-1. ...
-2. ...
-3. ...
+```js
+export const refreshAccessToken = async () => {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) throw new Error('No refresh token available');
+  
+  const response = await axiosInstance.post('/auth/refresh-token', {
+    refreshToken,
+  });
+  
+  const { accessToken, refreshToken: newRefreshToken } = response.data;
+  localStorage.setItem('token', accessToken);
+  if (newRefreshToken) {
+    localStorage.setItem('refreshToken', newRefreshToken);
+  }
+  return accessToken;
+};
 ```
 
+**b)** `axiosInstance` adÄ±yla export edilen axios instance'Ä± kontrol et. EÄer `default` export varsa, interceptor'da da bu instance kullanÄ±lÄ±yor olmalÄ±.
+
+**c)** Response interceptor'da 401 hatasÄ±nda `refreshAccessToken` Ã§aÄrÄ±lÄ±p token yenileniyorsa, bu mantÄ±ÄÄ±n Ã§alÄ±ÅtÄ±ÄÄ±nÄ± doÄrula.
+
 ---
 
-## BaÅarÄ± Kriteri
+### AdÄ±m 3: `DashboardReservations.jsx` DÃ¼zeltmesi
 
-Bu iterasyonun amacÄ± **kod yazmak deÄil, projeyi okuyarak eksiksiz analiz raporu Ã¼retmek**tir. result.txt'de yukarÄ±daki format dolu ve bilgilendirici olmalÄ±dÄ±r.
+**Dosya:** `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx`
 
-<commit_message>analyse: proje yapÄ±sÄ± ve eksikler analiz raporu Ã¼retildi</commit_message>
+`initialState` deÄiÅkeninin tanÄ±mÄ±nÄ± bul. EÄer Åu Åekilde bir sorun varsa:
+
+```js
+// YANLIÅ â initialState daha tanÄ±mlanmadan kullanÄ±lÄ±yor
+const [filters, setFilters] = useState(prevFilters ?? initialState);
+const initialState = useMemo(() => ({ ... }), []);
+```
+
+Åu Åekilde dÃ¼zelt â `initialState` tanÄ±mÄ±nÄ± `useState` Ã§aÄrÄ±sÄ±ndan **ÃNCE** taÅÄ±:
+
+```js
+// DOÄRU
+const initialState = useMemo(() => ({
+  status: '',
+  dateFrom: '',
+  dateTo: '',
+  search: '',
+  page: 1,
+  pageSize: 10,
+}), []);
+
+const [filters, setFilters] = useState(initialState);
+```
+
+**Not:** `useMemo` yerine `useRef` veya sabit obje de kullanÄ±labilir. Ancak mevcut yapÄ±ya uygun kalÄ±nmalÄ±.
+
+---
+
+### AdÄ±m 4: `Profile.jsx` SayfasÄ± OluÅtur
+
+**Dosya:** `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Profile.jsx`
+
+AÅaÄÄ±daki temel yapÄ±yla oluÅtur:
+
+```jsx
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import axiosInstance from '../api/axios';
+import toast from 'react-hot-toast';
+
+const Profile = () => {
+  const { user, setUser } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+  });
+
+  useEffect(() => {
+    if (user) {
+      setForm({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+      });
+    }
+  }, [user]);
+
+  const handleChange = (e) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await axiosInstance.put('/auth/profile', form);
+      toast.success('Profil gÃ¼ncellendi');
+      if (setUser) setUser(res.data);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'GÃ¼ncelleme baÅarÄ±sÄ±z');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="max-w-xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">Profilim</h1>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Ad</label>
+          <input
+            name="firstName"
+            value={form.firstName}
+            onChange={handleChange}
+            className="w-full border rounded-lg px-3 py-2"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Soyad</label>
+          <input
+            name="lastName"
+            value={form.lastName}
+            onChange={handleChange}
+            className="w-full border rounded-lg px-3 py-2"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">E-posta</label>
+          <input
+            name="email"
+            type="email"
+            value={form.email}
+            onChange={handleChange}
+            className="w-full border rounded-lg px-3 py-2"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Telefon</label>
+          <input
+            name="phone"
+            value={form.phone}
+            onChange={handleChange}
+            className="w-full border rounded-lg px-3 py-2"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? 'Kaydediliyor...' : 'Kaydet'}
+        </button>
+      </form>
+    </div>
+  );
+};
+
+export default Profile;
+```
+
+---
+
+### AdÄ±m 5: App.js'e Profile Route Ekle
+
+**Dosya:** `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/App.js`
+
+Mevcut route'larÄ± oku. `/profile` route'u **yoksa**:
+
+```jsx
+import Profile from './pages/Profile';
+
+// Route listesine ekle:
+<Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+```
+
+`PrivateRoute` bileÅeninin adÄ± ve import yolu mevcut yapÄ±ya gÃ¶re ayarlanmalÄ±.
+
+---
+
+### AdÄ±m 6: DeÄiÅiklikleri DoÄrula
+
+Her dosya kaydedildikten sonra:
+1. `axios.js` dosyasÄ±nÄ± tekrar oku â `export const refreshAccessToken` satÄ±rÄ± mevcut mu?
+2. `DashboardReservations.jsx` dosyasÄ±nÄ± tekrar oku â `initialState` tanÄ±mÄ± `useState`'ten Ã¶nce mi?
+3. `Profile.jsx` dosyasÄ±nÄ±n var olduÄunu doÄrula.
+
+---
+
+## BaÅarÄ± Kriterleri
+
+- [ ] `refreshAccessToken` axios.js'de export ediliyor
+- [ ] `DashboardReservations.jsx` Ã§alÄ±Åma zamanÄ± hatasÄ±z
+- [ ] `Profile.jsx` sayfasÄ± mevcut ve temel form iÃ§eriyor
+- [ ] `/profile` route `App.js`'de tanÄ±mlÄ±
+
+---
+
+## Tahmini Riskler
+
+- `AuthContext.jsx` iÃ§inde `setUser` fonksiyonu farklÄ± bir isimle (Ã¶rn. `updateUser`) export edilmiÅ olabilir. Bu durumda Profile.jsx'teki Ã§aÄrÄ± gÃ¼ncellenmeli.
+- Backend'de `/auth/profile` PUT endpoint'i yoksa Profile sayfasÄ± 404 alÄ±r. Bu sonraki fazda backend tarafÄ±nda ele alÄ±nacak.
+- `axiosInstance` import yolu farklÄ± olabilir (default vs named export). Mevcut dosyadaki export yapÄ±sÄ±na gÃ¶re ayarlanmalÄ±.
+
+<commit_message>fix: refreshAccessToken export eklendi, initialState ReferenceError dÃ¼zeltildi, Profile sayfasÄ± oluÅturuldu</commit_message>

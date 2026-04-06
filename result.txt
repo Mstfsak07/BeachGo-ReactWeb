@@ -1,0 +1,57 @@
+PROJE ANALİZ RAPORU
+===================
+
+MEVCUT SAYFALAR:
+- Login.js: Var. Kullanıcı giriş sayfası. Zaten giriş yapılmışsa ana sayfaya yönlendiriyor.
+- Register.js: Var. Yeni kullanıcı kayıt formu.
+- Home.js: Var. Ana sayfa; plaj arama bileşeni ve popüler plajlar listesi vb. animasyonlar içeriyor.
+- BeachDetail.js: Var. Seçilen plajın özelliklerini, detaylarını ve rezervasyon işlemlerini barındıran sayfa.
+- MyReservations.js: Var. Müşterilerin kendi geçmiş ve aktif rezervasyonlarını görebildiği sayfa.
+- DashboardReservations.jsx: Var. İşletmelerin ve yöneticilerin rezervasyonları yönetebildiği sayfa.
+- Diğer sayfalar: AdminPanel, BeachSettings, Dashboard, DashboardStats, Events vb. sayfalar mevcut.
+
+MEVCUT CONTEXT/AUTH:
+- AuthContext.jsx: Var. JWT tabanlı kimlik doğrulama sistemini yönetiyor. Kullanıcı bilgilerini state ve localStorage'da tutuyor. Proaktif token yenileme ve oturum zamanlayıcısı mantığını barındırıyor. login, logout işlevlerini ve useAuth hook'unu dışa aktarıyor.
+
+MEVCUT API:
+- axios.js: Var. Axios instance yapılandırmasını oluşturuyor. Çerezleri dahil ederek yetkilendirilmiş istekler için accessToken'ı Header'a ekleyen ve 401 hatası alındığında arka planda refresh token ile yeni accessToken alıp kuyruktaki (failedQueue) istekleri işleyen tam gelişmiş interceptor mantığı mevcut. `/Auth/refresh`, `/Auth/login`, `/Auth/logout` gibi uç noktalara referans var.
+
+MEVCUT ROUTE'LAR (App.js):
+- / : Home
+- /beaches : Beaches
+- /beaches/:id : BeachDetail
+- /events : Events
+- /reservation-check : ReservationCheck
+- /reservation/:beachId : GuestReservation
+- /reservation-success : ReservationSuccess
+- /unauthorized : Unauthorized
+- /login : Login (Sadece Misafir)
+- /register : Register (Sadece Misafir)
+- /business-register : BusinessRegister (Sadece Misafir)
+- /my-reservations : MyReservations (Giriş Yapmış Kullanıcılar)
+- /dashboard : Dashboard (Business ve Admin)
+- /dashboard/stats : DashboardStats (Business ve Admin)
+- /dashboard/reservations : DashboardReservations (Business ve Admin)
+- /beach-settings : BeachSettings (Business ve Admin)
+- /admin : AdminPanel (Sadece Admin)
+- * : Navigate to / (Wildcard redirect)
+
+EKSIK SAYFALAR:
+- Profile.jsx (veya Profile.js): YOK. Kullanıcı profil yönetimi için sayfa yok.
+- Favorites.jsx (veya Favorites.js): YOK. Favori plajların listelendiği sayfa mevcut değil.
+
+EKSIK FONKSİYONLAR:
+- Sistem geneli token yönetimi tamamlanmış duruyor, ancak Context veya API dosyasında Favorilere ekleme/çıkarma veya Profil güncelleme mantıkları henüz bulunmuyor (ilgili sayfaların eksik olmasıyla bağlantılı).
+
+PAKETLER (package.json):
+- react (^18.2.0)
+- react-dom (^18.2.0)
+- react-router-dom (^6.22.0)
+- react-hot-toast (^2.6.0)
+- axios (^1.13.6)
+- framer-motion (^12.38.0)
+- lucide-react (^1.7.0)
+- recharts (^3.8.1)
+- zustand (^5.0.12)
+- @tailwindcss/postcss (^4.2.2), tailwindcss (^3.4.1), postcss (^8.4.35), autoprefixer (^10.4.18)
+- react-scripts (5.0.1)

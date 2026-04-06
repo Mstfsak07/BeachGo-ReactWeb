@@ -61,7 +61,6 @@ try {
     $planText        = Get-Content $planPath -Raw -Encoding UTF8
     $instructionText = if (Test-Path $instructionPath) { Get-Content $instructionPath -Raw -Encoding UTF8 } else { "" }
 
-    # coder-prompt.txt'i burada uret (extract-coder-prompt.ps1 mantigi entegre)
     $coderSystemPath = Join-Path $promptsDir "coder-system.txt"
     if (-not (Test-Path $coderSystemPath)) { throw "coder-system.txt bulunamadi." }
     $coderSystem = Get-Content $coderSystemPath -Raw -Encoding UTF8
@@ -83,15 +82,11 @@ Final response requirements:
     $coderPrompt | Set-Content $coderPromptPath -Encoding UTF8
     Write-Log "coder-prompt.txt olusturuldu."
 
-    $fullPrompt = $coderPrompt
+    $tempPrompt  = Join-Path $env:TEMP "executor-prompt-$iteration.txt"
+    $tempOutput  = Join-Path $env:TEMP "gemini-out-$iteration.txt"
+    $tempBat     = Join-Path $env:TEMP "run-gemini-$iteration.bat"
 
-    Write-Log "Executor baslatiliyor (Gemini yolo mode, iteration=$iteration)..."
-
-    $geminiPath = "$env:APPDATA\npm\gemini.cmd"
-    if (-not (Test-Path $geminiPath)) { throw "Gemini CLI bulunamadi: $geminiPath" }
-
-    $tempPrompt = Join-Path $env:TEMP "executor-prompt-$iteration.txt"
-    $fullPrompt | Set-Content $tempPrompt -Encoding UTF8
+    $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
 
     $maxRetries = 5
     $retryCount = 0
@@ -102,84 +97,89 @@ Final response requirements:
         $retryCount++
         if ($retryCount -gt 1) {
             Write-Log "Gemini yeniden deneniyor ($retryCount / $maxRetries)..."
-            Start-Sleep -Seconds 3
+            Start-Sleep -Seconds 5
         }
 
+        # Her deneme icin temiz output dosyasi
+        if (Test-Path $tempOutput) { Remove-Item $tempOutput -Force }
+
+        # Bat dosyasini olustur - env variable'lar ve komut birlikte
+        $batContent = @"
+@echo off
+set GEMINI_MODEL=gemini-3-pro
+set GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8045
+set GEMINI_API_KEY=sk-0392f1a407974e89912d8e22daca8d84
+type "$tempPrompt" | gemini --approval-mode yolo --model gemini-3-pro > "$tempOutput" 2>&1
+exit %ERRORLEVEL%
+"@
+        $batContent | Set-Content $tempBat -Encoding ASCII
+
+        Write-Log "Gemini cagiriliyor (model=gemini-3-pro, yolo mode, iteration=$iteration, deneme=$retryCount)..."
+
         try {
-            $oldEAP = $ErrorActionPreference
-            $ErrorActionPreference = "Continue"
+            $proc = Start-Process -FilePath "cmd.exe" `
+                -ArgumentList "/c `"$tempBat`"" `
+                -Wait `
+                -PassThru `
+                -WindowStyle Normal
 
-            $env:GEMINI_MODEL = "gemini-3-pro"
-            $env:GOOGLE_GEMINI_BASE_URL = "http://127.0.0.1:8045"
-            $env:GEMINI_API_KEY         = "sk-0392f1a407974e89912d8e22daca8d84"
-            
-            Write-Log "Gemini cagiriliyor (model=gemini-3-pro, yolo mode, iteration=$iteration)..."
-            
-            $executorOutput = Get-Content $tempPrompt -Raw -Encoding UTF8 | & $geminiPath `
-            --approval-mode yolo `
-              --model gemini-3-pro 2>&1
-              
-              $exitCode = $LASTEXITCODE
-            $ErrorActionPreference = $oldEAP
+            $exitCode = $proc.ExitCode
 
-            Write-Log "Gemini tamamlandi. ExitCode=$exitCode Cikti uzunlugu=$($executorOutput.Count) satir"
+            $executorOutput = if (Test-Path $tempOutput) {
+                Get-Content $tempOutput -Raw -Encoding UTF8
+            } else { "" }
 
-            if ($exitCode -eq 0) {
-                $executorOutput | Set-Content $outputPath -Encoding UTF8
+            Write-Log "Gemini tamamlandi. ExitCode=$exitCode Cikti uzunlugu=$($executorOutput.Length) karakter"
+
+            if ($exitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($executorOutput)) {
                 break
             }
 
-            # Kota hatasi kontrolu — farkli hesap deneyecek, bekle
-            $outStr = $executorOutput | Out-String
-            if ($outStr -match "QUOTA_EXHAUSTED|429|rate.limit|exhausted") {
-                Write-Log "Kota hatasi alindi, 5 saniye bekleniyor..."
-                Start-Sleep -Seconds 5
+            # Kota hatasi kontrolu
+            if ($executorOutput -match "QUOTA_EXHAUSTED|429|rate.limit|exhausted|All accounts exhausted") {
+                Write-Log "Kota hatasi alindi, 10 saniye bekleniyor..."
+                Start-Sleep -Seconds 10
             }
-
-            $executorOutput | Set-Content $outputPath -Encoding UTF8
         }
         catch {
             $exitCode = 1
             $executorOutput = $_ | Out-String
-            $executorOutput | Set-Content $outputPath -Encoding UTF8
             Write-Log "Gemini exception: $executorOutput"
         }
     }
 
-    # result.txt'e yaz (her iterasyonda üzerine yaz)
+    $executorOutput | Set-Content $outputPath -Encoding UTF8
+
+    # result.txt'e yaz
     $executorOutput | Set-Content $resultPath -Encoding UTF8
 
-    # Gereksiz MCP loglarini ve bos satirlari temizle
-    $raw = Get-Content $resultPath -Raw
-    $clean = $raw -split "`r`n" | Where-Object {
+    # Gereksiz MCP loglarini temizle
+    $raw = Get-Content $resultPath -Raw -Encoding UTF8
+    $clean = ($raw -split "`r`n|`n") | Where-Object {
         $_.Trim() -ne "" -and
         $_ -notmatch "Registering notification handlers for server" -and
         $_ -notmatch "Scheduling MCP context refresh" -and
         $_ -notmatch "Executing MCP context refresh" -and
+        $_ -notmatch "MCP context refresh complete" -and
         $_ -notmatch "browsermcp" -and
         $_ -notmatch "Connected to MCP server" -and
         $_ -notmatch "MCP server started" -and
+        $_ -notmatch "YOLO mode is enabled" -and
         $_ -notmatch "^(INFO|DEBUG|TRACE)\b"
     }
     Set-Content -Path $resultPath -Value ($clean -join "`r`n") -Encoding UTF8
 
     if ($exitCode -ne 0) {
-        $executorText = if ($executorOutput -is [System.Management.Automation.ErrorRecord]) {
-            $executorOutput.ToString()
-        } else {
-            [string]$executorOutput
-        }
-        $preview = $executorText.Substring(0, [Math]::Min(500, $executorText.Length))
+        $preview = $executorOutput.Substring(0, [Math]::Min(500, $executorOutput.Length))
         throw "Gemini basarisiz. ExitCode=$exitCode`n$preview"
     }
 
     $resultText = Get-Content $resultPath -Raw -Encoding UTF8
 
     if ([string]::IsNullOrWhiteSpace($resultText)) {
-        throw "Executor result.txt üretmedi."
+        throw "Executor result.txt uretmedi."
     }
 
-    # Basarisizlik pattern kontrolu
     $failPatterns = @(
         '"status"\s*:\s*"failed"',
         '"phase"\s*:\s*"failed"',
@@ -201,7 +201,6 @@ Final response requirements:
         Write-Log "Executor tamamlandi."
     }
 
-    # Result ozeti kaydet
     $summary = if ($resultText.Length -gt 400) { $resultText.Substring(0,400) + "..." } else { $resultText }
     Set-SP $stateObj "last_result_summary" $summary
     Set-SP $stateObj "lastUpdated" (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")

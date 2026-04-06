@@ -2,196 +2,274 @@
 
 Task:
 
-# FAZ 1: Proje Analizi - Mevcut Kaynak Kodları Oku
+# FAZ 2: Proje Analiz Raporunu Oku ve Kapsamlı Geliştirme Planı Oluştur
 
 ## Amaç
-BeachGo React projesinin mevcut durumunu anlamak için kaynak dosyaları analiz et ve result.txt'e özet yaz. Kod yazmadan önce ne var ne yok tespit et.
+Önceki fazda oluşturulan result.txt'i ve proje kaynak dosyalarını daha detaylı okuyarak kapsamlı bir geliştirme planı oluştur. Hangi eksikler var, hangi sırayla düzeltilmeli tespit et.
 
 ## Executor Talimatları
 
-Aşağıdaki adımları sırayla uygula:
+### Adım 1: result.txt içeriğini oku
 
-### Adım 1: Proje yapısını listele ve result.txt'e yaz
+`C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\result.txt` dosyasını oku.
 
-```
-Önce şu dizindeki tüm dosyaları listele:
-C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src
+### Adım 2: Mevcut kaynak dosyaları daha detaylı oku
 
-Sonra şu dizini de listele:
-C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages
-
-Ve şu dizini:
-C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components
-
-Ve şu dizini:
-C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context
-
-Ve şu dizini:
-C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api
-```
-
-### Adım 2: Kritik dosyaları oku
-
-Şu dosyaları oku ve içeriklerini incele:
+Şu dosyaları sırayla oku:
 
 1. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\App.js`
-2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
-3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx` (veya AuthContext.js)
-4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\package.json`
+2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx`
+3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
+4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Login.jsx`
+5. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Register.jsx`
+6. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Home.jsx`
+7. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\BeachDetail.jsx`
+8. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Profile.jsx`
+9. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Reservations.jsx`
+10. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Favorites.jsx`
 
-### Adım 3: Sayfa dosyalarını oku
+Eğer bu dosyalar farklı uzantıda ise (.js veya .tsx) o uzantıyla dene.
 
-Şu sayfaları oku (varsa):
-1. `src\pages\Login.jsx`
-2. `src\pages\Register.jsx`
-3. `src\pages\Home.jsx`
-4. `src\pages\BeachDetail.jsx`
-5. `src\pages\Profile.jsx`
-6. `src\pages\Reservations.jsx`
-7. `src\pages\Favorites.jsx`
+### Adım 3: Components ve diğer kritik dosyaları oku
 
-### Adım 4: result.txt'e analiz raporu yaz
+Şu dizinlerdeki tüm dosyaları listele ve mevcut olanları oku:
 
-`C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\result.txt` dosyasına şu formatı kullanarak yaz:
+- `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\`
+- `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\`
+
+Ayrıca varsa şu dosyaları oku:
+- `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\Navbar.jsx`
+- `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\PrivateRoute.jsx`
+- `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\package.json`
+
+### Adım 4: result.txt'i kapsamlı geliştirme planıyla güncelle
+
+`C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\result.txt` dosyasını aşağıdaki formatla **tamamen yeniden yaz** (overwrite):
 
 ```
-PROJE ANALİZ RAPORU
-===================
+BEACHGO PROJE ANALİZ VE GELİŞTİRME PLANI
+==========================================
+Analiz Tarihi: [tarih]
+
+== MEVCUT DURUM ÖZETİ ==
 
 MEVCUT SAYFALAR:
-- [her sayfa için: var/yok ve kısa açıklama]
-
-MEVCUT CONTEXT/AUTH:
-- [AuthContext durumu]
-
-MEVCUT API:
-- [axios.js durumu, tanımlı endpoint'ler]
+[Her sayfa için: Dosya adı | Durum: VAR/YOK | İçerik özeti]
 
 MEVCUT ROUTE'LAR (App.js):
-- [her route listele]
+[Her route'u listele]
 
-EKSIK SAYFALAR:
-- [görünürde eksik olanlar]
+AUTH SİSTEMİ (AuthContext):
+[Mevcut durumu açıkla: login/logout/token yönetimi var mı?]
 
-EKSIK FONKSİYONLAR:
-- [axios.js, context vs'de eksik olanlar]
+API KATMANI (axios.js):
+[baseURL, interceptor'lar, tanımlı fonksiyonlar]
 
-PAKETLER (package.json):
-- [kurulan paketler listesi]
+KURULU PAKETLER:
+[package.json'dan önemli paketler]
+
+== BULUNAN EKSİKLER ==
+
+KRİTİK EKSİKLER (Öncelik 1):
+1. [eksik]
+2. [eksik]
+...
+
+ÖNEMLİ EKSİKLER (Öncelik 2):
+1. [eksik]
+...
+
+İYİLEŞTİRME GEREKTİRENLER (Öncelik 3):
+1. [iyileştirme]
+...
+
+== GELİŞTİRME FAZLARI ==
+
+FAZ 1: Authentication ve Güvenlik Temeli
+- Amaç: [açıkla]
+- Yapılacaklar: [liste]
+- Etkilenen dosyalar: [liste]
+- Tahmini risk: [açıkla]
+
+FAZ 2: Beach Listeleme ve Arama
+- Amaç: [açıkla]
+- Yapılacaklar: [liste]
+- Etkilenen dosyalar: [liste]
+- Tahmini risk: [açıkla]
+
+FAZ 3: Rezervasyon Sistemi
+...
+
+FAZ 4: Kullanıcı Profili ve Favoriler
+...
+
+FAZ 5: UI/UX ve Responsive Tasarım
+...
+
+FAZ 6: Hata Yönetimi ve Loading States
+...
+
+FAZ 7: Testler ve Deploy Hazırlığı
+...
+
+== BAŞLANGIÇ ÖNERİSİ ==
+[Hangi fazdan başlanmalı ve neden]
+
+== TAHMİNİ SÜRE ==
+[Her faz için tahmini süre]
 ```
 
 ## Başarı Kriteri
 
-`result.txt` dosyası aşağıdaki bilgileri içeriyor olmalı:
-- Mevcut sayfa listesi (var/yok)
-- App.js route listesi
-- AuthContext özeti
-- axios.js özeti
-- Eksik bileşenler listesi
+result.txt dosyası:
+- Mevcut proje durumunu net özetlemeli
+- En az 5 kritik eksik listemeli
+- En az 5 geliştirme fazı içermeli
+- Her faz için etkilenen dosyaları belirtmeli
+- Hangi fazdan başlanacağını açıklamalı
 
 ## Notlar
-- Bu faz sadece ANALİZ fazıdır, hiçbir kaynak dosyayı değiştirme.
-- Okuduğun her dosyanın adını ve kısa içerik özetini result.txt'e ekle.
-- Eğer bir dosya bulunamazsa bunu "YOK" olarak işaretle.
-- result.txt UTF-8 kodlamasıyla yaz.
+- Hiçbir kaynak dosyayı değiştirme, sadece result.txt'e yaz.
+- Okuyamadığın dosyalar için "YOK veya OKUNAMADI" yaz.
+- Fazları gerçekçi ve uygulanabilir tut.
+- Türkçe karakterleri doğru kullan (UTF-8).
 
-<commit_message>analysis: BeachGo React proje yapisi analiz edildi, eksikler tespit edildi</commit_message>
+<commit_message>analysis: BeachGo kapsamlı proje analizi ve geliştirme planı oluşturuldu</commit_message>
 
 
-# FAZ 1: Proje Analizi - Mevcut Kaynak Kodları Oku
+# FAZ 2: Proje Analiz Raporunu Oku ve Kapsamlı Geliştirme Planı Oluştur
 
 ## Amaç
-BeachGo React projesinin mevcut durumunu anlamak için kaynak dosyaları analiz et ve result.txt'e özet yaz. Kod yazmadan önce ne var ne yok tespit et.
+Önceki fazda oluşturulan result.txt'i ve proje kaynak dosyalarını daha detaylı okuyarak kapsamlı bir geliştirme planı oluştur. Hangi eksikler var, hangi sırayla düzeltilmeli tespit et.
 
 ## Executor Talimatları
 
-Aşağıdaki adımları sırayla uygula:
+### Adım 1: result.txt içeriğini oku
 
-### Adım 1: Proje yapısını listele ve result.txt'e yaz
+`C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\result.txt` dosyasını oku.
 
-```
-Önce şu dizindeki tüm dosyaları listele:
-C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src
+### Adım 2: Mevcut kaynak dosyaları daha detaylı oku
 
-Sonra şu dizini de listele:
-C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages
-
-Ve şu dizini:
-C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components
-
-Ve şu dizini:
-C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context
-
-Ve şu dizini:
-C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api
-```
-
-### Adım 2: Kritik dosyaları oku
-
-Şu dosyaları oku ve içeriklerini incele:
+Şu dosyaları sırayla oku:
 
 1. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\App.js`
-2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
-3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx` (veya AuthContext.js)
-4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\package.json`
+2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx`
+3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
+4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Login.jsx`
+5. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Register.jsx`
+6. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Home.jsx`
+7. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\BeachDetail.jsx`
+8. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Profile.jsx`
+9. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Reservations.jsx`
+10. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Favorites.jsx`
 
-### Adım 3: Sayfa dosyalarını oku
+Eğer bu dosyalar farklı uzantıda ise (.js veya .tsx) o uzantıyla dene.
 
-Şu sayfaları oku (varsa):
-1. `src\pages\Login.jsx`
-2. `src\pages\Register.jsx`
-3. `src\pages\Home.jsx`
-4. `src\pages\BeachDetail.jsx`
-5. `src\pages\Profile.jsx`
-6. `src\pages\Reservations.jsx`
-7. `src\pages\Favorites.jsx`
+### Adım 3: Components ve diğer kritik dosyaları oku
 
-### Adım 4: result.txt'e analiz raporu yaz
+Şu dizinlerdeki tüm dosyaları listele ve mevcut olanları oku:
 
-`C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\result.txt` dosyasına şu formatı kullanarak yaz:
+- `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\`
+- `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\`
+
+Ayrıca varsa şu dosyaları oku:
+- `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\Navbar.jsx`
+- `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\PrivateRoute.jsx`
+- `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\package.json`
+
+### Adım 4: result.txt'i kapsamlı geliştirme planıyla güncelle
+
+`C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\result.txt` dosyasını aşağıdaki formatla **tamamen yeniden yaz** (overwrite):
 
 ```
-PROJE ANALİZ RAPORU
-===================
+BEACHGO PROJE ANALİZ VE GELİŞTİRME PLANI
+==========================================
+Analiz Tarihi: [tarih]
+
+== MEVCUT DURUM ÖZETİ ==
 
 MEVCUT SAYFALAR:
-- [her sayfa için: var/yok ve kısa açıklama]
-
-MEVCUT CONTEXT/AUTH:
-- [AuthContext durumu]
-
-MEVCUT API:
-- [axios.js durumu, tanımlı endpoint'ler]
+[Her sayfa için: Dosya adı | Durum: VAR/YOK | İçerik özeti]
 
 MEVCUT ROUTE'LAR (App.js):
-- [her route listele]
+[Her route'u listele]
 
-EKSIK SAYFALAR:
-- [görünürde eksik olanlar]
+AUTH SİSTEMİ (AuthContext):
+[Mevcut durumu açıkla: login/logout/token yönetimi var mı?]
 
-EKSIK FONKSİYONLAR:
-- [axios.js, context vs'de eksik olanlar]
+API KATMANI (axios.js):
+[baseURL, interceptor'lar, tanımlı fonksiyonlar]
 
-PAKETLER (package.json):
-- [kurulan paketler listesi]
+KURULU PAKETLER:
+[package.json'dan önemli paketler]
+
+== BULUNAN EKSİKLER ==
+
+KRİTİK EKSİKLER (Öncelik 1):
+1. [eksik]
+2. [eksik]
+...
+
+ÖNEMLİ EKSİKLER (Öncelik 2):
+1. [eksik]
+...
+
+İYİLEŞTİRME GEREKTİRENLER (Öncelik 3):
+1. [iyileştirme]
+...
+
+== GELİŞTİRME FAZLARI ==
+
+FAZ 1: Authentication ve Güvenlik Temeli
+- Amaç: [açıkla]
+- Yapılacaklar: [liste]
+- Etkilenen dosyalar: [liste]
+- Tahmini risk: [açıkla]
+
+FAZ 2: Beach Listeleme ve Arama
+- Amaç: [açıkla]
+- Yapılacaklar: [liste]
+- Etkilenen dosyalar: [liste]
+- Tahmini risk: [açıkla]
+
+FAZ 3: Rezervasyon Sistemi
+...
+
+FAZ 4: Kullanıcı Profili ve Favoriler
+...
+
+FAZ 5: UI/UX ve Responsive Tasarım
+...
+
+FAZ 6: Hata Yönetimi ve Loading States
+...
+
+FAZ 7: Testler ve Deploy Hazırlığı
+...
+
+== BAŞLANGIÇ ÖNERİSİ ==
+[Hangi fazdan başlanmalı ve neden]
+
+== TAHMİNİ SÜRE ==
+[Her faz için tahmini süre]
 ```
 
 ## Başarı Kriteri
 
-`result.txt` dosyası aşağıdaki bilgileri içeriyor olmalı:
-- Mevcut sayfa listesi (var/yok)
-- App.js route listesi
-- AuthContext özeti
-- axios.js özeti
-- Eksik bileşenler listesi
+result.txt dosyası:
+- Mevcut proje durumunu net özetlemeli
+- En az 5 kritik eksik listemeli
+- En az 5 geliştirme fazı içermeli
+- Her faz için etkilenen dosyaları belirtmeli
+- Hangi fazdan başlanacağını açıklamalı
 
 ## Notlar
-- Bu faz sadece ANALİZ fazıdır, hiçbir kaynak dosyayı değiştirme.
-- Okuduğun her dosyanın adını ve kısa içerik özetini result.txt'e ekle.
-- Eğer bir dosya bulunamazsa bunu "YOK" olarak işaretle.
-- result.txt UTF-8 kodlamasıyla yaz.
+- Hiçbir kaynak dosyayı değiştirme, sadece result.txt'e yaz.
+- Okuyamadığın dosyalar için "YOK veya OKUNAMADI" yaz.
+- Fazları gerçekçi ve uygulanabilir tut.
+- Türkçe karakterleri doğru kullan (UTF-8).
 
-<commit_message>analysis: BeachGo React proje yapisi analiz edildi, eksikler tespit edildi</commit_message>
+<commit_message>analysis: BeachGo kapsamlı proje analizi ve geliştirme planı oluşturuldu</commit_message>
 
 
 Final response requirements:

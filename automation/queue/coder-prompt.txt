@@ -2,178 +2,232 @@
 
 Task:
 
-# FAZ 1 â Proje Analizi ve Kritik Bug Tespiti
+# FAZ 2 â Kritik HatalarÄ±n DÃ¼zeltilmesi
 
 ## AmaÃ§
-Mevcut BeachGo React projesinin dosya yapÄ±sÄ±nÄ±, bileÅenlerini, API entegrasyonunu ve mevcut hatalarÄ± analiz etmek. ArdÄ±ndan Ã¶ncelikli geliÅtirme fazlarÄ±nÄ± belirlemek.
+Analiz fazÄ±nda tespit edilen 3 kritik hatayÄ± dÃ¼zeltmek:
+1. `axios.js` dosyasÄ±nda `refreshAccessToken` fonksiyonunun eksik olmasÄ±
+2. `DashboardReservations.jsx` dosyasÄ±nda `initialState` tanÄ±msÄ±zlÄ±ÄÄ±
+3. `AuthContext.jsx` iÃ§indeki import hatasÄ±
 
 ## Executor'a Talimatlar
 
-AÅaÄÄ±daki adÄ±mlarÄ± sÄ±rasÄ±yla uygula. Kod yazma, sadece dosyalarÄ± oku ve analiz sonuÃ§larÄ±nÄ± `result.txt` dosyasÄ±na yaz.
+AÅaÄÄ±daki dosyalarÄ± sÄ±rasÄ±yla oku, analiz et ve dÃ¼zelt.
 
-### AdÄ±m 1: Proje yapÄ±sÄ±nÄ± tara
+---
 
-```
-find /c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src -type f -name "*.jsx" -o -name "*.js" -o -name "*.tsx" -o -name "*.ts" | sort
-```
+### AdÄ±m 1: DosyalarÄ± Oku
 
-Alternatif olarak Gemini CLI ile:
-```
-ls -R C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src
-```
+Ãnce Åu dosyalarÄ±n tam iÃ§eriÄini oku:
 
-### AdÄ±m 2: Kritik dosyalarÄ± oku ve analiz et
+1. `/c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/axios.js`
+2. `/c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/context/AuthContext.jsx`
+3. `/c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx`
 
-Åu dosyalarÄ± sÄ±rasÄ±yla oku:
+---
 
-1. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
-   - `refreshAccessToken` export'u var mÄ±?
-   - Interceptor mantÄ±ÄÄ± nasÄ±l?
+### AdÄ±m 2: `axios.js` DÃ¼zeltmesi
 
-2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx`
-   - `refreshAccessToken` nereden import ediliyor?
-   - Login, logout, token yenileme akÄ±ÅÄ± tam mÄ±?
+DosyayÄ± okuduktan sonra ÅunlarÄ± kontrol et ve dÃ¼zelt:
 
-3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\DashboardReservations.jsx`
-   - `initialState` tanÄ±mlÄ± mÄ±?
-   - Hangi state yÃ¶netimi kullanÄ±lÄ±yor?
+- EÄer `refreshAccessToken` adÄ±nda bir export edilen fonksiyon **yoksa**, dosyanÄ±n en altÄ±na Åunu ekle (mevcut axios instance yapÄ±sÄ±nÄ± bozmadan):
 
-4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\App.jsx` veya `App.js`
-   - Route yapÄ±sÄ± nasÄ±l?
-   - Protected route var mÄ±?
-
-5. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\` klasÃ¶rÃ¼
-   - Hangi sayfalar mevcut? (list all files)
-
-6. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\package.json`
-   - Hangi kÃ¼tÃ¼phaneler kullanÄ±lÄ±yor?
-
-### AdÄ±m 3: `result.txt` dosyasÄ±na Åunu yaz
-
-`C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt` dosyasÄ±na aÅaÄÄ±daki format ile analiz Ã§Ä±ktÄ±sÄ± yaz:
-
-```
-ANALIZ_SONUCU:
-
-1. MEVCUT DOSYA YAPISI:
-[dosya listesi]
-
-2. KRITIK HATALAR:
-- axios.js refreshAccessToken durumu: [VAR/YOK]
-- DashboardReservations initialState durumu: [TANIMLI/TANIMLANMAMIS]
-- AuthContext import hatasÄ±: [VAR/YOK]
-
-3. MEVCUT SAYFALAR:
-[sayfa listesi]
-
-4. EKSIK GORUNEN OZELLIKLER:
-[ilk bakÄ±Åta fark edilen eksikler]
-
-5. PAKET BAGIMLILIKLAR:
-[package.json Ã¶zeti]
+```javascript
+export const refreshAccessToken = async () => {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) throw new Error('No refresh token');
+  
+  const response = await axios.post('/auth/refresh', { refreshToken });
+  const { accessToken } = response.data;
+  localStorage.setItem('accessToken', accessToken);
+  return accessToken;
+};
 ```
 
-## Etkilenen Dosyalar (Sadece Okuma)
-- `beach-ui/src/api/axios.js`
-- `beach-ui/src/context/AuthContext.jsx`
-- `beach-ui/src/pages/DashboardReservations.jsx`
-- `beach-ui/src/App.jsx`
-- `beach-ui/src/pages/` (tÃ¼m dosyalar)
-- `beach-ui/package.json`
+- EÄer fonksiyon zaten varsa ama export edilmiyorsa, `export` keyword'Ã¼nÃ¼ ekle.
+- Mevcut interceptor'lar varsa bozma, sadece eksik olan kÄ±smÄ± ekle.
 
-## Notlar
-- Bu iterasyonda KOD YAZMA, sadece analiz yap
-- SonuÃ§lar bir sonraki iterasyonda planlama iÃ§in kullanÄ±lacak
-- `result.txt` mutlaka yazÄ±lmalÄ±
+---
 
-<commit_message>analysis: BeachGo React projesi dosya yapÄ±sÄ± ve kritik hatalar analiz edildi</commit_message>
+### AdÄ±m 3: `AuthContext.jsx` DÃ¼zeltmesi
+
+DosyayÄ± okuduktan sonra:
+
+- `refreshAccessToken`'Ä±n nereden import edildiÄine bak.
+- EÄer `import { refreshAccessToken } from '../api/axios'` Åeklinde import varsa ama axios.js'de bu export yoktu, artÄ±k eklendiÄi iÃ§in sorun Ã§Ã¶zÃ¼lmÃ¼Å olacak.
+- EÄer import satÄ±rÄ± hiÃ§ yoksa, dosyanÄ±n Ã¼st kÄ±smÄ±ndaki import bloÄuna Åunu ekle:
+  ```javascript
+  import { refreshAccessToken } from '../api/axios';
+  ```
+- EÄer import farklÄ± bir path'ten yapÄ±lÄ±yorsa (Ã¶rn. `../utils/auth`), o dosyanÄ±n var olup olmadÄ±ÄÄ±nÄ± kontrol et. Yoksa import'u `../api/axios` olarak dÃ¼zelt.
+
+---
+
+### AdÄ±m 4: `DashboardReservations.jsx` DÃ¼zeltmesi
+
+DosyayÄ± okuduktan sonra:
+
+- `initialState` deÄiÅkeninin kullanÄ±ldÄ±ÄÄ± ama tanÄ±mlanmadÄ±ÄÄ± yeri bul.
+- DosyanÄ±n en Ã¼st kÄ±smÄ±na (import'lardan hemen sonra, component tanÄ±mÄ±ndan Ã¶nce) Åunu ekle:
+
+```javascript
+const initialState = {
+  reservations: [],
+  loading: false,
+  error: null,
+  filters: {
+    status: 'all',
+    dateRange: null,
+    search: '',
+  },
+  pagination: {
+    page: 1,
+    limit: 10,
+    total: 0,
+  },
+};
+```
+
+- EÄer `useReducer` kullanÄ±lÄ±yorsa ve `reducer` fonksiyonu da eksikse, onu da ekle. DosyayÄ± okuyunca anlarsÄ±n.
+- EÄer sadece `useState` kullanÄ±lÄ±yorsa ve `initialState` bir obje olarak kullanÄ±lÄ±yorsa, yukarÄ±daki tanÄ±mÄ± dosyaya ekle.
+
+---
+
+### AdÄ±m 5: DeÄiÅiklikleri Kaydet
+
+Her 3 dosyayÄ± da dÃ¼zenledikten sonra kaydet. Dosya kodlamasÄ± UTF-8 olmalÄ±.
+
+---
+
+## Etkilenen Dosyalar
+- `/c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/axios.js` â `refreshAccessToken` export ekleme
+- `/c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/context/AuthContext.jsx` â import dÃ¼zeltme
+- `/c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx` â `initialState` tanÄ±mlama
+
+## Test SenaryolarÄ±
+- `axios.js` dosyasÄ±nda `refreshAccessToken` artÄ±k export edilmeli
+- `AuthContext.jsx` import hatasÄ± (undefined reference) Ã§Ã¶zÃ¼lmeli
+- `DashboardReservations.jsx` component render sÄ±rasÄ±nda `initialState is not defined` hatasÄ± vermemeli
+
+## Riskler
+- `axios.js` interceptor'Ä± deÄiÅtirmek token yenileme dÃ¶ngÃ¼sÃ¼ne yol aÃ§abilir â mevcut interceptor'Ä± okumadan dokunma
+- `DashboardReservations.jsx`'deki `initialState` yapÄ±sÄ± gerÃ§ek API response formatÄ±na uygun olmalÄ±
+
+<commit_message>fix: refreshAccessToken export, initialState tanÄ±mÄ± ve AuthContext import hatasÄ± dÃ¼zeltildi</commit_message>
 
 
-# FAZ 1 â Proje Analizi ve Kritik Bug Tespiti
+# FAZ 2 â Kritik HatalarÄ±n DÃ¼zeltilmesi
 
 ## AmaÃ§
-Mevcut BeachGo React projesinin dosya yapÄ±sÄ±nÄ±, bileÅenlerini, API entegrasyonunu ve mevcut hatalarÄ± analiz etmek. ArdÄ±ndan Ã¶ncelikli geliÅtirme fazlarÄ±nÄ± belirlemek.
+Analiz fazÄ±nda tespit edilen 3 kritik hatayÄ± dÃ¼zeltmek:
+1. `axios.js` dosyasÄ±nda `refreshAccessToken` fonksiyonunun eksik olmasÄ±
+2. `DashboardReservations.jsx` dosyasÄ±nda `initialState` tanÄ±msÄ±zlÄ±ÄÄ±
+3. `AuthContext.jsx` iÃ§indeki import hatasÄ±
 
 ## Executor'a Talimatlar
 
-AÅaÄÄ±daki adÄ±mlarÄ± sÄ±rasÄ±yla uygula. Kod yazma, sadece dosyalarÄ± oku ve analiz sonuÃ§larÄ±nÄ± `result.txt` dosyasÄ±na yaz.
+AÅaÄÄ±daki dosyalarÄ± sÄ±rasÄ±yla oku, analiz et ve dÃ¼zelt.
 
-### AdÄ±m 1: Proje yapÄ±sÄ±nÄ± tara
+---
 
-```
-find /c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src -type f -name "*.jsx" -o -name "*.js" -o -name "*.tsx" -o -name "*.ts" | sort
-```
+### AdÄ±m 1: DosyalarÄ± Oku
 
-Alternatif olarak Gemini CLI ile:
-```
-ls -R C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src
-```
+Ãnce Åu dosyalarÄ±n tam iÃ§eriÄini oku:
 
-### AdÄ±m 2: Kritik dosyalarÄ± oku ve analiz et
+1. `/c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/axios.js`
+2. `/c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/context/AuthContext.jsx`
+3. `/c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx`
 
-Åu dosyalarÄ± sÄ±rasÄ±yla oku:
+---
 
-1. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
-   - `refreshAccessToken` export'u var mÄ±?
-   - Interceptor mantÄ±ÄÄ± nasÄ±l?
+### AdÄ±m 2: `axios.js` DÃ¼zeltmesi
 
-2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx`
-   - `refreshAccessToken` nereden import ediliyor?
-   - Login, logout, token yenileme akÄ±ÅÄ± tam mÄ±?
+DosyayÄ± okuduktan sonra ÅunlarÄ± kontrol et ve dÃ¼zelt:
 
-3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\DashboardReservations.jsx`
-   - `initialState` tanÄ±mlÄ± mÄ±?
-   - Hangi state yÃ¶netimi kullanÄ±lÄ±yor?
+- EÄer `refreshAccessToken` adÄ±nda bir export edilen fonksiyon **yoksa**, dosyanÄ±n en altÄ±na Åunu ekle (mevcut axios instance yapÄ±sÄ±nÄ± bozmadan):
 
-4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\App.jsx` veya `App.js`
-   - Route yapÄ±sÄ± nasÄ±l?
-   - Protected route var mÄ±?
-
-5. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\` klasÃ¶rÃ¼
-   - Hangi sayfalar mevcut? (list all files)
-
-6. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\package.json`
-   - Hangi kÃ¼tÃ¼phaneler kullanÄ±lÄ±yor?
-
-### AdÄ±m 3: `result.txt` dosyasÄ±na Åunu yaz
-
-`C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt` dosyasÄ±na aÅaÄÄ±daki format ile analiz Ã§Ä±ktÄ±sÄ± yaz:
-
-```
-ANALIZ_SONUCU:
-
-1. MEVCUT DOSYA YAPISI:
-[dosya listesi]
-
-2. KRITIK HATALAR:
-- axios.js refreshAccessToken durumu: [VAR/YOK]
-- DashboardReservations initialState durumu: [TANIMLI/TANIMLANMAMIS]
-- AuthContext import hatasÄ±: [VAR/YOK]
-
-3. MEVCUT SAYFALAR:
-[sayfa listesi]
-
-4. EKSIK GORUNEN OZELLIKLER:
-[ilk bakÄ±Åta fark edilen eksikler]
-
-5. PAKET BAGIMLILIKLAR:
-[package.json Ã¶zeti]
+```javascript
+export const refreshAccessToken = async () => {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) throw new Error('No refresh token');
+  
+  const response = await axios.post('/auth/refresh', { refreshToken });
+  const { accessToken } = response.data;
+  localStorage.setItem('accessToken', accessToken);
+  return accessToken;
+};
 ```
 
-## Etkilenen Dosyalar (Sadece Okuma)
-- `beach-ui/src/api/axios.js`
-- `beach-ui/src/context/AuthContext.jsx`
-- `beach-ui/src/pages/DashboardReservations.jsx`
-- `beach-ui/src/App.jsx`
-- `beach-ui/src/pages/` (tÃ¼m dosyalar)
-- `beach-ui/package.json`
+- EÄer fonksiyon zaten varsa ama export edilmiyorsa, `export` keyword'Ã¼nÃ¼ ekle.
+- Mevcut interceptor'lar varsa bozma, sadece eksik olan kÄ±smÄ± ekle.
 
-## Notlar
-- Bu iterasyonda KOD YAZMA, sadece analiz yap
-- SonuÃ§lar bir sonraki iterasyonda planlama iÃ§in kullanÄ±lacak
-- `result.txt` mutlaka yazÄ±lmalÄ±
+---
 
-<commit_message>analysis: BeachGo React projesi dosya yapÄ±sÄ± ve kritik hatalar analiz edildi</commit_message>
+### AdÄ±m 3: `AuthContext.jsx` DÃ¼zeltmesi
+
+DosyayÄ± okuduktan sonra:
+
+- `refreshAccessToken`'Ä±n nereden import edildiÄine bak.
+- EÄer `import { refreshAccessToken } from '../api/axios'` Åeklinde import varsa ama axios.js'de bu export yoktu, artÄ±k eklendiÄi iÃ§in sorun Ã§Ã¶zÃ¼lmÃ¼Å olacak.
+- EÄer import satÄ±rÄ± hiÃ§ yoksa, dosyanÄ±n Ã¼st kÄ±smÄ±ndaki import bloÄuna Åunu ekle:
+  ```javascript
+  import { refreshAccessToken } from '../api/axios';
+  ```
+- EÄer import farklÄ± bir path'ten yapÄ±lÄ±yorsa (Ã¶rn. `../utils/auth`), o dosyanÄ±n var olup olmadÄ±ÄÄ±nÄ± kontrol et. Yoksa import'u `../api/axios` olarak dÃ¼zelt.
+
+---
+
+### AdÄ±m 4: `DashboardReservations.jsx` DÃ¼zeltmesi
+
+DosyayÄ± okuduktan sonra:
+
+- `initialState` deÄiÅkeninin kullanÄ±ldÄ±ÄÄ± ama tanÄ±mlanmadÄ±ÄÄ± yeri bul.
+- DosyanÄ±n en Ã¼st kÄ±smÄ±na (import'lardan hemen sonra, component tanÄ±mÄ±ndan Ã¶nce) Åunu ekle:
+
+```javascript
+const initialState = {
+  reservations: [],
+  loading: false,
+  error: null,
+  filters: {
+    status: 'all',
+    dateRange: null,
+    search: '',
+  },
+  pagination: {
+    page: 1,
+    limit: 10,
+    total: 0,
+  },
+};
+```
+
+- EÄer `useReducer` kullanÄ±lÄ±yorsa ve `reducer` fonksiyonu da eksikse, onu da ekle. DosyayÄ± okuyunca anlarsÄ±n.
+- EÄer sadece `useState` kullanÄ±lÄ±yorsa ve `initialState` bir obje olarak kullanÄ±lÄ±yorsa, yukarÄ±daki tanÄ±mÄ± dosyaya ekle.
+
+---
+
+### AdÄ±m 5: DeÄiÅiklikleri Kaydet
+
+Her 3 dosyayÄ± da dÃ¼zenledikten sonra kaydet. Dosya kodlamasÄ± UTF-8 olmalÄ±.
+
+---
+
+## Etkilenen Dosyalar
+- `/c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/axios.js` â `refreshAccessToken` export ekleme
+- `/c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/context/AuthContext.jsx` â import dÃ¼zeltme
+- `/c/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx` â `initialState` tanÄ±mlama
+
+## Test SenaryolarÄ±
+- `axios.js` dosyasÄ±nda `refreshAccessToken` artÄ±k export edilmeli
+- `AuthContext.jsx` import hatasÄ± (undefined reference) Ã§Ã¶zÃ¼lmeli
+- `DashboardReservations.jsx` component render sÄ±rasÄ±nda `initialState is not defined` hatasÄ± vermemeli
+
+## Riskler
+- `axios.js` interceptor'Ä± deÄiÅtirmek token yenileme dÃ¶ngÃ¼sÃ¼ne yol aÃ§abilir â mevcut interceptor'Ä± okumadan dokunma
+- `DashboardReservations.jsx`'deki `initialState` yapÄ±sÄ± gerÃ§ek API response formatÄ±na uygun olmalÄ±
+
+<commit_message>fix: refreshAccessToken export, initialState tanÄ±mÄ± ve AuthContext import hatasÄ± dÃ¼zeltildi</commit_message>
 
 
 Final response requirements:

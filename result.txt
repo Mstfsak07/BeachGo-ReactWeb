@@ -1,20 +1,18 @@
-PROJE ANALİZ RAPORU
-===================
+BEACHGO PROJE ANALİZ VE GELİŞTİRME PLANI
+==========================================
+Analiz Tarihi: 2026-04-06
+
+== MEVCUT DURUM ÖZETİ ==
 
 MEVCUT SAYFALAR:
-- Login.js: Var. Kullanıcı giriş sayfası. Zaten giriş yapılmışsa ana sayfaya yönlendiriyor.
-- Register.js: Var. Yeni kullanıcı kayıt formu.
-- Home.js: Var. Ana sayfa; plaj arama bileşeni ve popüler plajlar listesi vb. animasyonlar içeriyor.
-- BeachDetail.js: Var. Seçilen plajın özelliklerini, detaylarını ve rezervasyon işlemlerini barındıran sayfa.
-- MyReservations.js: Var. Müşterilerin kendi geçmiş ve aktif rezervasyonlarını görebildiği sayfa.
-- DashboardReservations.jsx: Var. İşletmelerin ve yöneticilerin rezervasyonları yönetebildiği sayfa.
-- Diğer sayfalar: AdminPanel, BeachSettings, Dashboard, DashboardStats, Events vb. sayfalar mevcut.
-
-MEVCUT CONTEXT/AUTH:
-- AuthContext.jsx: Var. JWT tabanlı kimlik doğrulama sistemini yönetiyor. Kullanıcı bilgilerini state ve localStorage'da tutuyor. Proaktif token yenileme ve oturum zamanlayıcısı mantığını barındırıyor. login, logout işlevlerini ve useAuth hook'unu dışa aktarıyor.
-
-MEVCUT API:
-- axios.js: Var. Axios instance yapılandırmasını oluşturuyor. Çerezleri dahil ederek yetkilendirilmiş istekler için accessToken'ı Header'a ekleyen ve 401 hatası alındığında arka planda refresh token ile yeni accessToken alıp kuyruktaki (failedQueue) istekleri işleyen tam gelişmiş interceptor mantığı mevcut. `/Auth/refresh`, `/Auth/login`, `/Auth/logout` gibi uç noktalara referans var.
+- App.js | Durum: VAR | Projenin ana route tanımlamalarını, yönlendirmeleri ve genel layout'unu (Navbar, Footer, Toaster) barındırır.
+- Home.js | Durum: VAR | Ana sayfa; kategoriler, search bar ve popüler plaj listesi var. Modern animasyonlar (Framer Motion) içeriyor.
+- Login.js / Register.js | Durum: VAR | Misafirler (Guest) için giriş ve kayıt ekranları.
+- BeachDetail.js | Durum: VAR | Plaj detaylarını, olanaklarını, fotoğraflarını ve rezervasyon bölümünü içeriyor.
+- MyReservations.js | Durum: VAR | Müşterilerin kendi aktif/geçmiş rezervasyonlarını görüntülediği sayfa.
+- DashboardReservations.jsx / AdminPanel.jsx | Durum: VAR | İşletme ve Yöneticiler (Admin) için yönetim panelleri.
+- Profile.jsx | Durum: YOK | Kullanıcı profilini ve şifresini yönetecek ekran bulunamadı.
+- Favorites.jsx | Durum: YOK | Favorilere eklenen plajların listeleneceği ekran bulunamadı.
 
 MEVCUT ROUTE'LAR (App.js):
 - / : Home
@@ -25,33 +23,101 @@ MEVCUT ROUTE'LAR (App.js):
 - /reservation/:beachId : GuestReservation
 - /reservation-success : ReservationSuccess
 - /unauthorized : Unauthorized
-- /login : Login (Sadece Misafir)
-- /register : Register (Sadece Misafir)
-- /business-register : BusinessRegister (Sadece Misafir)
-- /my-reservations : MyReservations (Giriş Yapmış Kullanıcılar)
-- /dashboard : Dashboard (Business ve Admin)
-- /dashboard/stats : DashboardStats (Business ve Admin)
-- /dashboard/reservations : DashboardReservations (Business ve Admin)
-- /beach-settings : BeachSettings (Business ve Admin)
-- /admin : AdminPanel (Sadece Admin)
-- * : Navigate to / (Wildcard redirect)
+- /login : Login
+- /register : Register
+- /business-register : BusinessRegister
+- /my-reservations : MyReservations
+- /dashboard : Dashboard
+- /dashboard/stats : DashboardStats
+- /dashboard/reservations : DashboardReservations
+- /beach-settings : BeachSettings
+- /admin : AdminPanel
 
-EKSIK SAYFALAR:
-- Profile.jsx (veya Profile.js): YOK. Kullanıcı profil yönetimi için sayfa yok.
-- Favorites.jsx (veya Favorites.js): YOK. Favori plajların listelendiği sayfa mevcut değil.
+AUTH SİSTEMİ (AuthContext):
+- Mevcut Durum: JWT tabanlı sistem kurulmuş. Kullanıcı bilgileri localStorage üzerinde tutuluyor.
+- Token Yönetimi: Proaktif token yenileme (`scheduleProactiveRefresh`) ve sayfa açılışında oturumu tekrar ayağa kaldırma (`silentRefresh`) özellikleri var. Login/Logout fonksiyonları düzgün kurgulanmış.
 
-EKSIK FONKSİYONLAR:
-- Sistem geneli token yönetimi tamamlanmış duruyor, ancak Context veya API dosyasında Favorilere ekleme/çıkarma veya Profil güncelleme mantıkları henüz bulunmuyor (ilgili sayfaların eksik olmasıyla bağlantılı).
+API KATMANI (axios.js):
+- Axios instance yapısı `withCredentials: true` ile oluşturulmuş. 
+- Request interceptor üzerinden `accessToken` Header'a basılıyor. 
+- Response interceptor ile 401 hatalarında `refresh token` kullanılarak yeni `accessToken` alma ve bekleyen istekleri (`failedQueue`) tamamlama mantığı mevcut.
 
-PAKETLER (package.json):
-- react (^18.2.0)
-- react-dom (^18.2.0)
-- react-router-dom (^6.22.0)
-- react-hot-toast (^2.6.0)
-- axios (^1.13.6)
-- framer-motion (^12.38.0)
-- lucide-react (^1.7.0)
-- recharts (^3.8.1)
-- zustand (^5.0.12)
-- @tailwindcss/postcss (^4.2.2), tailwindcss (^3.4.1), postcss (^8.4.35), autoprefixer (^10.4.18)
-- react-scripts (5.0.1)
+KURULU PAKETLER:
+- react (^18.2.0), react-dom (^18.2.0), react-router-dom (^6.22.0)
+- axios (^1.13.6), framer-motion (^12.38.0), zustand (^5.0.12)
+- react-hot-toast (^2.6.0), lucide-react (^1.7.0), recharts (^3.8.1)
+- tailwindcss (^3.4.1)
+
+== BULUNAN EKSİKLER ==
+
+KRİTİK EKSİKLER (Öncelik 1):
+1. `axios.js` dosyasında `refreshAccessToken` fonksiyonu tanımlanıp export edilmemiş, ancak `AuthContext.jsx` bunu import etmeye ve kullanmaya çalışıyor. Bu durum token süresi dolduğunda kodun hata vermesine yol açacaktır.
+2. `Profile.jsx` sayfası eksik. Sisteme kayıt olan kullanıcıların bilgilerini güncelleyebileceği bir alan yok.
+3. `Favorites.jsx` sayfası eksik. Kullanıcıların beğendikleri plajları görebileceği sayfa bulunmuyor.
+4. `BeachDetail.js` sayfasındaki Favorilere Ekleme (`isFavorite`) özelliği sadece local state üzerinde tutuluyor. Herhangi bir backend API'sine istek atmıyor.
+5. Navbar üzerinde eksik olan Profile ve Favorites sayfalarına yönlendirme yapan buton/link bulunmuyor.
+
+ÖNEMLİ EKSİKLER (Öncelik 2):
+1. Şifremi Unuttum (Forgot Password) / Şifre Sıfırlama mekanizması arayüzde bulunmuyor.
+2. Arama motoru UI olarak çok gelişmiş dursa da Home.js'deki search sadece `/beaches?q=...` router yönlendirmesi yapıyor; tarih ve kişi sayısını dikkate almıyor.
+
+İYİLEŞTİRME GEREKTİRENLER (Öncelik 3):
+1. Global API hatalarını (500 vb.) UI'da genel bir toast ile yakalayacak merkezi error handler yazılabilir.
+2. Form doğrulama mekanizmaları çok standart; daha gelişmiş validasyonlar eklenebilir.
+
+== GELİŞTİRME FAZLARI ==
+
+FAZ 1: Authentication ve Güvenlik Temeli
+- Amaç: `AuthContext`'in sorunsuz çalışmasını sağlamak ve kritik API/Authentication hatalarını gidermek.
+- Yapılacaklar: `axios.js` içinde `refreshAccessToken` fonksiyonunu düzgün bir şekilde tanımlayıp export etmek. Login/Register sayfalarındaki genel hataları düzenlemek.
+- Etkilenen dosyalar: `src/api/axios.js`, `src/context/AuthContext.jsx`
+- Tahmini risk: Düşük. Ancak çözülmezse uygulamanın temel akışı çöker.
+
+FAZ 2: Kullanıcı Profili ve Ayarlar
+- Amaç: Kullanıcının bilgilerini, şifresini görüntüleyip değiştirebilmesini sağlamak.
+- Yapılacaklar: `Profile.jsx` sayfasını oluşturmak, backend ile profil güncelleme metodlarını (`api.js`) bağlamak. `App.js` ve `Navbar.js`'ye ilgili route ve menüyü eklemek.
+- Etkilenen dosyalar: `src/pages/Profile.jsx`, `src/App.js`, `src/components/Navbar.js`, `src/services/api.js`
+- Tahmini risk: Düşük.
+
+FAZ 3: Favoriler Sistemi
+- Amaç: Kullanıcıların favori plajlarını kaydedebilmesi ve ayrı bir sayfada görebilmesi.
+- Yapılacaklar: `Favorites.jsx` sayfasını oluşturmak. `BeachDetail.js` içindeki kalp ikonunu backend API'sine (`POST /Favorites` vs.) bağlamak.
+- Etkilenen dosyalar: `src/pages/Favorites.jsx`, `src/pages/BeachDetail.js`, `src/services/api.js`, `src/components/Navbar.js`
+- Tahmini risk: Düşük.
+
+FAZ 4: Beach Listeleme ve Gelişmiş Arama
+- Amaç: Arama formunun verimli kullanılmasını sağlamak.
+- Yapılacaklar: Ana sayfadaki arama modülünden alınan tarih, kişi sayısı ve konumu `Beaches.js`'e parametre olarak taşımak ve backend API'sine detaylı filtreleme request'i atmak.
+- Etkilenen dosyalar: `src/pages/Home.js`, `src/pages/Beaches.js`, `src/services/api.js`
+- Tahmini risk: Orta. Backend'deki arama endpoint'inin yapısına bağlıdır.
+
+FAZ 5: UI/UX ve Responsive Tasarım
+- Amaç: Mobil görünümdeki tasarım hatalarını düzeltmek, skeleton loading durumlarını yaygınlaştırmak.
+- Yapılacaklar: Tüm ekranların Tailwind sınıflarını mobil boyutlar (sm, md) için optimize etmek. Loading animasyonlarının entegrasyonunu sağlamak.
+- Etkilenen dosyalar: Tüm genel componentler.
+- Tahmini risk: Düşük.
+
+FAZ 6: Hata Yönetimi ve Loading States
+- Amaç: Axios interceptor veya React içerisinde genel ağ hatalarını daha nazik yakalamak.
+- Yapılacaklar: ErrorBoundary veya axios global error interceptor oluşturarak kullanıcıya "Sunucuya ulaşılamıyor" tarzı merkezi toast mesajları göstermek.
+- Etkilenen dosyalar: `src/api/axios.js`, `src/App.js`
+- Tahmini risk: Düşük.
+
+FAZ 7: Testler ve Deploy Hazırlığı
+- Amaç: Projenin canlıya çıkması için son kontrollerin yapılması.
+- Yapılacaklar: Ortam değişkenlerinin (`.env.production`) ayarlanması. Gerekirse e2e (Playwright) testlerinin projeye entegre edilmesi ve kritik akışların test edilmesi.
+- Etkilenen dosyalar: `.env.*`, E2E test dosyaları.
+- Tahmini risk: Düşük.
+
+== BAŞLANGIÇ ÖNERİSİ ==
+Geliştirmeye kesinlikle FAZ 1'den (Authentication ve Güvenlik Temeli) başlanmalıdır. Şu anda projenin can damarı olan oturum yönetimindeki (AuthContext.jsx) `refreshAccessToken` fonksiyonu `axios.js` içinde export edilmediği için uygulamanın en temel yerinde bir bug mevcut. Bu çözülmeden diğer fazlara geçilmesi mantıklı değildir. Sonrasında Profil ve Favoriler gibi eksik sayfaların yapımını (FAZ 2 ve FAZ 3) devam ettirebiliriz.
+
+== TAHMİNİ SÜRE ==
+- FAZ 1: 1 Gün
+- FAZ 2: 1 Gün
+- FAZ 3: 1 Gün
+- FAZ 4: 2 Gün
+- FAZ 5: 2 Gün
+- FAZ 6: 1 Gün
+- FAZ 7: 2 Gün
+Toplam Tahmini Süre: 10 Gün

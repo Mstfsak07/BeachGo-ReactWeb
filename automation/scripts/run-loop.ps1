@@ -99,10 +99,10 @@ function Get-ErrorHash($errText) {
     return [BitConverter]::ToString($hash) -replace '-',''
 }
 
-# Analyzer (Claude Sonnet 4.6)
+# Analyzer (Claude Sonnet 4.6 — direkt HTTP API)
 function Invoke-Analyzer($resultText, $planText) {
-    Write-Log "Analyzer baslatiliyor (Claude Sonnet 4.6)..."
-    
+    Write-Log "Analyzer baslatiliyor (Claude Sonnet 4.6, HTTP API)..."
+
     $prompt = @"
 Sen bir kod analizörüsün (Claude). Görevin, uygulayıcının (Gemini) yaptığı işi ve planı değerlendirmektir.
 
@@ -122,30 +122,38 @@ Aşağıdaki JSON formatında SADECE JSON döndür:
   "reason": "Karar nedeni (kısa)"
 }
 "@
-    $tempPrompt = Join-Path $env:TEMP "analyzer-prompt.txt"
-    $prompt | Set-Content $tempPrompt -Encoding UTF8
-    
-    $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:8045"
-    $env:CLAUDE_CONFIG_DIR  = "$env:USERPROFILE\.claude-antigravity"
 
-    $oldEAP = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
+    $apiKey  = $env:BEACHGO_ANTHROPIC_KEY
+    $baseUrl = "http://127.0.0.1:8045"
 
-    $outputRaw = Get-Content $tempPrompt -Raw -Encoding UTF8 | & claude --model sonnet-4.6 -p 2>&1
-    
-    $exitCode = $LASTEXITCODE
-    $ErrorActionPreference = $oldEAP
+    $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes(
+        ([ordered]@{
+            model      = "claude-sonnet-4-6"
+            max_tokens = 1024
+            messages   = @(@{ role = "user"; content = $prompt })
+        } | ConvertTo-Json -Depth 10 -Compress)
+    )
 
-    if ($exitCode -ne 0) {
-        Write-Log "Analyzer Claude hatası. Varsayılan CONTINUE..."
-        return @{ status = "CONTINUE"; reason = "Analyzer API Hatası" }
+    $headers = @{
+        "x-api-key"         = $apiKey
+        "anthropic-version" = "2023-06-01"
+        "content-type"      = "application/json"
     }
 
-    $output = ($outputRaw | Where-Object { $_ -is [string] }) -join "`n"
     try {
-        if ($output -match '(?s)\{.*\}') {
-            return ConvertFrom-Json $matches[0]
-        }
+        $response = Invoke-RestMethod `
+            -Uri     "$baseUrl/v1/messages" `
+            -Method  POST `
+            -Headers $headers `
+            -Body    $bodyBytes
+        $output = $response.content[0].text
+    } catch {
+        Write-Log "Analyzer API hatasi: $_. Varsayilan CONTINUE..."
+        return @{ status = "CONTINUE"; reason = "Analyzer API Hatasi" }
+    }
+
+    try {
+        if ($output -match '(?s)\{.*\}') { return ConvertFrom-Json $Matches[0] }
         return ConvertFrom-Json $output
     } catch {
         return @{ status = "CONTINUE"; reason = "JSON parse error" }

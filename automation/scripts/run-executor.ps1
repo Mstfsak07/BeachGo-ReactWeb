@@ -93,27 +93,54 @@ Final response requirements:
     $tempPrompt = Join-Path $env:TEMP "executor-prompt-$iteration.txt"
     $fullPrompt | Set-Content $tempPrompt -Encoding UTF8
 
-    try {
-        $promptText = Get-Content $tempPrompt -Raw -Encoding UTF8
+    $maxRetries = 5
+    $retryCount = 0
+    $exitCode   = 1
+    $executorOutput = ""
 
-        $oldEAP = $ErrorActionPreference
-        $ErrorActionPreference = "Continue"
+    while ($retryCount -lt $maxRetries) {
+        $retryCount++
+        if ($retryCount -gt 1) {
+            Write-Log "Gemini yeniden deneniyor ($retryCount / $maxRetries)..."
+            Start-Sleep -Seconds 3
+        }
 
-        $env:GEMINI_MODEL = "gemini-3-pro"
+        try {
+            $oldEAP = $ErrorActionPreference
+            $ErrorActionPreference = "Continue"
 
-        Write-Log "Gemini cagiriliyor (model=gemini-3-pro, prompt=$($tempPrompt))..."
-        $executorOutput = & $geminiPath -m gemini-3-pro -p $promptText 2>&1
+            $env:GEMINI_MODEL = "gemini-3-pro"
 
-        $exitCode = $LASTEXITCODE
-        $ErrorActionPreference = $oldEAP
-        Write-Log "Gemini tamamlandi. ExitCode=$exitCode Cikti uzunlugu=$($executorOutput.Count) satir"
+            Write-Log "Gemini cagiriliyor (model=gemini-3-pro, iteration=$iteration, deneme=$retryCount)..."
 
-        $executorOutput | Set-Content $outputPath -Encoding UTF8
-    }
-    catch {
-        $exitCode = 1
-        $executorOutput = $_ | Out-String
-        $executorOutput | Set-Content $outputPath -Encoding UTF8
+            # Prompt'u stdin'den pipe et — -p arguman limiti yok, ExitCode=42 olmaz
+            $executorOutput = Get-Content $tempPrompt -Raw -Encoding UTF8 | & $geminiPath -m gemini-3-pro 2>&1
+
+            $exitCode = $LASTEXITCODE
+            $ErrorActionPreference = $oldEAP
+
+            Write-Log "Gemini tamamlandi. ExitCode=$exitCode Cikti uzunlugu=$($executorOutput.Count) satir"
+
+            if ($exitCode -eq 0) {
+                $executorOutput | Set-Content $outputPath -Encoding UTF8
+                break
+            }
+
+            # Kota hatasi kontrolu — farkli hesap deneyecek, bekle
+            $outStr = $executorOutput | Out-String
+            if ($outStr -match "QUOTA_EXHAUSTED|429|rate.limit|exhausted") {
+                Write-Log "Kota hatasi alindi, 5 saniye bekleniyor..."
+                Start-Sleep -Seconds 5
+            }
+
+            $executorOutput | Set-Content $outputPath -Encoding UTF8
+        }
+        catch {
+            $exitCode = 1
+            $executorOutput = $_ | Out-String
+            $executorOutput | Set-Content $outputPath -Encoding UTF8
+            Write-Log "Gemini exception: $executorOutput"
+        }
     }
 
     # result.txt'e yaz (her iterasyonda üzerine yaz)

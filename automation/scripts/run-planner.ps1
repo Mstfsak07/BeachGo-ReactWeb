@@ -23,6 +23,41 @@ function Set-SP {
     else { $Obj | Add-Member -NotePropertyName $Name -NotePropertyValue $Value -Force }
 }
 
+function Invoke-ClaudeAPI {
+    param([string]$Prompt, [string]$SystemPrompt = "")
+
+    $apiKey  = $env:ANTHROPIC_API_KEY
+    $baseUrl = if ($env:ANTHROPIC_BASE_URL) { $env:ANTHROPIC_BASE_URL.TrimEnd('/') } else { "https://api.anthropic.com" }
+
+    $bodyObj = [ordered]@{
+        model      = "claude-sonnet-4-6"
+        max_tokens = 8096
+        messages   = @(@{ role = "user"; content = $Prompt })
+    }
+    if (-not [string]::IsNullOrWhiteSpace($SystemPrompt)) {
+        $bodyObj["system"] = $SystemPrompt
+    }
+
+    $bodyJson = $bodyObj | ConvertTo-Json -Depth 10 -Compress
+    $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($bodyJson)
+
+    $headers = @{
+        "x-api-key"         = $apiKey
+        "anthropic-version" = "2023-06-01"
+        "content-type"      = "application/json"
+    }
+
+    Write-Log "Anthropic API cagrisi: $baseUrl/v1/messages (model=claude-sonnet-4-6)"
+
+    $response = Invoke-RestMethod `
+        -Uri     "$baseUrl/v1/messages" `
+        -Method  POST `
+        -Headers $headers `
+        -Body    $bodyBytes
+
+    return $response.content[0].text
+}
+
 $lockFile = Join-Path $queueDir "planner.lock"
 
 if (Test-Path $lockFile) {
@@ -38,10 +73,10 @@ if (Test-Path $lockFile) {
 New-Item -ItemType File -Path $lockFile -Force | Out-Null
 
 try {
-    $statePath   = Join-Path $queueDir "state.json"
-    $taskPath    = Join-Path $queueDir "task.txt"
-    $resultPath  = Join-Path $queueDir "result.txt"
-    $planPath    = Join-Path $queueDir "plan.txt"
+    $statePath    = Join-Path $queueDir "state.json"
+    $taskPath     = Join-Path $queueDir "task.txt"
+    $resultPath   = Join-Path $queueDir "result.txt"
+    $planPath     = Join-Path $queueDir "plan.txt"
     $instructPath = Join-Path $queueDir "instruction.txt"
     $historyFile  = Join-Path $queueDir "history.log"
 
@@ -61,18 +96,15 @@ try {
     $taskText = Get-Content $taskPath -Raw -Encoding UTF8
     if ([string]::IsNullOrWhiteSpace($taskText)) { throw "task.txt bos." }
 
-    # Context toplama
-    $resultText  = if (Test-Path $resultPath)  { Get-Content $resultPath  -Raw -Encoding UTF8 } else { "(henuz yok)" }
-    $instructText = if (Test-Path $instructPath) { Get-Content $instructPath -Raw -Encoding UTF8 } else { "(henuz yok)" }
+    $resultText   = if (Test-Path $resultPath)   { Get-Content $resultPath   -Raw -Encoding UTF8 } else { "(henuz yok)" }
+    $instructText = if (Test-Path $instructPath)  { Get-Content $instructPath -Raw -Encoding UTF8 } else { "(henuz yok)" }
 
-    # Git diff ozeti
     $repoRoot = Split-Path $automationDir -Parent
     $gitDiff  = try {
         $d = & git -C $repoRoot diff --stat HEAD 2>&1 | Out-String
         if ([string]::IsNullOrWhiteSpace($d)) { "Git diff temiz." } else { $d.Trim() }
     } catch { "Git diff alinamadi." }
 
-    # Son history (son 30 satir)
     $historySnippet = if (Test-Path $historyFile) {
         $lines = Get-Content $historyFile -Encoding UTF8 -ErrorAction SilentlyContinue
         if ($lines.Count -gt 30) { $lines[-30..-1] -join "`n" } else { $lines -join "`n" }
@@ -94,8 +126,6 @@ try {
     $systemPrompt = Get-Content $systemPromptPath -Raw -Encoding UTF8
 
     $fullPrompt = @"
-$systemPrompt
-
 --- MEVCUT DURUM ---
 Iteration: $iteration / $maxIter
 Scope: $scope
@@ -119,78 +149,45 @@ $historySnippet
 "@
 
     Write-Log "Planner baslatiliyor (iteration=$iteration, scope=$scope)..."
-    Write-Log "Claude Sonnet 4.6 cagiriliyor..."
 
-    $oldEAP = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
+    $env:ANTHROPIC_API_KEY = $env:BEACHGO_ANTHROPIC_KEY
+    $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:8045"
+    $env:CLAUDE_CONFIG_DIR  = "$env:USERPROFILE\.claude-antigravity"
 
-    $env:ANTHROPIC_API_KEY="sk-1ea2056fc84442c59efcd5fd6fe30f5b"
-    $env:ANTHROPIC_BASE_URL="http://127.0.0.1:8045"
-    $env:CLAUDE_CONFIG_DIR="$env:USERPROFILE\.claude-antigravity"
-
-    # Git/MSYS ortam degiskenlerini temizle — bash spawn engelle
-    Remove-Item Env:MSYSTEM      -ErrorAction SilentlyContinue
-    Remove-Item Env:CHERE_INVOKING -ErrorAction SilentlyContinue
-    Remove-Item Env:MSYS         -ErrorAction SilentlyContinue
-    Remove-Item Env:MSYS2_PATH_TYPE -ErrorAction SilentlyContinue
-    $env:SHELL = ""
-    $env:TERM  = "dumb"
-    $env:PATH = (($env:PATH -split ';') | Where-Object {
-        $_ -notmatch 'Git\\usr\\bin' -and
-        $_ -notmatch 'Git\\bin' -and
-        $_ -notmatch 'msys64' -and
-        $_ -notmatch 'cygwin'
-    }) -join ';'
-
-    # Node ve cli.js yollarini bul — sabit konum, wrapper detection yok
-    $nodePath  = (Get-Command node.exe  -ErrorAction Stop).Source
-    $claudeCmd = (Get-Command claude.cmd -ErrorAction Stop).Source
-    $claudeDir = Split-Path $claudeCmd -Parent
-    $claudeJs  = Join-Path $claudeDir "node_modules\@anthropic-ai\claude-code\cli.js"
-
-    if (-not (Test-Path $claudeJs)) {
-        throw "cli.js bulunamadi: $claudeJs"
-    }
-
-    Write-Log "NODE PATH: $nodePath"
-    Write-Log "CLAUDE JS: $claudeJs"
-    Write-Log "RUN CMD: node $claudeJs --model claude-sonnet-4-6 -p <prompt>"
+    Remove-Item Env:MSYSTEM -ErrorAction SilentlyContinue
+    Remove-Item Env:MSYS    -ErrorAction SilentlyContinue
 
     $maxRetries = 10
     $retryCount = 0
-    $success = $false
+    $success    = $false
     $plannerOutput = ""
 
     while ($retryCount -lt $maxRetries -and -not $success) {
         $retryCount++
-        if ($retryCount -gt 1) {
-            Write-Log "Claude cagiriliyor (Deneme $retryCount / $maxRetries)..."
-        }
+        if ($retryCount -gt 1) { Write-Log "Yeniden deneniyor ($retryCount / $maxRetries)..." }
 
-        $plannerOutputRaw = & $nodePath $claudeJs --model claude-sonnet-4-6 -p $fullPrompt 2>&1
-
-        # Sadece string satirlari al, ErrorRecord nesnelerini at
-        $plannerOutput = ($plannerOutputRaw | Where-Object { $_ -is [string] }) -join "`n"
-
-        if ($LASTEXITCODE -eq 0 -and (-not [string]::IsNullOrWhiteSpace($plannerOutput))) {
-            $success = $true
-        } else {
-            Write-Log "Claude cagrisi basarisiz oldu. ExitCode=$LASTEXITCODE (Deneme $retryCount / $maxRetries)"
+        try {
+            $plannerOutput = Invoke-ClaudeAPI -Prompt $fullPrompt -SystemPrompt $systemPrompt
+            if (-not [string]::IsNullOrWhiteSpace($plannerOutput)) {
+                $success = $true
+            } else {
+                Write-Log "API bos cikti dondu. (Deneme $retryCount / $maxRetries)"
+            }
+        } catch {
+            Write-Log "API hatasi: $_ (Deneme $retryCount / $maxRetries)"
         }
     }
-
-    $ErrorActionPreference = $oldEAP
 
     if (-not $success) {
-        throw "Planner Claude hatasi (10 deneme basarisiz oldu). ExitCode=$LASTEXITCODE`n$plannerOutput"
+        throw "Planner Claude API hatasi (10 deneme basarisiz oldu).`n$plannerOutput"
     }
 
-    $plannerOutput | Set-Content $planPath    -Encoding UTF8
-    $plannerOutput | Set-Content $instructPath -Encoding UTF8
+    $plannerOutput | Set-Content $planPath     -Encoding UTF8
+    $plannerOutput | Set-Content $instructPath  -Encoding UTF8
 
-    $planContent = $plannerOutput
-    if ([string]::IsNullOrWhiteSpace($planContent)) { throw "Claude bos cikti dondu." }
-    if ($planContent -imatch "SYSTEM_COMPLETE") {
+    if ([string]::IsNullOrWhiteSpace($plannerOutput)) { throw "Claude bos cikti dondu." }
+
+    if ($plannerOutput -imatch "SYSTEM_COMPLETE") {
         Set-SP $stateObj "status"      "done"
         Set-SP $stateObj "is_complete" $true
         Write-Log "Gorev tamamlandi sinyali alindi."

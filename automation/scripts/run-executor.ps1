@@ -101,9 +101,8 @@ Final response requirements:
 
         $env:GEMINI_MODEL = "gemini-3-pro"
 
-        # Prompt'u stdin üzerinden geç — komut satırı uzunluk sınırını aşmamak için
-        Write-Log "Gemini cagiriliyor (stdin, model=gemini-3-pro, prompt=$($tempPrompt))..."
-        $executorOutput = Get-Content $tempPrompt -Raw -Encoding UTF8 | & $geminiPath -m gemini-3-pro 2>&1
+        Write-Log "Gemini cagiriliyor (model=gemini-3-pro, prompt=$($tempPrompt))..."
+        $executorOutput = & $geminiPath -m gemini-3-pro -p $promptText 2>&1
 
         $exitCode = $LASTEXITCODE
         $ErrorActionPreference = $oldEAP

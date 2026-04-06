@@ -119,22 +119,43 @@ $historySnippet
 "@
 
     Write-Log "Planner baslatiliyor (iteration=$iteration, scope=$scope)..."
-
     Write-Log "Claude Sonnet 4.6 cagiriliyor..."
 
     $oldEAP = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
 
-    $tempPrompt = Join-Path $env:TEMP "planner-prompt-$iteration.txt"
-    $fullPrompt | Set-Content $tempPrompt -Encoding UTF8
-
-    $plannerPromptText = $fullPrompt
-    $planFile = $planPath
-     
     $env:ANTHROPIC_API_KEY="sk-1ea2056fc84442c59efcd5fd6fe30f5b"
     $env:ANTHROPIC_BASE_URL="http://127.0.0.1:8045"
     $env:CLAUDE_CONFIG_DIR="$env:USERPROFILE\.claude-antigravity"
-    
+
+    # Git/MSYS ortam degiskenlerini temizle — bash spawn engelle
+    Remove-Item Env:MSYSTEM      -ErrorAction SilentlyContinue
+    Remove-Item Env:CHERE_INVOKING -ErrorAction SilentlyContinue
+    Remove-Item Env:MSYS         -ErrorAction SilentlyContinue
+    Remove-Item Env:MSYS2_PATH_TYPE -ErrorAction SilentlyContinue
+    $env:SHELL = ""
+    $env:TERM  = "dumb"
+    $env:PATH = (($env:PATH -split ';') | Where-Object {
+        $_ -notmatch 'Git\\usr\\bin' -and
+        $_ -notmatch 'Git\\bin' -and
+        $_ -notmatch 'msys64' -and
+        $_ -notmatch 'cygwin'
+    }) -join ';'
+
+    # Node ve cli.js yollarini bul — sabit konum, wrapper detection yok
+    $nodePath  = (Get-Command node.exe  -ErrorAction Stop).Source
+    $claudeCmd = (Get-Command claude.cmd -ErrorAction Stop).Source
+    $claudeDir = Split-Path $claudeCmd -Parent
+    $claudeJs  = Join-Path $claudeDir "node_modules\@anthropic-ai\claude-code\cli.js"
+
+    if (-not (Test-Path $claudeJs)) {
+        throw "cli.js bulunamadi: $claudeJs"
+    }
+
+    Write-Log "NODE PATH: $nodePath"
+    Write-Log "CLAUDE JS: $claudeJs"
+    Write-Log "RUN CMD: node $claudeJs --model claude-sonnet-4-6 -p <prompt>"
+
     $maxRetries = 10
     $retryCount = 0
     $success = $false
@@ -146,75 +167,9 @@ $historySnippet
             Write-Log "Claude cagiriliyor (Deneme $retryCount / $maxRetries)..."
         }
 
-        $tempInline = Join-Path $env:TEMP "claude-inline.txt"
-        $fullPrompt | Set-Content $tempInline -Encoding UTF8
+        $plannerOutputRaw = & $nodePath $claudeJs --model claude-sonnet-4-6 -p $fullPrompt 2>&1
 
-        Remove-Item Env:MSYSTEM -ErrorAction SilentlyContinue
-        Remove-Item Env:CHERE_INVOKING -ErrorAction SilentlyContinue
-        Remove-Item Env:MSYS -ErrorAction SilentlyContinue
-        Remove-Item Env:MSYS2_PATH_TYPE -ErrorAction SilentlyContinue
-        $env:SHELL = ""
-        $env:TERM  = "dumb"
-        $env:PATH = (($env:PATH -split ';') | Where-Object {
-            $_ -notmatch 'Git\\usr\\bin' -and
-            $_ -notmatch 'Git\\bin' -and
-            $_ -notmatch 'msys64' -and
-            $_ -notmatch 'cygwin'
-        }) -join ';'
-        Write-Host "CLAUDE PATH:"
-        where.exe claude
-        Write-Host "BASH PATH:"
-        where.exe bash
-        Write-Host "COMSPEC=$env:ComSpec"
-        Write-Host "SHELL=$env:SHELL"
-        # claude.cmd yerine dogrudan node ile cagir (bash fork hatasini atar)
-        $nodePath = (Get-Command node.exe -ErrorAction Stop).Source
-        $claudeCmd = (Get-Command claude.cmd -ErrorAction Stop).Source
-        $claudeDir = Split-Path $claudeCmd -Parent
-
-        # claude.cmd icindeki JS entrypoint'i bul ve %~dp0 / %dp0% literal'lerini gercek path'e cevir
-        $claudeJs = $null
-        $claudeCmdContent = Get-Content $claudeCmd -Raw -ErrorAction SilentlyContinue
-        $rawMatch = $null
-        if ($claudeCmdContent -match '"([^"]+cli\.js)"') {
-            $rawMatch = $matches[1]
-        } elseif ($claudeCmdContent -match '(?m)node\s+"?([^\s"]+cli\.js)"?') {
-            $rawMatch = $matches[1]
-        }
-        if ($rawMatch) {
-            # %~dp0 veya %dp0% gibi CMD degiskenlerini gercek klasorle degistir
-            $expanded = $rawMatch -replace '%~dp0\\?', '' -replace '%dp0%\\?', ''
-            $expanded = $expanded.TrimStart('\', '/')
-            if ([System.IO.Path]::IsPathRooted($expanded)) {
-                $claudeJs = $expanded
-            } else {
-                $claudeJs = Join-Path $claudeDir $expanded
-            }
-        }
-        # Fallback: claude.cmd klasorunde node_modules ara
-        if (-not $claudeJs -or -not (Test-Path $claudeJs)) {
-            $candidateJs = Join-Path $claudeDir "node_modules\@anthropic-ai\claude-code\cli.js"
-            if (Test-Path $candidateJs) { $claudeJs = $candidateJs }
-        }
-        # Fallback 2: node.exe klasorunde ara
-        if (-not $claudeJs -or -not (Test-Path $claudeJs)) {
-            $nodeDir = Split-Path $nodePath -Parent
-            $candidateJs = Join-Path $nodeDir "node_modules\@anthropic-ai\claude-code\cli.js"
-            if (Test-Path $candidateJs) { $claudeJs = $candidateJs }
-        }
-
-        if ($claudeJs -and (Test-Path $claudeJs)) {
-            Write-Host "CLAUDE JS: $claudeJs"
-            $plannerOutputRaw = Get-Content $tempInline -Raw -Encoding UTF8 | & $nodePath $claudeJs --model claude-sonnet-4-6 -p 2>&1
-            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($plannerOutputRaw | Where-Object { $_ -is [string] }) -join "")) {
-                Write-Log "node+cli.js cagrisi basarisiz. ExitCode=$LASTEXITCODE Cikti: $($plannerOutputRaw | Out-String)"
-            }
-        } else {
-            Write-Log "cli.js bulunamadi, claude.cmd fallback deneniyor. claudeDir=$claudeDir rawMatch=$rawMatch"
-            $plannerOutputRaw = Get-Content $tempInline -Raw -Encoding UTF8 | & $claudeCmd --model claude-sonnet-4-6 -p 2>&1
-        }
-        
-        # Filter out stderr records
+        # Sadece string satirlari al, ErrorRecord nesnelerini at
         $plannerOutput = ($plannerOutputRaw | Where-Object { $_ -is [string] }) -join "`n"
 
         if ($LASTEXITCODE -eq 0 -and (-not [string]::IsNullOrWhiteSpace($plannerOutput))) {
@@ -224,19 +179,17 @@ $historySnippet
         }
     }
 
+    $ErrorActionPreference = $oldEAP
+
     if (-not $success) {
         throw "Planner Claude hatasi (10 deneme basarisiz oldu). ExitCode=$LASTEXITCODE`n$plannerOutput"
     }
-    
-    $plannerOutput | Set-Content $planFile -Encoding UTF8
-    
-    $ErrorActionPreference = $oldEAP
 
-    # Instruction dosyasina da kaydet (executor icin)
+    $plannerOutput | Set-Content $planPath    -Encoding UTF8
     $plannerOutput | Set-Content $instructPath -Encoding UTF8
 
     $planContent = $plannerOutput
-    if ([string]::IsNullOrWhiteSpace($planContent)) { throw "Gemini bos cikti dondu." }
+    if ([string]::IsNullOrWhiteSpace($planContent)) { throw "Claude bos cikti dondu." }
     if ($planContent -imatch "SYSTEM_COMPLETE") {
         Set-SP $stateObj "status"      "done"
         Set-SP $stateObj "is_complete" $true

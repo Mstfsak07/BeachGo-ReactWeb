@@ -109,12 +109,12 @@ Final response requirements:
 set GEMINI_MODEL=gemini-3-pro
 set GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8045
 set GEMINI_API_KEY=sk-0392f1a407974e89912d8e22daca8d84
-type "$tempPrompt" | gemini --approval-mode yolo --model gemini-3-pro > "$tempOutput" 2>&1
+type "$tempPrompt" | gemini --approval-mode yolo --model gemini-3-flash > "$tempOutput" 2>&1
 exit %ERRORLEVEL%
 "@
         $batContent | Set-Content $tempBat -Encoding ASCII
 
-        Write-Log "Gemini cagiriliyor (model=gemini-3-pro, yolo mode, iteration=$iteration, deneme=$retryCount)..."
+        Write-Log "Gemini cagiriliyor (model=gemini-3-flash, yolo mode, iteration=$iteration, deneme=$retryCount)..."
 
         try {
             $proc = Start-Process -FilePath "cmd.exe" `

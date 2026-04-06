@@ -1,149 +1,65 @@
-import React, {
-    createContext, useContext, useState,
-    useEffect, useCallback, useRef
-} from 'react';
-import api, { setAccessToken, clearAccessToken, refreshAccessToken } from '../api/axios';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import api from '../api/axios';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
-    const refreshTimerRef = useRef(null);
 
-    // ── Session temizleme ───────────────────────────────────────────────────
-    const clearSession = useCallback(() => {
-        clearAccessToken();
+    const logout = useCallback(() => {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         setUser(null);
-        if (refreshTimerRef.current) {
-            clearTimeout(refreshTimerRef.current);
-            refreshTimerRef.current = null;
-        }
+        window.location.href = '/login';
     }, []);
 
-    // ── Proaktif refresh zamanlayıcısı ─────────────────────────────────────
-    const scheduleProactiveRefresh = useCallback((expiryISO) => {
-        if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-        if (!expiryISO) return;
-
-        const expiry = new Date(expiryISO).getTime();
-        const now = Date.now();
-        // Expiry'den 1 dk önce veya 30 saniye sonra (hangisi mantıklıysa)
-        // Eğer expiry çok yakınsa hemen yapma, biraz bekle.
-        const delay = Math.max(expiry - now - 60_000, 10_000); 
-
-        if (delay > 2147483647) return; // setTimeout sınırı
-
-        refreshTimerRef.current = setTimeout(async () => {
-            try {
-                const result = await refreshAccessToken();
-                scheduleProactiveRefresh(result.accessTokenExpiry);
-            } catch (err) {
-                // Proactive refresh failed — force logout
-                // Sessizce logout yapabiliriz veya bir sonraki 401'i bekleyebiliriz
-                // Burada logout yapmak en güvenlisi
-                clearSession();
-            }
-        }, delay);
-    }, [clearSession]);
-
-    // ── Logout ─────────────────────────────────────────────────────────────
-    const logout = useCallback(async () => {
-        try {
-            await api.post('/Auth/logout', {});
-        } catch (err) {
-            // Logout request failed — clear session anyway
-        } finally {
-            clearSession();
-        }
-    }, [clearSession]);
-
-    // ── Login ──────────────────────────────────────────────────────────────
-    const login = useCallback(async (email, password) => {
-        setLoading(true);
+    const login = async (email, password) => {
         try {
             const response = await api.post('/Auth/login', { email, password });
-            const data = response.data?.data;
+            const { accessToken, refreshToken, data } = response.data;
+            
+            // API response yapısı backend'e göre değişebilir, genellikle data içinde user bilgisi olur
+            const userData = data || response.data.user || { email, role: response.data.role };
 
-            if (!data?.accessToken) throw new Error('Sunucudan geçerli bir oturum alınamadı.');
-
-            setAccessToken(data.accessToken);
-
-            const userData = { email: data.email, role: data.role };
+            localStorage.setItem('accessToken', accessToken);
+            localStorage.setItem('refreshToken', refreshToken);
             localStorage.setItem('user', JSON.stringify(userData));
+            
             setUser(userData);
-
-            scheduleProactiveRefresh(data.accessTokenExpiry);
-            return data;
-        } finally {
-            setLoading(false);
+            return response.data;
+        } catch (error) {
+            throw error;
         }
-    }, [scheduleProactiveRefresh]);
+    };
 
-    // ── Register ───────────────────────────────────────────────────────────
-    const register = useCallback(async (username, email, password) => {
-        setLoading(true);
+    const register = async (name, email, password) => {
         try {
-            await api.post('/Auth/register-user', { username, email, password });
-            // Login after register
-            return await login(email, password);
-        } finally {
-            setLoading(false);
+            const response = await api.post('/Auth/register', { name, email, password });
+            return response.data;
+        } catch (error) {
+            throw error;
         }
-    }, [login]);
-
-    // ── Silent Refresh: sayfa açılışında oturum canlandırma ──────────────
-    const silentRefresh = useCallback(async () => {
-        try {
-            const result = await refreshAccessToken();
-            const userData = { email: result.email, role: result.role };
-            localStorage.setItem('user', JSON.stringify(userData));
-            setUser(userData);
-
-            scheduleProactiveRefresh(result.accessTokenExpiry);
-        } catch (err) {
-            // Kullanıcı login değilse veya cookie yoksa buraya düşer
-            // No active session — user not logged in
-            clearSession();
-        } finally {
-            setLoading(false);
-        }
-    }, [clearSession, scheduleProactiveRefresh]);
+    };
 
     useEffect(() => {
-        const initializeAuth = async () => {
-            const storedUserData = localStorage.getItem('user');
-            if (storedUserData) {
+        const initializeAuth = () => {
+            const storedUser = localStorage.getItem('user');
+            const accessToken = localStorage.getItem('accessToken');
+            
+            if (storedUser && accessToken) {
                 try {
-                    const parsedUser = JSON.parse(storedUserData);
-                    setUser(parsedUser); // Set user immediately for UI consistency
+                    setUser(JSON.parse(storedUser));
                 } catch (error) {
-                    // Corrupt stored user data — clear session
-                    clearSession(); // Clear session if stored user data is corrupt
+                    logout();
                 }
             }
-
-            // Always try to silent refresh to validate/refresh the token
-            await silentRefresh();
+            setLoading(false);
         };
-        
+
         initializeAuth();
-
-        const handleAuthLogout = () => {
-            clearSession();
-            // Sadece login sayfasında değilsek yönlendir
-            if (!window.location.pathname.includes('/login')) {
-                window.location.href = '/login';
-            }
-        };
-
-        window.addEventListener('auth:logout', handleAuthLogout);
-        return () => {
-            window.removeEventListener('auth:logout', handleAuthLogout);
-            if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-        };
-    }, [silentRefresh, clearSession]);
+    }, [logout]);
 
     const value = {
         user,
@@ -151,18 +67,20 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!user,
         login,
         logout,
-        register,
+        register
     };
 
     return (
         <AuthContext.Provider value={value}>
-            {!loading ? children : null}
+            {children}
         </AuthContext.Provider>
     );
 };
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (!context) throw new Error('useAuth must be used within AuthProvider');
+    if (!context) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
     return context;
 };

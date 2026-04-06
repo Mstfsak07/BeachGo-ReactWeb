@@ -1,4 +1,9 @@
-﻿
+﻿You have access to a browser via the BrowserMCP tool. 
+After making code changes:
+1. Use browser_navigate to open http://localhost:3000
+2. Check the page visually for errors
+3. Test the specific feature you just implemented
+4. Report what you saw in the browser
 
 Task:
 
@@ -7,159 +12,116 @@ Task:
 ## Amaç
 Proje analizinde tespit edilen en kritik eksikler olan Authentication akışındaki güvenlik açıklarını, eksik token yönetimini ve temel auth sayfalarındaki sorunları düzelt.
 
-## Ön Analiz - Okunacak Dosyalar
-
-Executor önce şu dosyaları okusun ve mevcut durumu tespit etsin:
+## Okunacak Dosyalar (Önce bunları oku)
 
 1. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
 2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx`
 3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Login.jsx`
 4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Register.jsx`
 5. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\App.js`
-6. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\PrivateRoute.jsx` (varsa)
-7. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\Navbar.jsx` (varsa)
-
-Eğer dosyalar farklı uzantıda (.js, .tsx) ise o uzantıyla dene.
+6. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\PrivateRoute.jsx` (yoksa `.js` uzantısını dene)
+7. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\Navbar.jsx` (yoksa `.js` uzantısını dene)
 
 ## Yapılacak Değişiklikler
 
-### 1. `src/api/axios.js` - Düzeltme ve İyileştirme
+### 1. `src/api/axios.js`
 
-Mevcut dosyayı oku, ardından şu sorunları düzelt:
+Mevcut dosyayı oku, sonra şu yapıya göre güncelle:
 
-**Eklenecekler:**
-- `refreshAccessToken` fonksiyonunu düzgün şekilde `export` et (şu an export edilmiyor)
-- Request interceptor: Her istekte localStorage'dan token alıp Authorization header'a ekle
-- Response interceptor: 401 gelirse token refresh dene, refresh de başarısız olursa logout yap
-- Token expire kontrolü (JWT decode veya basit zaman kontrolü)
-- baseURL'i environment variable'dan oku: `process.env.REACT_APP_API_URL || 'http://localhost:5000/api'`
+- `baseURL`: `process.env.REACT_APP_API_URL || 'http://localhost:5000/api'`
+- `refreshAccessToken` fonksiyonu: `export` edilmeli
+- Request interceptor: localStorage'dan `accessToken` alıp `Authorization: Bearer <token>` header ekle
+- Response interceptor: 401 gelirse `refreshAccessToken` çağır, yeni token ile isteği tekrarla; refresh başarısızsa localStorage temizle ve `/login`'e yönlendir
 
-**Örnek yapı:**
-```
-- axiosInstance (default export)
-- refreshAccessToken (named export)
-- Interceptor: request → token ekle
-- Interceptor: response → 401 ise refresh → retry → fail ise logout
-```
+### 2. `src/context/AuthContext.jsx`
 
-### 2. `src/context/AuthContext.jsx` - Güçlendirme
+Mevcut dosyayı oku, sonra şu state ve fonksiyonların var olduğundan emin ol:
 
-Mevcut dosyayı oku, ardından şu eksikleri ekle:
+- `user` state (null başlangıç)
+- `loading` state (true başlangıç, token kontrolü bitince false)
+- `isAuthenticated` = `user !== null`
+- `login(email, password)`: API çağrısı yap, `accessToken` + `refreshToken` localStorage'a kaydet, `user` set et
+- `logout()`: localStorage'ı temizle, `user` null yap, `/login`'e yönlendir
+- `register(name, email, password)`: API çağrısı yap
+- `useEffect`: Uygulama başında localStorage'daki token kontrol et, geçerliyse user set et
+- localStorage key'leri: `accessToken`, `refreshToken`, `user`
 
-**Eklenecekler:**
-- `loading` state: Uygulama başında token kontrolü sırasında loading=true olsun, bittikten sonra false
-- `isAuthenticated` computed değeri veya state: `user !== null` kontrolü
-- `login` fonksiyonu: API'dan gelen `accessToken` ve `refreshToken`'ı localStorage'a kaydet, user state'ini set et
-- `logout` fonksiyonu: localStorage'ı temizle, user state'ini null yap, `/login`'e yönlendir
-- `register` fonksiyonu: API çağrısı yap, başarılıysa login yap veya doğrulama mesajı göster
-- useEffect: Uygulama başında localStorage'daki token'ı kontrol et, geçerliyse user'ı set et
-- Token yenileme: refresh token varsa accessToken yenile
+### 3. `src/pages/Login.jsx`
 
-**Korunacaklar:**
-- Mevcut çalışan mantığı bozmadan ekle
+Mevcut dosyayı oku, sonra şu eklemeleri yap:
 
-### 3. `src/pages/Login.jsx` - Form İyileştirme
-
-Mevcut dosyayı oku, ardından şu eksikleri ekle:
-
-**Eklenecekler:**
-- Form validation: email format kontrolü, password en az 6 karakter
-- Loading state: `isLoading` → submit sırasında buton disabled + spinner
-- Error state: API hatasını kullanıcıya göster (kırmızı alert kutusu)
-- "Şifremi Unuttum" linki → `/forgot-password` route'una (sayfa sonradan yapılacak, link ekle)
-- Başarılı login sonrası `navigate('/home')` veya `navigate(from, { replace: true })` ile önceki sayfaya dön
+- Form validation: email format + password min 6 karakter
+- `isLoading` state: submit sırasında buton disabled
+- `error` state: API hatasını kırmızı alert kutusunda göster
+- "Sifremi Unuttum" linki: `/forgot-password`
+- Basarili login: `navigate('/home')` veya `navigate(from, { replace: true })`
 - AuthContext'ten `login` fonksiyonunu kullan
 
-### 4. `src/pages/Register.jsx` - Form İyileştirme
+### 4. `src/pages/Register.jsx`
 
-Mevcut dosyayı oku, ardından şu eksikleri ekle:
+Mevcut dosyayı oku, sonra şu eklemeleri yap:
 
-**Eklenecekler:**
-- Form validation: Ad/soyad zorunlu, email format, password en az 6 karakter, şifre tekrar eşleşme kontrolü
-- Loading state: submit sırasında buton disabled + "Kaydediliyor..." yazısı
-- Error state: API hatasını kullanıcıya göster
-- Başarılı kayıt sonrası: "E-posta doğrulama gönderdik" mesajı göster
-- AuthContext'ten `register` fonksiyonunu kullan
+- Validation: ad/soyad zorunlu, email format, password min 6, sifre tekrar eslesmesi
+- `isLoading` state: submit sırasında "Kaydediliyor..." goster
+- `error` state: API hataları
+- Basarili kayit: "E-posta dogrulama linki gonderildi" mesaji
 
-### 5. `src/components/PrivateRoute.jsx` - Eksikse Oluştur
+### 5. `src/components/PrivateRoute.jsx`
 
-Dosya yoksa yeni oluştur, varsa gözden geçir:
+Dosya yoksa olustur, varsa gozden gecir:
 
-**Amaç:** Giriş yapmamış kullanıcıları `/login`'e yönlendir. Login sonrası geri dön.
-
-**İçerik:**
 - AuthContext'ten `user` ve `loading` al
-- `loading` true ise: spinner veya boş div döndür
-- `user` null ise: `<Navigate to="/login" state={{ from: location }} replace />`
-- User varsa: `<Outlet />` döndür
+- `loading === true`: spinner veya `<div>Yukleniyor...</div>` dondur
+- `user === null`: `<Navigate to="/login" state={{ from: location }} replace />` dondur
+- User varsa: `<Outlet />` dondur
 
-### 6. `src/components/Navbar.jsx` - Auth Durumuna Göre Menü
+### 6. `src/components/Navbar.jsx`
 
-Mevcut dosyayı oku, ardından:
+Mevcut dosyayı oku, sonra:
 
-**Eklenecekler:**
-- Giriş yapmamışsa: "Giriş Yap" ve "Kayıt Ol" butonları göster
-- Giriş yapmışsa: Kullanıcı adı/foto, "Profilim", "Rezervasyonlarım", "Favorilerim", "Çıkış" göster
+- `user` null ise: "Giris Yap" ve "Kayit Ol" butonları goster
+- `user` varsa: kullanici adi, "Profilim", "Rezervasyonlarim", "Favorilerim", "Cikis" goster
 - AuthContext'ten `user` ve `logout` al
-- Mobil için hamburger menü (mevcut yapıya göre)
 
-### 7. `src/App.js` - Route Yapısını Düzelt
+### 7. `src/App.js`
 
-Mevcut dosyayı oku, ardından:
+Mevcut dosyayı oku, sonra route yapısını duzenle:
 
-**Eklenecekler:**
-- PrivateRoute wrapper ile korunan route'lar:
-  - `/profile` → Profile sayfası (yoksa placeholder)
-  - `/reservations` → Reservations sayfası (yoksa placeholder)
-  - `/favorites` → Favorites sayfası (yoksa placeholder)
-- Public route'lar:
-  - `/` → Home
-  - `/login` → Login
-  - `/register` → Register
-  - `/beaches/:id` → BeachDetail
-  - `/forgot-password` → ForgotPassword (placeholder sayfa)
-- AuthContext'ten gelen `loading` state ile LoadingSpinner göster
+- Public route'lar: `/`, `/login`, `/register`, `/beaches/:id`, `/forgot-password`
+- Korumalı route'lar (PrivateRoute ile sarılı): `/profile`, `/reservations`, `/favorites`
+- AuthContext `loading` true iken `<div>Yukleniyor...</div>` goster
 
-## Dosya Oluşturma/Düzenleme Sırası
+## Uygulama Sırası
 
-1. `src/api/axios.js` → Düzenle
-2. `src/context/AuthContext.jsx` → Düzenle
-3. `src/components/PrivateRoute.jsx` → Oluştur veya düzenle
-4. `src/pages/Login.jsx` → Düzenle
-5. `src/pages/Register.jsx` → Düzenle
-6. `src/components/Navbar.jsx` → Düzenle
-7. `src/App.js` → Düzenle
+1. `src/api/axios.js`
+2. `src/context/AuthContext.jsx`
+3. `src/components/PrivateRoute.jsx`
+4. `src/pages/Login.jsx`
+5. `src/pages/Register.jsx`
+6. `src/components/Navbar.jsx`
+7. `src/App.js`
 
 ## Kritik Kurallar
 
-- Hiçbir sayfayı silme, sadece iyileştir
-- Mevcut çalışan kodları bozmadan ekle
-- Yoksa placeholder sayfalar için basit `<div>Yakında</div>` yeterli
-- Her dosyayı önce oku, sonra yaz
-- Türkçe karakterleri doğru kullan (UTF-8)
+- Hiçbir sayfayı silme, sadece iyilestir
+- Mevcut calisan kodu bozmadan ekle
+- Eksik sayfalar icin basit placeholder yeterli (`<div>Yakindan</div>`)
+- Her dosyayı once oku, sonra yaz
 - localStorage key isimleri: `accessToken`, `refreshToken`, `user`
 - API endpoint'leri: `/auth/login`, `/auth/register`, `/auth/refresh`
 
-## Başarı Kriterleri
+## Basari Kriterleri
 
-- [ ] axios.js'de refreshAccessToken export ediliyor
-- [ ] axios.js'de request/response interceptor var
-- [ ] AuthContext'te loading, user, login, logout, register var
-- [ ] Login formunda validation ve hata mesajı var
-- [ ] Register formunda validation ve hata mesajı var
-- [ ] PrivateRoute korumalı route çalışıyor
-- [ ] Navbar auth durumuna göre değişiyor
-- [ ] App.js'de korumalı ve public route'lar ayrımı var
+- axios.js'de refreshAccessToken export ediliyor
+- axios.js'de request/response interceptor var
+- AuthContext'te loading, user, login, logout, register var
+- Login formunda validation ve hata mesaji var
+- Register formunda validation ve hata mesaji var
+- PrivateRoute korumalı route caliyor
+- Navbar auth durumuna gore degisiyor
+- App.js'de korumali ve public route ayrimi var
 
-## Test Senaryoları (Manuel)
-
-1. Giriş yapmadan `/profile`'a git → Login'e yönlendirmeli
-2. Yanlış email ile login dene → Hata mesajı görmeli
-3. Kısa şifre ile register dene → Validation hatası görmeli
-4. Başarılı login sonrası → Home veya önceki sayfaya dönmeli
-5. Çıkış yap → Token temizlenmeli, login sayfasına gitmeli
-
-<commit_message>feat: Authentication temeli güçlendirildi - interceptor, PrivateRoute, form validation eklendi</commit_message>
+<commit_message>feat: Authentication temeli guclendirildi - interceptor, PrivateRoute, form validation eklendi</commit_message>
 
 
 # FAZ 1: Authentication ve Güvenlik Temeli - Kod Geliştirme
@@ -167,159 +129,116 @@ Mevcut dosyayı oku, ardından:
 ## Amaç
 Proje analizinde tespit edilen en kritik eksikler olan Authentication akışındaki güvenlik açıklarını, eksik token yönetimini ve temel auth sayfalarındaki sorunları düzelt.
 
-## Ön Analiz - Okunacak Dosyalar
-
-Executor önce şu dosyaları okusun ve mevcut durumu tespit etsin:
+## Okunacak Dosyalar (Önce bunları oku)
 
 1. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
 2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx`
 3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Login.jsx`
 4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Register.jsx`
 5. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\App.js`
-6. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\PrivateRoute.jsx` (varsa)
-7. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\Navbar.jsx` (varsa)
-
-Eğer dosyalar farklı uzantıda (.js, .tsx) ise o uzantıyla dene.
+6. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\PrivateRoute.jsx` (yoksa `.js` uzantısını dene)
+7. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\Navbar.jsx` (yoksa `.js` uzantısını dene)
 
 ## Yapılacak Değişiklikler
 
-### 1. `src/api/axios.js` - Düzeltme ve İyileştirme
+### 1. `src/api/axios.js`
 
-Mevcut dosyayı oku, ardından şu sorunları düzelt:
+Mevcut dosyayı oku, sonra şu yapıya göre güncelle:
 
-**Eklenecekler:**
-- `refreshAccessToken` fonksiyonunu düzgün şekilde `export` et (şu an export edilmiyor)
-- Request interceptor: Her istekte localStorage'dan token alıp Authorization header'a ekle
-- Response interceptor: 401 gelirse token refresh dene, refresh de başarısız olursa logout yap
-- Token expire kontrolü (JWT decode veya basit zaman kontrolü)
-- baseURL'i environment variable'dan oku: `process.env.REACT_APP_API_URL || 'http://localhost:5000/api'`
+- `baseURL`: `process.env.REACT_APP_API_URL || 'http://localhost:5000/api'`
+- `refreshAccessToken` fonksiyonu: `export` edilmeli
+- Request interceptor: localStorage'dan `accessToken` alıp `Authorization: Bearer <token>` header ekle
+- Response interceptor: 401 gelirse `refreshAccessToken` çağır, yeni token ile isteği tekrarla; refresh başarısızsa localStorage temizle ve `/login`'e yönlendir
 
-**Örnek yapı:**
-```
-- axiosInstance (default export)
-- refreshAccessToken (named export)
-- Interceptor: request → token ekle
-- Interceptor: response → 401 ise refresh → retry → fail ise logout
-```
+### 2. `src/context/AuthContext.jsx`
 
-### 2. `src/context/AuthContext.jsx` - Güçlendirme
+Mevcut dosyayı oku, sonra şu state ve fonksiyonların var olduğundan emin ol:
 
-Mevcut dosyayı oku, ardından şu eksikleri ekle:
+- `user` state (null başlangıç)
+- `loading` state (true başlangıç, token kontrolü bitince false)
+- `isAuthenticated` = `user !== null`
+- `login(email, password)`: API çağrısı yap, `accessToken` + `refreshToken` localStorage'a kaydet, `user` set et
+- `logout()`: localStorage'ı temizle, `user` null yap, `/login`'e yönlendir
+- `register(name, email, password)`: API çağrısı yap
+- `useEffect`: Uygulama başında localStorage'daki token kontrol et, geçerliyse user set et
+- localStorage key'leri: `accessToken`, `refreshToken`, `user`
 
-**Eklenecekler:**
-- `loading` state: Uygulama başında token kontrolü sırasında loading=true olsun, bittikten sonra false
-- `isAuthenticated` computed değeri veya state: `user !== null` kontrolü
-- `login` fonksiyonu: API'dan gelen `accessToken` ve `refreshToken`'ı localStorage'a kaydet, user state'ini set et
-- `logout` fonksiyonu: localStorage'ı temizle, user state'ini null yap, `/login`'e yönlendir
-- `register` fonksiyonu: API çağrısı yap, başarılıysa login yap veya doğrulama mesajı göster
-- useEffect: Uygulama başında localStorage'daki token'ı kontrol et, geçerliyse user'ı set et
-- Token yenileme: refresh token varsa accessToken yenile
+### 3. `src/pages/Login.jsx`
 
-**Korunacaklar:**
-- Mevcut çalışan mantığı bozmadan ekle
+Mevcut dosyayı oku, sonra şu eklemeleri yap:
 
-### 3. `src/pages/Login.jsx` - Form İyileştirme
-
-Mevcut dosyayı oku, ardından şu eksikleri ekle:
-
-**Eklenecekler:**
-- Form validation: email format kontrolü, password en az 6 karakter
-- Loading state: `isLoading` → submit sırasında buton disabled + spinner
-- Error state: API hatasını kullanıcıya göster (kırmızı alert kutusu)
-- "Şifremi Unuttum" linki → `/forgot-password` route'una (sayfa sonradan yapılacak, link ekle)
-- Başarılı login sonrası `navigate('/home')` veya `navigate(from, { replace: true })` ile önceki sayfaya dön
+- Form validation: email format + password min 6 karakter
+- `isLoading` state: submit sırasında buton disabled
+- `error` state: API hatasını kırmızı alert kutusunda göster
+- "Sifremi Unuttum" linki: `/forgot-password`
+- Basarili login: `navigate('/home')` veya `navigate(from, { replace: true })`
 - AuthContext'ten `login` fonksiyonunu kullan
 
-### 4. `src/pages/Register.jsx` - Form İyileştirme
+### 4. `src/pages/Register.jsx`
 
-Mevcut dosyayı oku, ardından şu eksikleri ekle:
+Mevcut dosyayı oku, sonra şu eklemeleri yap:
 
-**Eklenecekler:**
-- Form validation: Ad/soyad zorunlu, email format, password en az 6 karakter, şifre tekrar eşleşme kontrolü
-- Loading state: submit sırasında buton disabled + "Kaydediliyor..." yazısı
-- Error state: API hatasını kullanıcıya göster
-- Başarılı kayıt sonrası: "E-posta doğrulama gönderdik" mesajı göster
-- AuthContext'ten `register` fonksiyonunu kullan
+- Validation: ad/soyad zorunlu, email format, password min 6, sifre tekrar eslesmesi
+- `isLoading` state: submit sırasında "Kaydediliyor..." goster
+- `error` state: API hataları
+- Basarili kayit: "E-posta dogrulama linki gonderildi" mesaji
 
-### 5. `src/components/PrivateRoute.jsx` - Eksikse Oluştur
+### 5. `src/components/PrivateRoute.jsx`
 
-Dosya yoksa yeni oluştur, varsa gözden geçir:
+Dosya yoksa olustur, varsa gozden gecir:
 
-**Amaç:** Giriş yapmamış kullanıcıları `/login`'e yönlendir. Login sonrası geri dön.
-
-**İçerik:**
 - AuthContext'ten `user` ve `loading` al
-- `loading` true ise: spinner veya boş div döndür
-- `user` null ise: `<Navigate to="/login" state={{ from: location }} replace />`
-- User varsa: `<Outlet />` döndür
+- `loading === true`: spinner veya `<div>Yukleniyor...</div>` dondur
+- `user === null`: `<Navigate to="/login" state={{ from: location }} replace />` dondur
+- User varsa: `<Outlet />` dondur
 
-### 6. `src/components/Navbar.jsx` - Auth Durumuna Göre Menü
+### 6. `src/components/Navbar.jsx`
 
-Mevcut dosyayı oku, ardından:
+Mevcut dosyayı oku, sonra:
 
-**Eklenecekler:**
-- Giriş yapmamışsa: "Giriş Yap" ve "Kayıt Ol" butonları göster
-- Giriş yapmışsa: Kullanıcı adı/foto, "Profilim", "Rezervasyonlarım", "Favorilerim", "Çıkış" göster
+- `user` null ise: "Giris Yap" ve "Kayit Ol" butonları goster
+- `user` varsa: kullanici adi, "Profilim", "Rezervasyonlarim", "Favorilerim", "Cikis" goster
 - AuthContext'ten `user` ve `logout` al
-- Mobil için hamburger menü (mevcut yapıya göre)
 
-### 7. `src/App.js` - Route Yapısını Düzelt
+### 7. `src/App.js`
 
-Mevcut dosyayı oku, ardından:
+Mevcut dosyayı oku, sonra route yapısını duzenle:
 
-**Eklenecekler:**
-- PrivateRoute wrapper ile korunan route'lar:
-  - `/profile` → Profile sayfası (yoksa placeholder)
-  - `/reservations` → Reservations sayfası (yoksa placeholder)
-  - `/favorites` → Favorites sayfası (yoksa placeholder)
-- Public route'lar:
-  - `/` → Home
-  - `/login` → Login
-  - `/register` → Register
-  - `/beaches/:id` → BeachDetail
-  - `/forgot-password` → ForgotPassword (placeholder sayfa)
-- AuthContext'ten gelen `loading` state ile LoadingSpinner göster
+- Public route'lar: `/`, `/login`, `/register`, `/beaches/:id`, `/forgot-password`
+- Korumalı route'lar (PrivateRoute ile sarılı): `/profile`, `/reservations`, `/favorites`
+- AuthContext `loading` true iken `<div>Yukleniyor...</div>` goster
 
-## Dosya Oluşturma/Düzenleme Sırası
+## Uygulama Sırası
 
-1. `src/api/axios.js` → Düzenle
-2. `src/context/AuthContext.jsx` → Düzenle
-3. `src/components/PrivateRoute.jsx` → Oluştur veya düzenle
-4. `src/pages/Login.jsx` → Düzenle
-5. `src/pages/Register.jsx` → Düzenle
-6. `src/components/Navbar.jsx` → Düzenle
-7. `src/App.js` → Düzenle
+1. `src/api/axios.js`
+2. `src/context/AuthContext.jsx`
+3. `src/components/PrivateRoute.jsx`
+4. `src/pages/Login.jsx`
+5. `src/pages/Register.jsx`
+6. `src/components/Navbar.jsx`
+7. `src/App.js`
 
 ## Kritik Kurallar
 
-- Hiçbir sayfayı silme, sadece iyileştir
-- Mevcut çalışan kodları bozmadan ekle
-- Yoksa placeholder sayfalar için basit `<div>Yakında</div>` yeterli
-- Her dosyayı önce oku, sonra yaz
-- Türkçe karakterleri doğru kullan (UTF-8)
+- Hiçbir sayfayı silme, sadece iyilestir
+- Mevcut calisan kodu bozmadan ekle
+- Eksik sayfalar icin basit placeholder yeterli (`<div>Yakindan</div>`)
+- Her dosyayı once oku, sonra yaz
 - localStorage key isimleri: `accessToken`, `refreshToken`, `user`
 - API endpoint'leri: `/auth/login`, `/auth/register`, `/auth/refresh`
 
-## Başarı Kriterleri
+## Basari Kriterleri
 
-- [ ] axios.js'de refreshAccessToken export ediliyor
-- [ ] axios.js'de request/response interceptor var
-- [ ] AuthContext'te loading, user, login, logout, register var
-- [ ] Login formunda validation ve hata mesajı var
-- [ ] Register formunda validation ve hata mesajı var
-- [ ] PrivateRoute korumalı route çalışıyor
-- [ ] Navbar auth durumuna göre değişiyor
-- [ ] App.js'de korumalı ve public route'lar ayrımı var
+- axios.js'de refreshAccessToken export ediliyor
+- axios.js'de request/response interceptor var
+- AuthContext'te loading, user, login, logout, register var
+- Login formunda validation ve hata mesaji var
+- Register formunda validation ve hata mesaji var
+- PrivateRoute korumalı route caliyor
+- Navbar auth durumuna gore degisiyor
+- App.js'de korumali ve public route ayrimi var
 
-## Test Senaryoları (Manuel)
-
-1. Giriş yapmadan `/profile`'a git → Login'e yönlendirmeli
-2. Yanlış email ile login dene → Hata mesajı görmeli
-3. Kısa şifre ile register dene → Validation hatası görmeli
-4. Başarılı login sonrası → Home veya önceki sayfaya dönmeli
-5. Çıkış yap → Token temizlenmeli, login sayfasına gitmeli
-
-<commit_message>feat: Authentication temeli güçlendirildi - interceptor, PrivateRoute, form validation eklendi</commit_message>
+<commit_message>feat: Authentication temeli guclendirildi - interceptor, PrivateRoute, form validation eklendi</commit_message>
 
 
 Final response requirements:

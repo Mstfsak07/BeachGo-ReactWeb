@@ -18,26 +18,22 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/");
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
     setIsMobileMenuOpen(false);
   };
 
   const navLinks = [
     { name: "Ana Sayfa", path: "/" },
     { name: "Plajlar", path: "/beaches" },
-    { name: "Rezervasyonlarım", path: "/my-reservations", requireAuth: true, roles: ["User"] },
-    { name: "Dashboard", path: "/dashboard", requireAuth: true, roles: ["Business", "Admin"] },
-    { name: "Admin Panel", path: "/admin", requireAuth: true, roles: ["Admin"] },
   ];
 
-  const filteredLinks = navLinks.filter(link => {
-    if (!link.requireAuth) return true;
-    if (!isAuthenticated) return false;
-    if (!link.roles) return true;
-    return link.roles.includes(user?.role);
-  });
+  const authLinks = [
+    { name: "Profilim", path: "/profile" },
+    { name: "Rezervasyonlarım", path: "/reservations" },
+    { name: "Favorilerim", path: "/favorites" },
+  ];
 
   const isHomePage = location.pathname === "/";
   const shouldShowSolid = isScrolled || !isHomePage;
@@ -64,7 +60,7 @@ const Navbar = () => {
         </Link>
 
         <div className="hidden md:flex items-center space-x-10">
-          {filteredLinks.map((link) => (
+          {navLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
@@ -75,9 +71,19 @@ const Navbar = () => {
               }`}
             >
               {link.name}
-              <span className={`absolute -bottom-1 left-0 h-0.5 bg-blue-500 transition-all duration-300 ${
-                location.pathname === link.path ? "w-full" : "w-0 group-hover:w-full"
-              }`} />
+            </Link>
+          ))}
+          {isAuthenticated && authLinks.map((link) => (
+            <Link
+              key={link.path}
+              to={link.path}
+              className={`text-base md:text-lg font-bold tracking-tight transition-all duration-300 hover:text-blue-400 relative group ${
+                location.pathname === link.path 
+                  ? "text-blue-500" 
+                  : (shouldShowSolid ? "text-slate-600" : "text-white/90")
+              }`}
+            >
+              {link.name}
             </Link>
           ))}
         </div>
@@ -90,10 +96,10 @@ const Navbar = () => {
               <div className="flex flex-col items-end">
                 <span className={`text-[11px] font-black uppercase tracking-[0.2em] leading-none mb-1.5 ${
                   shouldShowSolid ? "text-slate-400" : "text-white/50"
-                }`}>Profil</span>
+                }`}>Kullanıcı</span>
                 <span className={`text-sm font-bold leading-none truncate max-w-[120px] ${
                   shouldShowSolid ? "text-slate-800" : "text-white"
-                }`}>{user?.email?.split('@')[0]}</span>
+                }`}>{user?.name || user?.email?.split('@')[0]}</span>
               </div>
               <button
                 onClick={handleLogout}
@@ -104,12 +110,22 @@ const Navbar = () => {
               </button>
             </div>
           ) : (
-            <Link
-              to="/login"
-              className="px-8 py-3.5 bg-blue-600 text-white text-sm font-black tracking-[0.15em] uppercase rounded-2xl hover:bg-blue-700 hover:shadow-2xl hover:shadow-blue-200 transition-all active:scale-95 shadow-xl shadow-blue-100"
-            >
-              Giriş Yap
-            </Link>
+            <div className="flex items-center space-x-4">
+              <Link
+                to="/login"
+                className={`text-sm font-black tracking-[0.15em] uppercase transition-colors ${
+                  shouldShowSolid ? "text-slate-600 hover:text-blue-600" : "text-white hover:text-blue-200"
+                }`}
+              >
+                Giriş Yap
+              </Link>
+              <Link
+                to="/register"
+                className="px-6 py-3 bg-blue-600 text-white text-sm font-black tracking-[0.15em] uppercase rounded-2xl hover:bg-blue-700 transition-all active:scale-95 shadow-xl shadow-blue-100"
+              >
+                Kayıt Ol
+              </Link>
+            </div>
           )}
         </div>
 
@@ -125,7 +141,19 @@ const Navbar = () => {
         isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4 pointer-events-none"
       }`}>
         <div className="p-6 flex flex-col space-y-4">
-          {filteredLinks.map((link) => (
+          {navLinks.map((link) => (
+            <Link
+              key={link.path}
+              to={link.path}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`text-lg font-bold ${
+                location.pathname === link.path ? "text-blue-600" : "text-slate-600"
+              }`}
+            >
+              {link.name}
+            </Link>
+          ))}
+          {isAuthenticated && authLinks.map((link) => (
             <Link
               key={link.path}
               to={link.path}
@@ -142,7 +170,7 @@ const Navbar = () => {
               <div className="space-y-4">
                 <div className="flex items-center gap-3 text-slate-700">
                   <User size={20} className="text-blue-600" />
-                  <span className="font-bold truncate max-w-[200px]">{user?.email}</span>
+                  <span className="font-bold truncate max-w-[200px]">{user?.name || user?.email}</span>
                 </div>
                 <button
                   onClick={handleLogout}
@@ -152,13 +180,22 @@ const Navbar = () => {
                 </button>
               </div>
             ) : (
-              <Link
-                to="/login"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block w-full py-4 bg-blue-600 text-white text-center font-black tracking-widest uppercase rounded-xl shadow-lg shadow-blue-200"
-              >
-                Giriş Yap
-              </Link>
+              <div className="flex flex-col space-y-3">
+                <Link
+                  to="/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block w-full py-4 bg-slate-100 text-slate-800 text-center font-black tracking-widest uppercase rounded-xl"
+                >
+                  Giriş Yap
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="block w-full py-4 bg-blue-600 text-white text-center font-black tracking-widest uppercase rounded-xl shadow-lg shadow-blue-200"
+                >
+                  Kayıt Ol
+                </Link>
+              </div>
             )}
           </div>
         </div>

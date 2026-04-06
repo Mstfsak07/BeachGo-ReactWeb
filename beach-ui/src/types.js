@@ -1,11 +1,12 @@
 export function unwrapResponse(responseData) {
-    // ...
+  if (!responseData) return null;
+  if (responseData.success === false) {
+    throw new Error(responseData.message || 'Bir hata olustu');
+  }
+  return responseData.data !== undefined ? responseData.data : responseData;
 }
 
-// New type for reservation data
-export interface ReservationDto {
-    FirstName: string;
-    LastName: string;
-    Email: string;
-    Phone: string;
+export function unwrapArrayResponse(responseData) {
+  const result = unwrapResponse(responseData);
+  return Array.isArray(result) ? result : [];
 }

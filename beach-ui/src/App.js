@@ -1,14 +1,11 @@
-// Developer: mustafa sak
 import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-
 import { AuthProvider } from "./context/AuthContext";
+import { useAuth } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./routes/ProtectedRoute";
-import { useAuth } from "./context/AuthContext";
-
 import Home from "./pages/Home";
 import Beaches from "./pages/Beaches";
 import Login from "./pages/Login";
@@ -28,7 +25,6 @@ const DashboardReservations = lazy(() => import("./pages/DashboardReservations")
 const GuestReservation = lazy(() => import("./pages/GuestReservation"));
 const ReservationSuccess = lazy(() => import("./pages/ReservationSuccess"));
 
-// Giriş yapmış kullanıcıyı login/register'dan uygun sayfaya yönlendir
 const GuestOnlyRoute = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
   if (loading) return null;
@@ -39,34 +35,46 @@ const GuestOnlyRoute = ({ children }) => {
   return children;
 };
 
+const Spinner = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+  </div>
+);
+
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Toaster position="top-right" reverseOrder={false} />
         <Navbar />
+        <Suspense fallback={<Spinner />}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/beaches" element={<Beaches />} />
+            <Route path="/beaches/:id" element={<BeachDetail />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/reservation-check" element={<ReservationCheck />} />
+            <Route path="/reservation/:beachId" element={<GuestReservation />} />
+            <Route path="/reservation-success" element={<ReservationSuccess />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
 
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div></div>}>
-        <Routes>
-          {/* Public */}
-          <Route path="/" element={<Home />} />
-          <Route path="/beaches" element={<Beaches />} />
-          <Route path="/beaches/:id" element={<BeachDetail />} />
-          <Route path="/events" element={<Events />} />
-          <Route path="/reservation-check" element={<ReservationCheck />} />
-          <Route path="/reservation/:beachId" element={<GuestReservation />} />
-          <Route path="/reservation-success" element={<ReservationSuccess />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
+            <Route path="/login" element={<GuestOnlyRoute><Login /></GuestOnlyRoute>} />
+            <Route path="/register" element={<GuestOnlyRoute><Register /></GuestOnlyRoute>} />
+            <Route path="/business-register" element={<GuestOnlyRoute><BusinessRegister /></GuestOnlyRoute>} />
 
-          {/* Guest only — authenticated users are redirected */}
-          <Route path="/login" element={<GuestOnlyRoute><Login /></GuestOnlyRoute>} />
-          <Route path="/register" element={<GuestOnlyRoute><Register /></GuestOnlyRoute>} />
-          <Route path="/business-register" element={<GuestOnlyRoute><BusinessRegister /></GuestOnlyRoute>} />
+            <Route path="/my-reservations" element={<ProtectedRoute><MyReservations /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["Business","Admin"]}><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/stats" element={<ProtectedRoute allowedRoles={["Business","Admin"]}><DashboardStats /></ProtectedRoute>} />
+            <Route path="/dashboard/reservations" element={<ProtectedRoute allowedRoles={["Business","Admin"]}><DashboardReservations /></ProtectedRoute>} />
+            <Route path="/beach-settings" element={<ProtectedRoute allowedRoles={["Business","Admin"]}><BeachSettings /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute allowedRoles={["Admin"]}><AdminPanel /></ProtectedRoute>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+        <Footer />
+      </Router>
+    </AuthProvider>
+  );
+}
 
-          {/* Auth required — any role */}
-          <Route
-            path="/my-reservations"
-            element={
-              <ProtectedRoute>
-                <MyReservations />
-              </Protected
+export default App;

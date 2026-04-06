@@ -104,40 +104,37 @@ Final response requirements:
         if (Test-Path $tempOutput) { Remove-Item $tempOutput -Force }
 
         # Bat dosyasini olustur - env variable'lar ve komut birlikte
-  $batContent = @"
+ $batContent = @"
 @echo off
-set GEMINI_MODEL=gemini-3-pro
 set GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8045
-set GEMINI_API_KEY=sk-xxx
+set GEMINI_API_KEY=$($env:GEMINI_API_KEY)
+set BEACHGO_ANTHROPIC_KEY=$($env:BEACHGO_ANTHROPIC_KEY)
 
-gemini --approval-mode yolo --model gemini-3-flash < "$tempPrompt"
+gemini --approval-mode yolo --model gemini-3-flash < "$tempPrompt" > "$tempOutput" 2>&1
 exit %ERRORLEVEL%
 "@
-        $batContent | Set-Content $tempBat -Encoding ASCII
+$batContent | Set-Content $tempBat -Encoding ASCII
 
-        Write-Log "Gemini cagiriliyor (model=gemini-3-flash, yolo mode, iteration=$iteration, deneme=$retryCount)..."
+Write-Log "Gemini yeni terminalde baslatiliyor (iteration=$iteration, deneme=$retryCount)..."
 
-        try {
-            $process = New-Object System.Diagnostics.Process
-$process.StartInfo.FileName = "cmd.exe"
-$process.StartInfo.Arguments = "/c `"$tempBat`""
-$process.StartInfo.RedirectStandardOutput = $true
-$process.StartInfo.RedirectStandardError = $true
-$process.StartInfo.UseShellExecute = $false
-$process.StartInfo.CreateNoWindow = $true
-
+$process = New-Object System.Diagnostics.Process
+$process.StartInfo.FileName = "powershell.exe"
+$process.StartInfo.Arguments = "-NoExit -Command `"cmd.exe /c '$tempBat'; exit`""
+$process.StartInfo.UseShellExecute = $true
+$process.StartInfo.CreateNoWindow = $false
 $process.Start() | Out-Null
+$process.WaitForExit()
+$exitCode = $process.ExitCode
 
-# 🔥 SADECE KONSOLA YAZ (dosya sistemine dokunma)
-while (-not $process.HasExited) {
-    while (-not $process.StandardOutput.EndOfStream) {
-        $line = $process.StandardOutput.ReadLine()
-        if ($line) {
-            Write-Host "[GEMINI] $line" -ForegroundColor Cyan
-$executorOutput += $line + "`n"
-        }
+# Output dosyasını oku
+if (Test-Path $tempOutput) {
+    $executorOutput = Get-Content $tempOutput -Raw -Encoding UTF8
+    # Konsola yaz
+    $executorOutput -split "`n" | ForEach-Object {
+        if ($_) { Write-Host "[GEMINI] $_" -ForegroundColor Cyan }
     }
-    Start-Sleep -Milliseconds 100
+} else {
+    $executorOutput = ""
 }
 
 # kalanlar
@@ -177,7 +174,7 @@ $exitCode = $process.ExitCode
             $executorOutput = $_ | Out-String
             Write-Log "Gemini exception: $executorOutput"
         }
-    }
+    
 
     $executorOutput | Set-Content $outputPath -Encoding UTF8
 

@@ -7,118 +7,206 @@ After making code changes:
 
 Task:
 
-# FAZ 1: KRÄ°TÄ°K HATA DÃZELTME - ReservationCheck.js Import HatasÄ±
+# PROJE ANALÄ°Z PLANI - BeachGo KapsamlÄ± Ä°nceleme
 
 ## AmaÃ§
-Frontend build hatasÄ±nÄ± dÃ¼zelterek uygulamanÄ±n derlenmesini saÄlamak. Bu kritik hata tÃ¼m geliÅtirme sÃ¼recini bloke etmektedir.
-
-## Analiz
-Ãnceki analizden edinilen bilgi:
-- `beach-ui/src/pages/ReservationCheck.js` dosyasÄ±nda yanlÄ±Å import var
-- `checkReservation` fonksiyonu `../services/api` yerine `../services/reservationService`'den import edilmeli
-- Bu hata `npm run build` komutunun baÅarÄ±sÄ±z olmasÄ±na yol aÃ§Ä±yor
+Projenin mevcut durumunu uÃ§tan uca analiz ederek eksik, yarÄ±m kalmÄ±Å ve geliÅtirilebilir alanlarÄ± tespit etmek. Bu faz yalnÄ±zca analiz ve envanter Ã§Ä±karma fazÄ±dÄ±r - kod yazÄ±lmayacak.
 
 ## UygulayÄ±cÄ±ya Talimatlar
 
-### AdÄ±m 1: DosyayÄ± Oku
-`/beach-ui/src/pages/ReservationCheck.js` dosyasÄ±nÄ±n tam iÃ§eriÄini oku.
+### AdÄ±m 1: Proje YapÄ±sÄ±nÄ± Tespit Et
+AÅaÄÄ±daki dizinlerin iÃ§eriÄini listele ve oku:
+- `/beach-ui/src/` (tÃ¼m alt dizinleri)
+- `/BeachRehberi.API/` (tÃ¼m controller, service, model dosyalarÄ±)
+- `/beach-ui/src/App.js` (tÃ¼m route'lar)
+- `/beach-ui/src/services/` (tÃ¼m servis dosyalarÄ±)
+- `/beach-ui/src/pages/` (tÃ¼m sayfa bileÅenleri)
+- `/beach-ui/src/components/` (tÃ¼m ortak bileÅenler)
 
-### AdÄ±m 2: Import SatÄ±rÄ±nÄ± DÃ¼zelt
-DosyanÄ±n baÅÄ±ndaki import satÄ±rÄ±nÄ± bul:
-```
-import { checkReservation } from '../services/api';
-```
-Bu satÄ±rÄ± Åununla deÄiÅtir:
-```
-import { checkReservation } from '../services/reservationService';
-```
+### AdÄ±m 2: Backend Analizi
+Oku ve raporla:
+- `BeachRehberi.API/Controllers/` - tÃ¼m controller dosyalarÄ± ve endpoint listesi
+- `BeachRehberi.API/Models/` - tÃ¼m entity/model dosyalarÄ±
+- `BeachRehberi.API/Services/` - tÃ¼m servis dosyalarÄ±
+- `BeachRehberi.API/Migrations/` - migration dosyalarÄ± (kaÃ§ tane, son tarih)
+- `BeachRehberi.API/Program.cs` veya `Startup.cs` - middleware, auth, CORS ayarlarÄ±
+- `BeachRehberi.API/appsettings.json` - yapÄ±landÄ±rma (Åifreleri maskeleyerek)
 
-### AdÄ±m 3: reservationService.js'i Kontrol Et
-`/beach-ui/src/services/reservationService.js` dosyasÄ±nÄ± oku. EÄer `checkReservation` fonksiyonu bu dosyada export edilmiyorsa, dosyaya ekle:
-```javascript
-export const checkReservation = async (reservationCode) => {
-  const response = await api.get(`/reservations/check/${reservationCode}`);
-  return response.data;
-};
-```
+### AdÄ±m 3: Frontend Sayfa Analizi
+Her sayfa iÃ§in ÅunlarÄ± raporla:
+- `/beach-ui/src/pages/` altÄ±ndaki tÃ¼m dosyalar
+- Her sayfada: loading state var mÄ±? error handling var mÄ±? mobile responsive mu?
+- Auth korumasÄ± (PrivateRoute) doÄru uygulanmÄ±Å mÄ±?
 
-### AdÄ±m 4: Build DoÄrula
-`beach-ui` dizininde `npm run build` komutu Ã§alÄ±ÅtÄ±r ve hata olmadÄ±ÄÄ±nÄ± doÄrula.
+### AdÄ±m 4: Authentication AkÄ±ÅÄ± KontrolÃ¼
+Åu dosyalarÄ± oku:
+- `beach-ui/src/pages/Login.js` veya `Login.jsx`
+- `beach-ui/src/pages/Register.js` veya `Register.jsx`
+- `beach-ui/src/pages/ForgotPassword.js` veya benzeri
+- `beach-ui/src/pages/ResetPassword.js` veya benzeri
+- `beach-ui/src/pages/VerifyEmail.js` veya benzeri
+- `beach-ui/src/context/AuthContext.js` veya benzeri
+- Backend: `AuthController.cs` - hangi endpoint'ler var?
 
-### AdÄ±m 5: Sonucu Raporla
-- Build baÅarÄ±lÄ± olduysa: hangi satÄ±rlarÄ±n deÄiÅtirildiÄini yaz
-- Build hÃ¢lÃ¢ baÅarÄ±sÄ±z ise: tam hata mesajÄ±nÄ± raporla
+### AdÄ±m 5: Rezervasyon AkÄ±ÅÄ± KontrolÃ¼
+Oku:
+- `beach-ui/src/pages/` iÃ§inde rezervasyonla ilgili tÃ¼m dosyalar
+- `beach-ui/src/services/reservationService.js`
+- Backend: `ReservationsController.cs` ve `GuestReservationsController.cs`
 
-## Etkilenen Dosyalar
-- `/beach-ui/src/pages/ReservationCheck.js` (import dÃ¼zeltme)
-- `/beach-ui/src/services/reservationService.js` (gerekirse `checkReservation` ekleme)
+### AdÄ±m 6: Favoriler ve Bildirimler KontrolÃ¼
+Oku:
+- `beach-ui/src/pages/Favorites.js` veya `Favorites.jsx`
+- `beach-ui/src/pages/Notifications.js` veya benzeri
+- `beach-ui/src/services/favoriteService.js`
+- `beach-ui/src/services/notificationService.js`
+- Backend: `FavoritesController.cs` ve `NotificationsController.cs` (var mÄ±?)
 
-## Test Senaryosu
-- `npm run build` hatasÄ±z tamamlanmalÄ±
-- Konsol Ã§Ä±ktÄ±sÄ±nda `compiled successfully` mesajÄ± gÃ¶rÃ¼lmeli
+### AdÄ±m 7: Admin Panel KontrolÃ¼
+Oku:
+- `/beach-admin/` dizini varsa yapÄ±sÄ±nÄ± incele
+- `/beach-ui/src/pages/admin/` veya benzeri admin sayfalarÄ±
+- Backend admin endpoint'leri
 
-## Riskler
-- `reservationService.js` dosyasÄ± hiÃ§ mevcut deÄilse, Ã¶nce oluÅturulmasÄ± gerekir
-- `api.js` iÃ§inde baÅka yanlÄ±Å importlar da olabilir; build Ã§Ä±ktÄ±sÄ±ndaki TÃM hatalarÄ± raporla
+### AdÄ±m 8: Build ve Dependency KontrolÃ¼
+ÃalÄ±ÅtÄ±r:
+- `cat /beach-ui/package.json` (dependencies)
+- `npm run build` Ã§Ä±ktÄ±sÄ±nÄ± kontrol et (warning'ler dahil)
 
-<commit_message>Fix: ReservationCheck.js import hatasÄ± dÃ¼zeltildi, build hatasÄ± giderildi</commit_message>
+### AdÄ±m 9: Eksikleri Kategorize Et ve Raporla
+TÃ¼m bulgularÄ±nÄ± Åu baÅlÄ±klar altÄ±nda raporla:
+
+**KRÄ°TÄ°K (Uygulama Ã§alÄ±ÅmÄ±yor / veri kaybÄ± riski):**
+- Liste
+
+**YÃKSEK ÃNEMLÄ° (KullanÄ±cÄ± deneyimi ciddi Åekilde etkileniyor):**
+- Liste
+
+**ORTA ÃNEMLÄ° (Eksik Ã¶zellik / geliÅtirme gerekiyor):**
+- Liste
+
+**DÃÅÃK ÃNEMLÄ° (Ä°yileÅtirme Ã¶nerileri):**
+- Liste
+
+### AdÄ±m 10: GeliÅtirme FazlarÄ±nÄ± Ãner
+Bulgulara gÃ¶re Åu formatta faz planÄ± oluÅtur:
+
+**Faz 1 - [Ad]:** [KÄ±sa aÃ§Ä±klama, etkilenen dosyalar, tahmini sÃ¼re]
+**Faz 2 - [Ad]:** [...]
+...vs.
+
+## Raporun Ä°Ã§ermesi Gerekenler
+1. Proje mevcut durum Ã¶zeti (backend, frontend, auth, rezervasyon, admin, favoriler, bildirimler)
+2. Tespit edilen TÃM eksikler (Ã¶ncelik sÄ±rasÄ±yla)
+3. Her eksik iÃ§in: hangi dosyada, ne eksik, nasÄ±l dÃ¼zeltilmeli
+4. Ãnerilen geliÅtirme fazlarÄ± (en az 5 faz)
+5. Hangi fazdan baÅlanmasÄ± gerektiÄi ve neden
+
+## ÃÄ±ktÄ±
+Bu adÄ±mÄ±n Ã§Ä±ktÄ±sÄ± yalnÄ±zca bir analiz raporu olacak. HiÃ§bir kod yazÄ±lmayacak. Rapor `result.txt` dosyasÄ±na kaydedilecek.
+
+<commit_message>Analiz: BeachGo projesi kapsamlÄ± envanter ve eksik analizi tamamlandÄ±</commit_message>
 
 
-# FAZ 1: KRÄ°TÄ°K HATA DÃZELTME - ReservationCheck.js Import HatasÄ±
+# PROJE ANALÄ°Z PLANI - BeachGo KapsamlÄ± Ä°nceleme
 
 ## AmaÃ§
-Frontend build hatasÄ±nÄ± dÃ¼zelterek uygulamanÄ±n derlenmesini saÄlamak. Bu kritik hata tÃ¼m geliÅtirme sÃ¼recini bloke etmektedir.
-
-## Analiz
-Ãnceki analizden edinilen bilgi:
-- `beach-ui/src/pages/ReservationCheck.js` dosyasÄ±nda yanlÄ±Å import var
-- `checkReservation` fonksiyonu `../services/api` yerine `../services/reservationService`'den import edilmeli
-- Bu hata `npm run build` komutunun baÅarÄ±sÄ±z olmasÄ±na yol aÃ§Ä±yor
+Projenin mevcut durumunu uÃ§tan uca analiz ederek eksik, yarÄ±m kalmÄ±Å ve geliÅtirilebilir alanlarÄ± tespit etmek. Bu faz yalnÄ±zca analiz ve envanter Ã§Ä±karma fazÄ±dÄ±r - kod yazÄ±lmayacak.
 
 ## UygulayÄ±cÄ±ya Talimatlar
 
-### AdÄ±m 1: DosyayÄ± Oku
-`/beach-ui/src/pages/ReservationCheck.js` dosyasÄ±nÄ±n tam iÃ§eriÄini oku.
+### AdÄ±m 1: Proje YapÄ±sÄ±nÄ± Tespit Et
+AÅaÄÄ±daki dizinlerin iÃ§eriÄini listele ve oku:
+- `/beach-ui/src/` (tÃ¼m alt dizinleri)
+- `/BeachRehberi.API/` (tÃ¼m controller, service, model dosyalarÄ±)
+- `/beach-ui/src/App.js` (tÃ¼m route'lar)
+- `/beach-ui/src/services/` (tÃ¼m servis dosyalarÄ±)
+- `/beach-ui/src/pages/` (tÃ¼m sayfa bileÅenleri)
+- `/beach-ui/src/components/` (tÃ¼m ortak bileÅenler)
 
-### AdÄ±m 2: Import SatÄ±rÄ±nÄ± DÃ¼zelt
-DosyanÄ±n baÅÄ±ndaki import satÄ±rÄ±nÄ± bul:
-```
-import { checkReservation } from '../services/api';
-```
-Bu satÄ±rÄ± Åununla deÄiÅtir:
-```
-import { checkReservation } from '../services/reservationService';
-```
+### AdÄ±m 2: Backend Analizi
+Oku ve raporla:
+- `BeachRehberi.API/Controllers/` - tÃ¼m controller dosyalarÄ± ve endpoint listesi
+- `BeachRehberi.API/Models/` - tÃ¼m entity/model dosyalarÄ±
+- `BeachRehberi.API/Services/` - tÃ¼m servis dosyalarÄ±
+- `BeachRehberi.API/Migrations/` - migration dosyalarÄ± (kaÃ§ tane, son tarih)
+- `BeachRehberi.API/Program.cs` veya `Startup.cs` - middleware, auth, CORS ayarlarÄ±
+- `BeachRehberi.API/appsettings.json` - yapÄ±landÄ±rma (Åifreleri maskeleyerek)
 
-### AdÄ±m 3: reservationService.js'i Kontrol Et
-`/beach-ui/src/services/reservationService.js` dosyasÄ±nÄ± oku. EÄer `checkReservation` fonksiyonu bu dosyada export edilmiyorsa, dosyaya ekle:
-```javascript
-export const checkReservation = async (reservationCode) => {
-  const response = await api.get(`/reservations/check/${reservationCode}`);
-  return response.data;
-};
-```
+### AdÄ±m 3: Frontend Sayfa Analizi
+Her sayfa iÃ§in ÅunlarÄ± raporla:
+- `/beach-ui/src/pages/` altÄ±ndaki tÃ¼m dosyalar
+- Her sayfada: loading state var mÄ±? error handling var mÄ±? mobile responsive mu?
+- Auth korumasÄ± (PrivateRoute) doÄru uygulanmÄ±Å mÄ±?
 
-### AdÄ±m 4: Build DoÄrula
-`beach-ui` dizininde `npm run build` komutu Ã§alÄ±ÅtÄ±r ve hata olmadÄ±ÄÄ±nÄ± doÄrula.
+### AdÄ±m 4: Authentication AkÄ±ÅÄ± KontrolÃ¼
+Åu dosyalarÄ± oku:
+- `beach-ui/src/pages/Login.js` veya `Login.jsx`
+- `beach-ui/src/pages/Register.js` veya `Register.jsx`
+- `beach-ui/src/pages/ForgotPassword.js` veya benzeri
+- `beach-ui/src/pages/ResetPassword.js` veya benzeri
+- `beach-ui/src/pages/VerifyEmail.js` veya benzeri
+- `beach-ui/src/context/AuthContext.js` veya benzeri
+- Backend: `AuthController.cs` - hangi endpoint'ler var?
 
-### AdÄ±m 5: Sonucu Raporla
-- Build baÅarÄ±lÄ± olduysa: hangi satÄ±rlarÄ±n deÄiÅtirildiÄini yaz
-- Build hÃ¢lÃ¢ baÅarÄ±sÄ±z ise: tam hata mesajÄ±nÄ± raporla
+### AdÄ±m 5: Rezervasyon AkÄ±ÅÄ± KontrolÃ¼
+Oku:
+- `beach-ui/src/pages/` iÃ§inde rezervasyonla ilgili tÃ¼m dosyalar
+- `beach-ui/src/services/reservationService.js`
+- Backend: `ReservationsController.cs` ve `GuestReservationsController.cs`
 
-## Etkilenen Dosyalar
-- `/beach-ui/src/pages/ReservationCheck.js` (import dÃ¼zeltme)
-- `/beach-ui/src/services/reservationService.js` (gerekirse `checkReservation` ekleme)
+### AdÄ±m 6: Favoriler ve Bildirimler KontrolÃ¼
+Oku:
+- `beach-ui/src/pages/Favorites.js` veya `Favorites.jsx`
+- `beach-ui/src/pages/Notifications.js` veya benzeri
+- `beach-ui/src/services/favoriteService.js`
+- `beach-ui/src/services/notificationService.js`
+- Backend: `FavoritesController.cs` ve `NotificationsController.cs` (var mÄ±?)
 
-## Test Senaryosu
-- `npm run build` hatasÄ±z tamamlanmalÄ±
-- Konsol Ã§Ä±ktÄ±sÄ±nda `compiled successfully` mesajÄ± gÃ¶rÃ¼lmeli
+### AdÄ±m 7: Admin Panel KontrolÃ¼
+Oku:
+- `/beach-admin/` dizini varsa yapÄ±sÄ±nÄ± incele
+- `/beach-ui/src/pages/admin/` veya benzeri admin sayfalarÄ±
+- Backend admin endpoint'leri
 
-## Riskler
-- `reservationService.js` dosyasÄ± hiÃ§ mevcut deÄilse, Ã¶nce oluÅturulmasÄ± gerekir
-- `api.js` iÃ§inde baÅka yanlÄ±Å importlar da olabilir; build Ã§Ä±ktÄ±sÄ±ndaki TÃM hatalarÄ± raporla
+### AdÄ±m 8: Build ve Dependency KontrolÃ¼
+ÃalÄ±ÅtÄ±r:
+- `cat /beach-ui/package.json` (dependencies)
+- `npm run build` Ã§Ä±ktÄ±sÄ±nÄ± kontrol et (warning'ler dahil)
 
-<commit_message>Fix: ReservationCheck.js import hatasÄ± dÃ¼zeltildi, build hatasÄ± giderildi</commit_message>
+### AdÄ±m 9: Eksikleri Kategorize Et ve Raporla
+TÃ¼m bulgularÄ±nÄ± Åu baÅlÄ±klar altÄ±nda raporla:
+
+**KRÄ°TÄ°K (Uygulama Ã§alÄ±ÅmÄ±yor / veri kaybÄ± riski):**
+- Liste
+
+**YÃKSEK ÃNEMLÄ° (KullanÄ±cÄ± deneyimi ciddi Åekilde etkileniyor):**
+- Liste
+
+**ORTA ÃNEMLÄ° (Eksik Ã¶zellik / geliÅtirme gerekiyor):**
+- Liste
+
+**DÃÅÃK ÃNEMLÄ° (Ä°yileÅtirme Ã¶nerileri):**
+- Liste
+
+### AdÄ±m 10: GeliÅtirme FazlarÄ±nÄ± Ãner
+Bulgulara gÃ¶re Åu formatta faz planÄ± oluÅtur:
+
+**Faz 1 - [Ad]:** [KÄ±sa aÃ§Ä±klama, etkilenen dosyalar, tahmini sÃ¼re]
+**Faz 2 - [Ad]:** [...]
+...vs.
+
+## Raporun Ä°Ã§ermesi Gerekenler
+1. Proje mevcut durum Ã¶zeti (backend, frontend, auth, rezervasyon, admin, favoriler, bildirimler)
+2. Tespit edilen TÃM eksikler (Ã¶ncelik sÄ±rasÄ±yla)
+3. Her eksik iÃ§in: hangi dosyada, ne eksik, nasÄ±l dÃ¼zeltilmeli
+4. Ãnerilen geliÅtirme fazlarÄ± (en az 5 faz)
+5. Hangi fazdan baÅlanmasÄ± gerektiÄi ve neden
+
+## ÃÄ±ktÄ±
+Bu adÄ±mÄ±n Ã§Ä±ktÄ±sÄ± yalnÄ±zca bir analiz raporu olacak. HiÃ§bir kod yazÄ±lmayacak. Rapor `result.txt` dosyasÄ±na kaydedilecek.
+
+<commit_message>Analiz: BeachGo projesi kapsamlÄ± envanter ve eksik analizi tamamlandÄ±</commit_message>
 
 
 Final response requirements:

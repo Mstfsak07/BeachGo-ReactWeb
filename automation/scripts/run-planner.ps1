@@ -49,13 +49,15 @@ function Invoke-ClaudeAPI {
 
     Write-Log "Anthropic API cagrisi: $baseUrl/v1/messages (model=claude-sonnet-4-6)"
 
-    $response = Invoke-RestMethod `
+    $responseRaw = Invoke-WebRequest `
         -Uri     "$baseUrl/v1/messages" `
         -Method  POST `
         -Headers $headers `
-        -Body    $bodyBytes
+        -Body    ([System.Text.Encoding]::UTF8.GetBytes($body))
 
-    return $response.content[0].text
+    $responseText = [System.Text.Encoding]::UTF8.GetString($responseRaw.RawContentStream.ToArray())
+$response = $responseText | ConvertFrom-Json
+return $response.content[0].text
 }
 
 $lockFile = Join-Path $queueDir "planner.lock"

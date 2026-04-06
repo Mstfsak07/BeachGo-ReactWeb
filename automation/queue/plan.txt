@@ -1,101 +1,55 @@
-﻿# FAZ 8 â Kritik Hata DÃ¼zeltmeleri: refreshAccessToken + initialState + Profile SayfasÄ±
+﻿# FAZ 9 â DoÄrudan Dosya YazÄ±mÄ±: axios.js + DashboardReservations.jsx + Profile.jsx
 
 ## AmaÃ§
 
-Analiz raporunda tespit edilen 3 kritik sorunu kod dÃ¼zeyinde dÃ¼zeltmek:
-1. `axios.js` dosyasÄ±na `refreshAccessToken` fonksiyonu eklemek
-2. `DashboardReservations.jsx` dosyasÄ±nda `initialState` deÄiÅkenini doÄru konuma taÅÄ±mak
-3. Temel `Profile.jsx` sayfasÄ±nÄ± oluÅturmak
+Executor'Ä±n `write_file` aracÄ± olmadan patch script Ã¼rettiÄi gÃ¶zlemlendi. Bu sefer tÃ¼m dosya iÃ§eriklerini **doÄrudan shell komutlarÄ±yla** yazacak Åekilde instruction hazÄ±rlanacak. Gemini CLI'nin `bash`/`powershell` Ã§alÄ±ÅtÄ±rma yetkisi var, bu yol kullanÄ±lacak.
 
 ---
 
 ## Executor TalimatlarÄ±
 
-### AdÄ±m 1: Mevcut DosyalarÄ± Oku
+### AdÄ±m 1: Mevcut axios.js Ä°Ã§eriÄini Oku
 
-AÅaÄÄ±daki dosyalarÄ±n tam iÃ§eriÄini oku:
+```
+read_file: C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/axios.js
+```
 
-1. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/axios.js`
-2. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/context/AuthContext.jsx`
-3. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx`
-4. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/App.js` (varsa, Route tanÄ±mlarÄ± iÃ§in)
+DosyayÄ± okuduktan sonra, eÄer `export const refreshAccessToken` ifadesi **yoksa** AdÄ±m 2'ye geÃ§.
 
 ---
 
-### AdÄ±m 2: `axios.js` DÃ¼zeltmesi
+### AdÄ±m 2: axios.js'e refreshAccessToken Ekle
 
-**Dosya:** `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/axios.js`
+DosyanÄ±n **sonuna** aÅaÄÄ±daki bloÄu ekle. Bunu yapmak iÃ§in dosyanÄ±n tÃ¼m mevcut iÃ§eriÄini koru, sadece sona ekle:
 
-DosyayÄ± `write_file` veya `str_replace_editor` ile dÃ¼zenle. YapÄ±lacaklar:
+Mevcut dosya iÃ§eriÄini al, sonuna Åunu ekle:
 
-**a)** DosyanÄ±n sonuna (veya interceptor tanÄ±mÄ±ndan Ã¶nce) aÅaÄÄ±daki fonksiyonu **export** olarak ekle:
-
-```js
+```javascript
 export const refreshAccessToken = async () => {
   const refreshToken = localStorage.getItem('refreshToken');
   if (!refreshToken) throw new Error('No refresh token available');
-  
-  const response = await axiosInstance.post('/auth/refresh-token', {
-    refreshToken,
-  });
-  
+  const response = await api.post('/auth/refresh-token', { refreshToken });
   const { accessToken, refreshToken: newRefreshToken } = response.data;
   localStorage.setItem('token', accessToken);
-  if (newRefreshToken) {
-    localStorage.setItem('refreshToken', newRefreshToken);
-  }
+  if (newRefreshToken) localStorage.setItem('refreshToken', newRefreshToken);
   return accessToken;
 };
 ```
 
-**b)** `axiosInstance` adÄ±yla export edilen axios instance'Ä± kontrol et. EÄer `default` export varsa, interceptor'da da bu instance kullanÄ±lÄ±yor olmalÄ±.
-
-**c)** Response interceptor'da 401 hatasÄ±nda `refreshAccessToken` Ã§aÄrÄ±lÄ±p token yenileniyorsa, bu mantÄ±ÄÄ±n Ã§alÄ±ÅtÄ±ÄÄ±nÄ± doÄrula.
+DosyayÄ± kaydet. KayÄ±t sonrasÄ± tekrar oku, `refreshAccessToken` satÄ±rÄ±nÄ±n var olduÄunu doÄrula.
 
 ---
 
-### AdÄ±m 3: `DashboardReservations.jsx` DÃ¼zeltmesi
+### AdÄ±m 3: Profile.jsx DosyasÄ±nÄ± OluÅtur
 
-**Dosya:** `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx`
+**Dosya yolu:** `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Profile.jsx`
 
-`initialState` deÄiÅkeninin tanÄ±mÄ±nÄ± bul. EÄer Åu Åekilde bir sorun varsa:
-
-```js
-// YANLIÅ â initialState daha tanÄ±mlanmadan kullanÄ±lÄ±yor
-const [filters, setFilters] = useState(prevFilters ?? initialState);
-const initialState = useMemo(() => ({ ... }), []);
-```
-
-Åu Åekilde dÃ¼zelt â `initialState` tanÄ±mÄ±nÄ± `useState` Ã§aÄrÄ±sÄ±ndan **ÃNCE** taÅÄ±:
-
-```js
-// DOÄRU
-const initialState = useMemo(() => ({
-  status: '',
-  dateFrom: '',
-  dateTo: '',
-  search: '',
-  page: 1,
-  pageSize: 10,
-}), []);
-
-const [filters, setFilters] = useState(initialState);
-```
-
-**Not:** `useMemo` yerine `useRef` veya sabit obje de kullanÄ±labilir. Ancak mevcut yapÄ±ya uygun kalÄ±nmalÄ±.
-
----
-
-### AdÄ±m 4: `Profile.jsx` SayfasÄ± OluÅtur
-
-**Dosya:** `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Profile.jsx`
-
-AÅaÄÄ±daki temel yapÄ±yla oluÅtur:
+Bu dosya **yoksa** aÅaÄÄ±daki iÃ§erikle oluÅtur (dosya varsa iÃ§eriÄini kontrol et, eksikse Ã¼zerine yaz):
 
 ```jsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axiosInstance from '../api/axios';
+import api from '../api/axios';
 import toast from 'react-hot-toast';
 
 const Profile = () => {
@@ -127,7 +81,7 @@ const Profile = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await axiosInstance.put('/auth/profile', form);
+      const res = await api.put('/auth/profile', form);
       toast.success('Profil gÃ¼ncellendi');
       if (setUser) setUser(res.data);
     } catch (err) {
@@ -193,47 +147,87 @@ const Profile = () => {
 export default Profile;
 ```
 
+DosyayÄ± kaydet. KayÄ±t sonrasÄ± dosyanÄ±n var olduÄunu ve `const Profile` iÃ§erdiÄini doÄrula.
+
+---
+
+### AdÄ±m 4: DashboardReservations.jsx'i Oku ve initialState Sorununu Kontrol Et
+
+```
+read_file: C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx
+```
+
+Dosyada Åu iki durumdan birinin olup olmadÄ±ÄÄ±nÄ± kontrol et:
+
+**Sorunlu durum A** â `initialState` kullanÄ±lmadan Ã¶nce tanÄ±mlanmamÄ±Å:
+```js
+const [filters, setFilters] = useState(prevFilters ?? initialState);
+// ... daha sonra:
+const initialState = useMemo(() => ({ ... }), []);
+```
+
+**Sorunlu durum B** â `useSearchParams` hook'u, diÄer state'lerden Ã¶nce Ã§aÄrÄ±lmÄ±yor.
+
+EÄer bu sorunlar **mevcutsa**, dosyayÄ± Åu kurala gÃ¶re dÃ¼zenle:
+
+1. `initialState` tanÄ±mÄ±nÄ± bul (useMemo veya sabit obje olarak).
+2. Bu tanÄ±mÄ± dosyanÄ±n en Ã¼stÃ¼ndeki hook bÃ¶lÃ¼mÃ¼ne (diÄer useState'lerden Ã¶nce) taÅÄ±.
+3. `useState(prevFilters ?? initialState)` satÄ±rÄ±nÄ± `useState(initialState)` olarak deÄiÅtir (prevFilters zaten initialState referans eder).
+
+DeÄiÅiklik sonrasÄ± dosyayÄ± kaydet ve tekrar oku: `initialState` tanÄ±mÄ±nÄ±n `useState` Ã§aÄrÄ±larÄ±ndan Ã¶nce geldiÄini doÄrula.
+
 ---
 
 ### AdÄ±m 5: App.js'e Profile Route Ekle
 
-**Dosya:** `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/App.js`
-
-Mevcut route'larÄ± oku. `/profile` route'u **yoksa**:
-
-```jsx
-import Profile from './pages/Profile';
-
-// Route listesine ekle:
-<Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+```
+read_file: C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/App.js
 ```
 
-`PrivateRoute` bileÅeninin adÄ± ve import yolu mevcut yapÄ±ya gÃ¶re ayarlanmalÄ±.
+Dosyada `/profile` route'u **yoksa**:
+
+1. Lazy import listesine ekle:
+```js
+const Profile = lazy(() => import('./pages/Profile'));
+```
+
+2. Route listesine (ProtectedRoute iÃ§ine) ekle:
+```jsx
+<Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+```
+
+`ProtectedRoute` bileÅeninin adÄ± mevcut App.js yapÄ±sÄ±na gÃ¶re ayarlanmalÄ± (`PrivateRoute` da olabilir â hangisi kullanÄ±lÄ±yorsa onu kullan).
+
+DeÄiÅiklik sonrasÄ± App.js'i tekrar oku: `/profile` route'unun mevcut olduÄunu doÄrula.
 
 ---
 
-### AdÄ±m 6: DeÄiÅiklikleri DoÄrula
+### AdÄ±m 6: SonuÃ§ DoÄrulama Raporu
 
-Her dosya kaydedildikten sonra:
-1. `axios.js` dosyasÄ±nÄ± tekrar oku â `export const refreshAccessToken` satÄ±rÄ± mevcut mu?
-2. `DashboardReservations.jsx` dosyasÄ±nÄ± tekrar oku â `initialState` tanÄ±mÄ± `useState`'ten Ã¶nce mi?
-3. `Profile.jsx` dosyasÄ±nÄ±n var olduÄunu doÄrula.
+Her adÄ±m sonrasÄ± Åu kontrolleri yap ve sonuÃ§larÄ± result.txt'e yaz:
+
+```
+DOÄRULAMA:
+- axios.js â refreshAccessToken export mevcut: [EVET/HAYIR]
+- Profile.jsx â Dosya mevcut ve Profile componenti tanÄ±mlÄ±: [EVET/HAYIR]  
+- DashboardReservations.jsx â initialState, useState'ten Ã¶nce: [EVET/HAYIR]
+- App.js â /profile route mevcut: [EVET/HAYIR]
+```
 
 ---
 
 ## BaÅarÄ± Kriterleri
 
-- [ ] `refreshAccessToken` axios.js'de export ediliyor
-- [ ] `DashboardReservations.jsx` Ã§alÄ±Åma zamanÄ± hatasÄ±z
-- [ ] `Profile.jsx` sayfasÄ± mevcut ve temel form iÃ§eriyor
-- [ ] `/profile` route `App.js`'de tanÄ±mlÄ±
+- [ ] `axios.js` â `export const refreshAccessToken` satÄ±rÄ± mevcut
+- [ ] `Profile.jsx` â dosya oluÅturulmuÅ, form ve handleSubmit var
+- [ ] `DashboardReservations.jsx` â `initialState` doÄru sÄ±rada tanÄ±mlanmÄ±Å
+- [ ] `App.js` â `/profile` lazy route eklenmiÅ
 
 ---
 
-## Tahmini Riskler
+## Notlar
 
-- `AuthContext.jsx` iÃ§inde `setUser` fonksiyonu farklÄ± bir isimle (Ã¶rn. `updateUser`) export edilmiÅ olabilir. Bu durumda Profile.jsx'teki Ã§aÄrÄ± gÃ¼ncellenmeli.
-- Backend'de `/auth/profile` PUT endpoint'i yoksa Profile sayfasÄ± 404 alÄ±r. Bu sonraki fazda backend tarafÄ±nda ele alÄ±nacak.
-- `axiosInstance` import yolu farklÄ± olabilir (default vs named export). Mevcut dosyadaki export yapÄ±sÄ±na gÃ¶re ayarlanmalÄ±.
+- Executor'Ä±n Ã¶nceki iterasyonda `write_file` aracÄ±na eriÅimi olmadÄ±ÄÄ± gÃ¶zlemlendi. Bu iterasyonda aynÄ± araÃ§ seti geÃ§erli olabilir. Bu durumda executor **dosya iÃ§eriklerini doÄrudan edit/write araÃ§larÄ±yla** yazmalÄ± â patch script Ã¼retmemeli.
+- EÄer hiÃ§bir yazma aracÄ± yoksa, executor bunu aÃ§Ä±kÃ§a belirtmeli ve hangi araÃ§larÄ±n mevcut olduÄunu listemelidir.
 
-<commit_message>fix: refreshAccessToken export eklendi, initialState ReferenceError dÃ¼zeltildi, Profile sayfasÄ± oluÅturuldu</commit_message>
+<commit_message>fix: axios.js refreshAccessToken eklendi, Profile.jsx oluÅturuldu, App.js route gÃ¼ncellendi</commit_message>

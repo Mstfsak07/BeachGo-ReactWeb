@@ -61,7 +61,34 @@ const BeachDetail = () => {
 
   useEffect(() => {
     fetchBeach();
-  }, [fetchBeach]);
+    // Check if beach is in favorites
+    const stored = JSON.parse(localStorage.getItem('beach_favorites') || '[]');
+    setIsFavorite(stored.some(f => f.id === parseInt(id)));
+  }, [fetchBeach, id]);
+
+  const toggleFavorite = () => {
+    const stored = JSON.parse(localStorage.getItem('beach_favorites') || '[]');
+    let updated;
+    if (isFavorite) {
+      updated = stored.filter(f => f.id !== beach.id);
+      toast.success('Favorilerden kaldırıldı');
+    } else {
+      updated = [...stored, { 
+        id: beach.id, 
+        name: beach.name, 
+        address: beach.address, 
+        imageUrl: beach.imageUrl, 
+        rating: beach.rating,
+        reviewCount: beach.reviewCount,
+        sunbedPrice: beach.sunbedPrice,
+        entryFee: beach.entryFee,
+        hasEntryFee: beach.hasEntryFee
+      }];
+      toast.success('Favorilere eklendi');
+    }
+    localStorage.setItem('beach_favorites', JSON.stringify(updated));
+    setIsFavorite(!isFavorite);
+  };
 
   const handleReservation = (e) => {
     e.preventDefault();
@@ -125,7 +152,7 @@ const BeachDetail = () => {
         <div className="absolute top-20 sm:top-24 left-0 right-0 z-30 px-3 sm:px-4 md:px-12">
           <div className="max-w-7xl mx-auto flex justify-between items-center">
             <motion.button whileHover={{ scale: 1.1, x: -5 }} whileTap={{ scale: 0.9 }} onClick={() => navigate(-1)} className="bg-white/10 backdrop-blur-xl p-3 rounded-2xl text-white border border-white/20"><ChevronRight size={24} className="rotate-180" /></motion.button>
-            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsFavorite(!isFavorite)} className="bg-white/10 backdrop-blur-xl p-3 rounded-2xl text-white border border-white/20"><Heart size={22} className={isFavorite ? 'fill-rose-500 text-rose-500' : ''} /></motion.button>
+            <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={toggleFavorite} className="bg-white/10 backdrop-blur-xl p-3 rounded-2xl text-white border border-white/20"><Heart size={22} className={isFavorite ? 'fill-rose-500 text-rose-500' : ''} /></motion.button>
           </div>
         </div>
 

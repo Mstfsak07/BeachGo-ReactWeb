@@ -7,8 +7,8 @@
     "is_complete":  true,
     "retryCount":  0,
     "maxRetry":  3,
-    "consecutive_errors":  0,
-    "last_error_hash":  "CB5E17897D97345561F86421B7453414",
+    "consecutive_errors":  1,
+    "last_error_hash":  "0A2E01B7DA649C19B88E39363F7BD703",
     "scope":  "web",
-    "lastUpdated":  "2026-04-06T19:07:33"
+    "lastUpdated":  "2026-04-06T21:25:00"
 }

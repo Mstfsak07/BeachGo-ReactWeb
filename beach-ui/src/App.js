@@ -14,7 +14,7 @@ import Unauthorized from "./pages/Unauthorized";
 
 const BeachDetail = lazy(() => import("./pages/BeachDetail"));
 const BusinessRegister = lazy(() => import("./pages/BusinessRegister"));
-const MyReservations = lazy(() => import("./pages/MyReservations"));
+const Reservations = lazy(() => import("./pages/Reservations"));
 const ReservationCheck = lazy(() => import("./pages/ReservationCheck"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const AdminPanel = lazy(() => import("./pages/AdminPanel"));
@@ -24,12 +24,9 @@ const DashboardStats = lazy(() => import("./pages/DashboardStats"));
 const DashboardReservations = lazy(() => import("./pages/DashboardReservations"));
 const GuestReservation = lazy(() => import("./pages/GuestReservation"));
 const ReservationSuccess = lazy(() => import("./pages/ReservationSuccess"));
-
-// Placeholder components for requested routes
-const Profile = () => <div className="pt-32 px-10"><h1>Profilim</h1><p>Yakında...</p></div>;
-const Favorites = () => <div className="pt-32 px-10"><h1>Favorilerim</h1><p>Yakında...</p></div>;
-const Reservations = () => <div className="pt-32 px-10"><h1>Rezervasyonlarım</h1><p>Yakında...</p></div>;
-const ForgotPassword = () => <div className="pt-32 px-10"><h1>Şifremi Unuttum</h1><p>Yakında...</p></div>;
+const Profile = lazy(() => import("./pages/Profile"));
+const Favorites = lazy(() => import("./pages/Favorites"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 
 const GuestOnlyRoute = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -86,7 +83,6 @@ const AppContent = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/reservations" element={<Reservations />} />
             <Route path="/favorites" element={<Favorites />} />
-            <Route path="/my-reservations" element={<MyReservations />} />
           </Route>
 
           {/* Role Protected Routes */}

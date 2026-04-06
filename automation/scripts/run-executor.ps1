@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 $ErrorActionPreference = "Stop"
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -104,12 +104,13 @@ Final response requirements:
         if (Test-Path $tempOutput) { Remove-Item $tempOutput -Force }
 
         # Bat dosyasini olustur - env variable'lar ve komut birlikte
-        $batContent = @"
+  $batContent = @"
 @echo off
 set GEMINI_MODEL=gemini-3-pro
 set GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8045
-set GEMINI_API_KEY=sk-0392f1a407974e89912d8e22daca8d84
-type "$tempPrompt" | gemini --approval-mode yolo --model gemini-3-flash > "$tempOutput" 2>&1
+set GEMINI_API_KEY=sk-xxx
+
+type "$tempPrompt" | gemini --approval-mode yolo --model gemini-3-flash
 exit %ERRORLEVEL%
 "@
         $batContent | Set-Content $tempBat -Encoding ASCII
@@ -117,17 +118,47 @@ exit %ERRORLEVEL%
         Write-Log "Gemini cagiriliyor (model=gemini-3-flash, yolo mode, iteration=$iteration, deneme=$retryCount)..."
 
         try {
-            $proc = Start-Process -FilePath "cmd.exe" `
-                -ArgumentList "/c `"$tempBat`"" `
-                -Wait `
-                -PassThru `
-                -WindowStyle Normal
+            $process = New-Object System.Diagnostics.Process
+$process.StartInfo.FileName = "cmd.exe"
+$process.StartInfo.Arguments = "/c `"$tempBat`""
+$process.StartInfo.RedirectStandardOutput = $true
+$process.StartInfo.RedirectStandardError = $true
+$process.StartInfo.UseShellExecute = $false
+$process.StartInfo.CreateNoWindow = $true
 
-            $exitCode = $proc.ExitCode
+$process.Start() | Out-Null
 
-            $executorOutput = if (Test-Path $tempOutput) {
-                Get-Content $tempOutput -Raw -Encoding UTF8
-            } else { "" }
+# 🔥 SADECE KONSOLA YAZ (dosya sistemine dokunma)
+while (-not $process.HasExited) {
+    while (-not $process.StandardOutput.EndOfStream) {
+        $line = $process.StandardOutput.ReadLine()
+        if ($line) {
+            Write-Host "[GEMINI] $line" -ForegroundColor Cyan
+$executorOutput += $line + "`n"
+        }
+    }
+    Start-Sleep -Milliseconds 100
+}
+
+# kalanlar
+while (-not $process.StandardOutput.EndOfStream) {
+    $line = $process.StandardOutput.ReadLine()
+    if ($line) {
+        Write-Host "[GEMINI] $line" -ForegroundColor Cyan
+    }
+}
+
+while (-not $process.StandardError.EndOfStream) {
+    $line = $process.StandardError.ReadLine()
+    if ($line) {
+        Write-Host "[GEMINI ERROR] $line" -ForegroundColor Red
+    }
+}
+
+$process.WaitForExit()
+$exitCode = $process.ExitCode
+
+            
 
             Write-Log "Gemini tamamlandi. ExitCode=$exitCode Cikti uzunlugu=$($executorOutput.Length) karakter"
 

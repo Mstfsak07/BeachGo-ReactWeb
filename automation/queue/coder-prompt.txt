@@ -7,238 +7,246 @@ After making code changes:
 
 Task:
 
-# FAZ 1: Authentication ve Güvenlik Temeli - Kod Geliştirme
+# FAZ 2: Proje Durumu Analizi ve Sonraki Geliştirme Planı
 
-## Amaç
-Proje analizinde tespit edilen en kritik eksikler olan Authentication akışındaki güvenlik açıklarını, eksik token yönetimini ve temel auth sayfalarındaki sorunları düzelt.
+## Mevcut Durum Özeti
 
-## Okunacak Dosyalar (Önce bunları oku)
+Faz 1 tamamlandı:
+- `axios.js` interceptorları güncellendi
+- `AuthContext.jsx` yeniden düzenlendi
+- `PrivateRoute.jsx` oluşturuldu
+- `Login.jsx` / `Register.jsx` forma validasyon eklendi
+- `Navbar.jsx` auth durumuna göre güncellendi
+- `App.js` route yapısı düzenlendi
 
-1. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
-2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx`
-3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Login.jsx`
-4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Register.jsx`
-5. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\App.js`
-6. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\PrivateRoute.jsx` (yoksa `.js` uzantısını dene)
-7. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\Navbar.jsx` (yoksa `.js` uzantısını dene)
+Şimdi projenin geri kalan durumunu analiz edip bir sonraki kritik fazı belirleyelim.
 
-## Yapılacak Değişiklikler
+## Yapılacak Analiz
 
-### 1. `src/api/axios.js`
+Aşağıdaki dosyaları oku ve mevcut durumu değerlendir:
 
-Mevcut dosyayı oku, sonra şu yapıya göre güncelle:
+### Okuyacağın Dosyalar
 
-- `baseURL`: `process.env.REACT_APP_API_URL || 'http://localhost:5000/api'`
-- `refreshAccessToken` fonksiyonu: `export` edilmeli
-- Request interceptor: localStorage'dan `accessToken` alıp `Authorization: Bearer <token>` header ekle
-- Response interceptor: 401 gelirse `refreshAccessToken` çağır, yeni token ile isteği tekrarla; refresh başarısızsa localStorage temizle ve `/login`'e yönlendir
+1. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\` dizinindeki tüm dosyalar (liste al)
+2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\` dizinindeki tüm dosyalar (liste al)
+3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\App.js`
+4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Home.jsx` veya `Home.js`
+5. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\BeachDetail.jsx` veya `BeachDetail.js`
+6. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Reservations.jsx` veya `Reservations.js`
+7. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Profile.jsx` veya `Profile.js`
+8. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Favorites.jsx` veya `Favorites.js`
+9. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
+10. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx`
+11. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\package.json`
 
-### 2. `src/context/AuthContext.jsx`
+### Backend Kontrolleri
 
-Mevcut dosyayı oku, sonra şu state ve fonksiyonların var olduğundan emin ol:
+12. `C:\Users\akMuratNET\Desktop\BeachGo\BeachRehberi.API\` dizinini listele
+13. `C:\Users\akMuratNET\Desktop\BeachGo\BeachRehberi.API\BeachRehberi.API\Controllers\` dizinini listele
+14. `C:\Users\akMuratNET\Desktop\BeachGo\BeachRehberi.API\BeachRehberi.API\Controllers\AuthController.cs` oku
+15. `C:\Users\akMuratNET\Desktop\BeachGo\BeachRehberi.API\BeachRehberi.API\Controllers\ReservationController.cs` oku (varsa)
+16. `C:\Users\akMuratNET\Desktop\BeachGo\BeachRehberi.API\BeachRehberi.API\Controllers\BeachController.cs` oku (varsa)
 
-- `user` state (null başlangıç)
-- `loading` state (true başlangıç, token kontrolü bitince false)
-- `isAuthenticated` = `user !== null`
-- `login(email, password)`: API çağrısı yap, `accessToken` + `refreshToken` localStorage'a kaydet, `user` set et
-- `logout()`: localStorage'ı temizle, `user` null yap, `/login`'e yönlendir
-- `register(name, email, password)`: API çağrısı yap
-- `useEffect`: Uygulama başında localStorage'daki token kontrol et, geçerliyse user set et
-- localStorage key'leri: `accessToken`, `refreshToken`, `user`
+## Analiz Görevi
 
-### 3. `src/pages/Login.jsx`
+Dosyaları okuduktan sonra şunları değerlendir:
 
-Mevcut dosyayı oku, sonra şu eklemeleri yap:
+### 1. Placeholder Sayfalar
+- `Profile`, `Reservations`, `Favorites` sayfaları gerçek içerikle doldurul mu yoksa placeholder mı?
+- Bu sayfalarda eksik API bağlantısı var mı?
 
-- Form validation: email format + password min 6 karakter
-- `isLoading` state: submit sırasında buton disabled
-- `error` state: API hatasını kırmızı alert kutusunda göster
-- "Sifremi Unuttum" linki: `/forgot-password`
-- Basarili login: `navigate('/home')` veya `navigate(from, { replace: true })`
-- AuthContext'ten `login` fonksiyonunu kullan
+### 2. Home ve BeachDetail
+- `Home.jsx`: Arama, filtreleme, plaj listeleme çalışıyor mu?
+- `BeachDetail.jsx`: Plaj detayı, fotoğraflar, rezervasyon butonu var mı?
 
-### 4. `src/pages/Register.jsx`
+### 3. Backend Controller'lar
+- Hangi endpoint'ler mevcut?
+- Reservation endpoint'leri tam mı?
+- Beach endpoint'leri tam mı?
 
-Mevcut dosyayı oku, sonra şu eklemeleri yap:
+### 4. Eksik Sayfalar
+- `ForgotPassword` sayfası var mı?
+- `EmailVerification` sayfası var mı?
+- Admin panel sayfaları var mı?
 
-- Validation: ad/soyad zorunlu, email format, password min 6, sifre tekrar eslesmesi
-- `isLoading` state: submit sırasında "Kaydediliyor..." goster
-- `error` state: API hataları
-- Basarili kayit: "E-posta dogrulama linki gonderildi" mesaji
+## Uygulama Görevi
 
-### 5. `src/components/PrivateRoute.jsx`
+Analiz tamamlandıktan sonra, eksik olan **en kritik** sayfayı tamamla.
 
-Dosya yoksa olustur, varsa gozden gecir:
+### Öncelik Sırası:
+1. **Profile.jsx**: Kullanıcı profil düzenleme (ad, soyad, email, şifre değiştirme)
+2. **Reservations.jsx**: Rezervasyon geçmişi listesi
+3. **Favorites.jsx**: Favori plajlar listesi
+4. **ForgotPassword.jsx**: Şifre sıfırlama formu
 
-- AuthContext'ten `user` ve `loading` al
-- `loading === true`: spinner veya `<div>Yukleniyor...</div>` dondur
-- `user === null`: `<Navigate to="/login" state={{ from: location }} replace />` dondur
-- User varsa: `<Outlet />` dondur
+### Profile.jsx İçin Yapılacaklar (eğer placeholder ise):
 
-### 6. `src/components/Navbar.jsx`
+```
+- GET /api/users/profile → kullanıcı bilgilerini çek
+- Form: firstName, lastName, email (readonly), phone
+- Şifre değiştirme bölümü: currentPassword, newPassword, confirmPassword
+- Kaydet butonu: PUT /api/users/profile
+- Loading ve error state'leri
+- Başarı mesajı
+```
 
-Mevcut dosyayı oku, sonra:
+### Reservations.jsx İçin Yapılacaklar (eğer placeholder ise):
 
-- `user` null ise: "Giris Yap" ve "Kayit Ol" butonları goster
-- `user` varsa: kullanici adi, "Profilim", "Rezervasyonlarim", "Favorilerim", "Cikis" goster
-- AuthContext'ten `user` ve `logout` al
+```
+- GET /api/reservations/my → kullanıcının rezervasyonlarını çek
+- Liste: plaj adı, tarih, kişi sayısı, durum (aktif/iptal/tamamlandı), fiyat
+- İptal butonu: DELETE /api/reservations/:id (sadece aktif rezervasyonlar)
+- Loading skeleton
+- Boş durum mesajı
+```
 
-### 7. `src/App.js`
+### Favorites.jsx İçin Yapılacaklar (eğer placeholder ise):
 
-Mevcut dosyayı oku, sonra route yapısını duzenle:
-
-- Public route'lar: `/`, `/login`, `/register`, `/beaches/:id`, `/forgot-password`
-- Korumalı route'lar (PrivateRoute ile sarılı): `/profile`, `/reservations`, `/favorites`
-- AuthContext `loading` true iken `<div>Yukleniyor...</div>` goster
-
-## Uygulama Sırası
-
-1. `src/api/axios.js`
-2. `src/context/AuthContext.jsx`
-3. `src/components/PrivateRoute.jsx`
-4. `src/pages/Login.jsx`
-5. `src/pages/Register.jsx`
-6. `src/components/Navbar.jsx`
-7. `src/App.js`
-
-## Kritik Kurallar
-
-- Hiçbir sayfayı silme, sadece iyilestir
-- Mevcut calisan kodu bozmadan ekle
-- Eksik sayfalar icin basit placeholder yeterli (`<div>Yakindan</div>`)
-- Her dosyayı once oku, sonra yaz
-- localStorage key isimleri: `accessToken`, `refreshToken`, `user`
-- API endpoint'leri: `/auth/login`, `/auth/register`, `/auth/refresh`
-
-## Basari Kriterleri
-
-- axios.js'de refreshAccessToken export ediliyor
-- axios.js'de request/response interceptor var
-- AuthContext'te loading, user, login, logout, register var
-- Login formunda validation ve hata mesaji var
-- Register formunda validation ve hata mesaji var
-- PrivateRoute korumalı route caliyor
-- Navbar auth durumuna gore degisiyor
-- App.js'de korumali ve public route ayrimi var
-
-<commit_message>feat: Authentication temeli guclendirildi - interceptor, PrivateRoute, form validation eklendi</commit_message>
-
-
-# FAZ 1: Authentication ve Güvenlik Temeli - Kod Geliştirme
-
-## Amaç
-Proje analizinde tespit edilen en kritik eksikler olan Authentication akışındaki güvenlik açıklarını, eksik token yönetimini ve temel auth sayfalarındaki sorunları düzelt.
-
-## Okunacak Dosyalar (Önce bunları oku)
-
-1. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
-2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx`
-3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Login.jsx`
-4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Register.jsx`
-5. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\App.js`
-6. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\PrivateRoute.jsx` (yoksa `.js` uzantısını dene)
-7. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\Navbar.jsx` (yoksa `.js` uzantısını dene)
-
-## Yapılacak Değişiklikler
-
-### 1. `src/api/axios.js`
-
-Mevcut dosyayı oku, sonra şu yapıya göre güncelle:
-
-- `baseURL`: `process.env.REACT_APP_API_URL || 'http://localhost:5000/api'`
-- `refreshAccessToken` fonksiyonu: `export` edilmeli
-- Request interceptor: localStorage'dan `accessToken` alıp `Authorization: Bearer <token>` header ekle
-- Response interceptor: 401 gelirse `refreshAccessToken` çağır, yeni token ile isteği tekrarla; refresh başarısızsa localStorage temizle ve `/login`'e yönlendir
-
-### 2. `src/context/AuthContext.jsx`
-
-Mevcut dosyayı oku, sonra şu state ve fonksiyonların var olduğundan emin ol:
-
-- `user` state (null başlangıç)
-- `loading` state (true başlangıç, token kontrolü bitince false)
-- `isAuthenticated` = `user !== null`
-- `login(email, password)`: API çağrısı yap, `accessToken` + `refreshToken` localStorage'a kaydet, `user` set et
-- `logout()`: localStorage'ı temizle, `user` null yap, `/login`'e yönlendir
-- `register(name, email, password)`: API çağrısı yap
-- `useEffect`: Uygulama başında localStorage'daki token kontrol et, geçerliyse user set et
-- localStorage key'leri: `accessToken`, `refreshToken`, `user`
-
-### 3. `src/pages/Login.jsx`
-
-Mevcut dosyayı oku, sonra şu eklemeleri yap:
-
-- Form validation: email format + password min 6 karakter
-- `isLoading` state: submit sırasında buton disabled
-- `error` state: API hatasını kırmızı alert kutusunda göster
-- "Sifremi Unuttum" linki: `/forgot-password`
-- Basarili login: `navigate('/home')` veya `navigate(from, { replace: true })`
-- AuthContext'ten `login` fonksiyonunu kullan
-
-### 4. `src/pages/Register.jsx`
-
-Mevcut dosyayı oku, sonra şu eklemeleri yap:
-
-- Validation: ad/soyad zorunlu, email format, password min 6, sifre tekrar eslesmesi
-- `isLoading` state: submit sırasında "Kaydediliyor..." goster
-- `error` state: API hataları
-- Basarili kayit: "E-posta dogrulama linki gonderildi" mesaji
-
-### 5. `src/components/PrivateRoute.jsx`
-
-Dosya yoksa olustur, varsa gozden gecir:
-
-- AuthContext'ten `user` ve `loading` al
-- `loading === true`: spinner veya `<div>Yukleniyor...</div>` dondur
-- `user === null`: `<Navigate to="/login" state={{ from: location }} replace />` dondur
-- User varsa: `<Outlet />` dondur
-
-### 6. `src/components/Navbar.jsx`
-
-Mevcut dosyayı oku, sonra:
-
-- `user` null ise: "Giris Yap" ve "Kayit Ol" butonları goster
-- `user` varsa: kullanici adi, "Profilim", "Rezervasyonlarim", "Favorilerim", "Cikis" goster
-- AuthContext'ten `user` ve `logout` al
-
-### 7. `src/App.js`
-
-Mevcut dosyayı oku, sonra route yapısını duzenle:
-
-- Public route'lar: `/`, `/login`, `/register`, `/beaches/:id`, `/forgot-password`
-- Korumalı route'lar (PrivateRoute ile sarılı): `/profile`, `/reservations`, `/favorites`
-- AuthContext `loading` true iken `<div>Yukleniyor...</div>` goster
-
-## Uygulama Sırası
-
-1. `src/api/axios.js`
-2. `src/context/AuthContext.jsx`
-3. `src/components/PrivateRoute.jsx`
-4. `src/pages/Login.jsx`
-5. `src/pages/Register.jsx`
-6. `src/components/Navbar.jsx`
-7. `src/App.js`
+```
+- GET /api/favorites → kullanıcının favorilerini çek
+- Plaj kartları grid layout
+- Favoriden çıkar butonu
+- Plaj detay sayfasına link
+```
 
 ## Kritik Kurallar
 
-- Hiçbir sayfayı silme, sadece iyilestir
-- Mevcut calisan kodu bozmadan ekle
-- Eksik sayfalar icin basit placeholder yeterli (`<div>Yakindan</div>`)
-- Her dosyayı once oku, sonra yaz
-- localStorage key isimleri: `accessToken`, `refreshToken`, `user`
-- API endpoint'leri: `/auth/login`, `/auth/register`, `/auth/refresh`
+- Her dosyayı önce oku, sonra yaz
+- Backend endpoint'lerin gerçekte ne döndürdüğünü kontrol et
+- API endpoint'leri varsayma, mevcut controller'lardan doğrula
+- Placeholder olmayan sayfaları bozma
+- Türkçe UI metinleri kullan
+- Loading ve error state'leri her sayfada olmalı
 
-## Basari Kriterleri
+## Başarı Kriterleri
 
-- axios.js'de refreshAccessToken export ediliyor
-- axios.js'de request/response interceptor var
-- AuthContext'te loading, user, login, logout, register var
-- Login formunda validation ve hata mesaji var
-- Register formunda validation ve hata mesaji var
-- PrivateRoute korumalı route caliyor
-- Navbar auth durumuna gore degisiyor
-- App.js'de korumali ve public route ayrimi var
+- Profile sayfası gerçek API ile çalışıyor
+- Rezervasyonlar sayfası listeyi gösteriyor
+- Favoriler sayfası listeyi gösteriyor
+- En az 2 placeholder sayfa gerçek içerikle dolduruluyor
 
-<commit_message>feat: Authentication temeli guclendirildi - interceptor, PrivateRoute, form validation eklendi</commit_message>
+<commit_message>feat: Profile, Reservations ve Favorites sayfaları gerçek API bağlantısı ile tamamlandı</commit_message>
+
+
+# FAZ 2: Proje Durumu Analizi ve Sonraki Geliştirme Planı
+
+## Mevcut Durum Özeti
+
+Faz 1 tamamlandı:
+- `axios.js` interceptorları güncellendi
+- `AuthContext.jsx` yeniden düzenlendi
+- `PrivateRoute.jsx` oluşturuldu
+- `Login.jsx` / `Register.jsx` forma validasyon eklendi
+- `Navbar.jsx` auth durumuna göre güncellendi
+- `App.js` route yapısı düzenlendi
+
+Şimdi projenin geri kalan durumunu analiz edip bir sonraki kritik fazı belirleyelim.
+
+## Yapılacak Analiz
+
+Aşağıdaki dosyaları oku ve mevcut durumu değerlendir:
+
+### Okuyacağın Dosyalar
+
+1. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\` dizinindeki tüm dosyalar (liste al)
+2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\` dizinindeki tüm dosyalar (liste al)
+3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\App.js`
+4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Home.jsx` veya `Home.js`
+5. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\BeachDetail.jsx` veya `BeachDetail.js`
+6. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Reservations.jsx` veya `Reservations.js`
+7. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Profile.jsx` veya `Profile.js`
+8. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Favorites.jsx` veya `Favorites.js`
+9. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
+10. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx`
+11. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\package.json`
+
+### Backend Kontrolleri
+
+12. `C:\Users\akMuratNET\Desktop\BeachGo\BeachRehberi.API\` dizinini listele
+13. `C:\Users\akMuratNET\Desktop\BeachGo\BeachRehberi.API\BeachRehberi.API\Controllers\` dizinini listele
+14. `C:\Users\akMuratNET\Desktop\BeachGo\BeachRehberi.API\BeachRehberi.API\Controllers\AuthController.cs` oku
+15. `C:\Users\akMuratNET\Desktop\BeachGo\BeachRehberi.API\BeachRehberi.API\Controllers\ReservationController.cs` oku (varsa)
+16. `C:\Users\akMuratNET\Desktop\BeachGo\BeachRehberi.API\BeachRehberi.API\Controllers\BeachController.cs` oku (varsa)
+
+## Analiz Görevi
+
+Dosyaları okuduktan sonra şunları değerlendir:
+
+### 1. Placeholder Sayfalar
+- `Profile`, `Reservations`, `Favorites` sayfaları gerçek içerikle doldurul mu yoksa placeholder mı?
+- Bu sayfalarda eksik API bağlantısı var mı?
+
+### 2. Home ve BeachDetail
+- `Home.jsx`: Arama, filtreleme, plaj listeleme çalışıyor mu?
+- `BeachDetail.jsx`: Plaj detayı, fotoğraflar, rezervasyon butonu var mı?
+
+### 3. Backend Controller'lar
+- Hangi endpoint'ler mevcut?
+- Reservation endpoint'leri tam mı?
+- Beach endpoint'leri tam mı?
+
+### 4. Eksik Sayfalar
+- `ForgotPassword` sayfası var mı?
+- `EmailVerification` sayfası var mı?
+- Admin panel sayfaları var mı?
+
+## Uygulama Görevi
+
+Analiz tamamlandıktan sonra, eksik olan **en kritik** sayfayı tamamla.
+
+### Öncelik Sırası:
+1. **Profile.jsx**: Kullanıcı profil düzenleme (ad, soyad, email, şifre değiştirme)
+2. **Reservations.jsx**: Rezervasyon geçmişi listesi
+3. **Favorites.jsx**: Favori plajlar listesi
+4. **ForgotPassword.jsx**: Şifre sıfırlama formu
+
+### Profile.jsx İçin Yapılacaklar (eğer placeholder ise):
+
+```
+- GET /api/users/profile → kullanıcı bilgilerini çek
+- Form: firstName, lastName, email (readonly), phone
+- Şifre değiştirme bölümü: currentPassword, newPassword, confirmPassword
+- Kaydet butonu: PUT /api/users/profile
+- Loading ve error state'leri
+- Başarı mesajı
+```
+
+### Reservations.jsx İçin Yapılacaklar (eğer placeholder ise):
+
+```
+- GET /api/reservations/my → kullanıcının rezervasyonlarını çek
+- Liste: plaj adı, tarih, kişi sayısı, durum (aktif/iptal/tamamlandı), fiyat
+- İptal butonu: DELETE /api/reservations/:id (sadece aktif rezervasyonlar)
+- Loading skeleton
+- Boş durum mesajı
+```
+
+### Favorites.jsx İçin Yapılacaklar (eğer placeholder ise):
+
+```
+- GET /api/favorites → kullanıcının favorilerini çek
+- Plaj kartları grid layout
+- Favoriden çıkar butonu
+- Plaj detay sayfasına link
+```
+
+## Kritik Kurallar
+
+- Her dosyayı önce oku, sonra yaz
+- Backend endpoint'lerin gerçekte ne döndürdüğünü kontrol et
+- API endpoint'leri varsayma, mevcut controller'lardan doğrula
+- Placeholder olmayan sayfaları bozma
+- Türkçe UI metinleri kullan
+- Loading ve error state'leri her sayfada olmalı
+
+## Başarı Kriterleri
+
+- Profile sayfası gerçek API ile çalışıyor
+- Rezervasyonlar sayfası listeyi gösteriyor
+- Favoriler sayfası listeyi gösteriyor
+- En az 2 placeholder sayfa gerçek içerikle dolduruluyor
+
+<commit_message>feat: Profile, Reservations ve Favorites sayfaları gerçek API bağlantısı ile tamamlandı</commit_message>
 
 
 Final response requirements:

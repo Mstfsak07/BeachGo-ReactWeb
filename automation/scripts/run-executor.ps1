@@ -110,13 +110,16 @@ Final response requirements:
             $ErrorActionPreference = "Continue"
 
             $env:GEMINI_MODEL = "gemini-3-pro"
-
-            Write-Log "Gemini cagiriliyor (model=gemini-3-pro, iteration=$iteration, deneme=$retryCount)..."
-
-            # Prompt'u stdin'den pipe et — -p arguman limiti yok, ExitCode=42 olmaz
-            $executorOutput = Get-Content $tempPrompt -Raw -Encoding UTF8 | & $geminiPath -m gemini-3-pro 2>&1
-
-            $exitCode = $LASTEXITCODE
+            $env:GOOGLE_GEMINI_BASE_URL = "http://127.0.0.1:8045"
+            $env:GEMINI_API_KEY         = "sk-0392f1a407974e89912d8e22daca8d84"
+            
+            Write-Log "Gemini cagiriliyor (model=gemini-3-pro, yolo mode, iteration=$iteration)..."
+            
+            $executorOutput = Get-Content $tempPrompt -Raw -Encoding UTF8 | & $geminiPath `
+            --approval-mode yolo `
+              --model gemini-3-pro 2>&1
+              
+              $exitCode = $LASTEXITCODE
             $ErrorActionPreference = $oldEAP
 
             Write-Log "Gemini tamamlandi. ExitCode=$exitCode Cikti uzunlugu=$($executorOutput.Count) satir"

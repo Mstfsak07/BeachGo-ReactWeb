@@ -1,233 +1,94 @@
-﻿# FAZ 10 â PowerShell ile DoÄrudan Dosya YazÄ±mÄ± (Shell Execution)
+﻿# FAZ 1: Proje Analizi - Mevcut Kaynak Kodları Oku
 
-## Durum Analizi
+## Amaç
+BeachGo React projesinin mevcut durumunu anlamak için kaynak dosyaları analiz et ve result.txt'e özet yaz. Kod yazmadan önce ne var ne yok tespit et.
 
-Ãnceki 2 iterasyonda executor `read_file` ve `write_file` araÃ§larÄ±na eriÅemedi. Ancak git diff'e bakÄ±ldÄ±ÄÄ±nda commit baÅarÄ±lÄ± olmuÅ â bu executor'Ä±n **bash/shell komutlarÄ± Ã§alÄ±ÅtÄ±rabildiÄini** gÃ¶steriyor. Bu iterasyonda tÃ¼m deÄiÅiklikler **tek bir PowerShell script bloÄu** olarak verilecek, executor bunu `run_in_terminal` veya `execute_command` ile Ã§alÄ±ÅtÄ±racak.
+## Executor Talimatları
 
----
+Aşağıdaki adımları sırayla uygula:
 
-## Executor TalimatlarÄ±
-
-### Tek AdÄ±m: PowerShell Script'i ÃalÄ±ÅtÄ±r
-
-AÅaÄÄ±daki PowerShell kodunu **tek seferde** terminal'de Ã§alÄ±ÅtÄ±r:
-
-```powershell
-Set-Location "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui"
-
-# ========== 1. axios.js: refreshAccessToken ekle ==========
-$axiosPath = "src\api\axios.js"
-$axiosContent = Get-Content -Path $axiosPath -Raw -Encoding UTF8
-
-if ($axiosContent -notmatch "refreshAccessToken") {
-    $addBlock = @'
-
-
-export const refreshAccessToken = async () => {
-  const refreshToken = localStorage.getItem('refreshToken');
-  if (!refreshToken) throw new Error('No refresh token available');
-  const response = await api.post('/auth/refresh-token', { refreshToken });
-  const { accessToken, refreshToken: newRefreshToken } = response.data;
-  localStorage.setItem('token', accessToken);
-  if (newRefreshToken) localStorage.setItem('refreshToken', newRefreshToken);
-  return accessToken;
-};
-'@
-    $axiosContent + $addBlock | Set-Content -Path $axiosPath -Encoding UTF8 -NoNewline
-    Write-Host "axios.js: refreshAccessToken eklendi"
-} else {
-    Write-Host "axios.js: refreshAccessToken zaten mevcut"
-}
-
-# ========== 2. Profile.jsx oluÅtur ==========
-$profilePath = "src\pages\Profile.jsx"
-$profileContent = @'
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
-import api from '../api/axios';
-import toast from 'react-hot-toast';
-
-const Profile = () => {
-  const { user, setUser } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-  });
-
-  useEffect(() => {
-    if (user) {
-      setForm({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        phone: user.phone || '',
-      });
-    }
-  }, [user]);
-
-  const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await api.put('/auth/profile', form);
-      toast.success('Profil guncellendi');
-      if (setUser) setUser(res.data);
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Guncelleme basarisiz');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="max-w-xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Profilim</h1>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Ad</label>
-          <input
-            name="firstName"
-            value={form.firstName}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Soyad</label>
-          <input
-            name="lastName"
-            value={form.lastName}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">E-posta</label>
-          <input
-            name="email"
-            type="email"
-            value={form.email}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">Telefon</label>
-          <input
-            name="phone"
-            value={form.phone}
-            onChange={handleChange}
-            className="w-full border rounded-lg px-3 py-2"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? 'Kaydediliyor...' : 'Kaydet'}
-        </button>
-      </form>
-    </div>
-  );
-};
-
-export default Profile;
-'@
-$profileContent | Set-Content -Path $profilePath -Encoding UTF8
-Write-Host "Profile.jsx olusturuldu"
-
-# ========== 3. App.js: Profile route ekle ==========
-$appPath = "src\App.js"
-$appContent = Get-Content -Path $appPath -Raw -Encoding UTF8
-
-if ($appContent -notmatch "pages/Profile") {
-    # Lazy import ekle
-    $appContent = $appContent -replace `
-        '(const ReservationSuccess = lazy\([^;]+;\s*)', `
-        '$1const Profile = lazy(() => import("./pages/Profile"));' + "`n"
-    
-    # Route ekle - "*" route'undan Ã¶nce
-    $appContent = $appContent -replace `
-        '(<Route path="\*")', `
-        '<Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />' + "`n            " + '$1'
-    
-    $appContent | Set-Content -Path $appPath -Encoding UTF8
-    Write-Host "App.js: /profile route eklendi"
-} else {
-    Write-Host "App.js: /profile route zaten mevcut"
-}
-
-# ========== 4. Dogrulama ==========
-$axiosFinal = Get-Content -Path $axiosPath -Raw -Encoding UTF8
-$profileExists = Test-Path $profilePath
-$appFinal = Get-Content -Path $appPath -Raw -Encoding UTF8
-
-$axiosOK = $axiosFinal -match "refreshAccessToken"
-$profileOK = $profileExists -and ((Get-Content -Path $profilePath -Raw) -match "const Profile")
-$appOK = $appFinal -match "/profile"
-
-Write-Host ""
-Write-Host "===== DOGRULAMA ====="
-Write-Host "axios.js - refreshAccessToken: $(if($axiosOK){'EVET'}else{'HAYIR'})"
-Write-Host "Profile.jsx - dosya ve component: $(if($profileOK){'EVET'}else{'HAYIR'})"
-Write-Host "App.js - /profile route: $(if($appOK){'EVET'}else{'HAYIR'})"
-
-# ========== 5. result.txt yaz ==========
-$resultPath = "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\result.txt"
-$resultContent = @"
-DOGRULAMA RAPORU:
-- axios.js -> refreshAccessToken export mevcut: $(if($axiosOK){'EVET'}else{'HAYIR'})
-- Profile.jsx -> Dosya mevcut ve Profile componenti tanimli: $(if($profileOK){'EVET'}else{'HAYIR'})
-- App.js -> /profile route mevcut: $(if($appOK){'EVET'}else{'HAYIR'})
-
-Tamamlanan islemler:
-1. axios.js refreshAccessToken fonksiyonu eklendi
-2. Profile.jsx sayfasi olusturuldu (form, state, API baglantisi)
-3. App.js lazy import ve ProtectedRoute icinde /profile route eklendi
-"@
-$resultContent | Set-Content -Path $resultPath -Encoding UTF8
-Write-Host "result.txt yazildi: $resultPath"
-```
-
----
-
-## BaÅarÄ± Kriterleri
-
-Scriptin Ã§Ä±ktÄ±sÄ±nda ÅunlarÄ± gÃ¶r:
+### Adım 1: Proje yapısını listele ve result.txt'e yaz
 
 ```
-===== DOGRULAMA =====
-axios.js - refreshAccessToken: EVET
-Profile.jsx - dosya ve component: EVET
-App.js - /profile route: EVET
-result.txt yazildi: C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\result.txt
+Önce şu dizindeki tüm dosyaları listele:
+C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src
+
+Sonra şu dizini de listele:
+C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages
+
+Ve şu dizini:
+C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components
+
+Ve şu dizini:
+C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context
+
+Ve şu dizini:
+C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api
 ```
 
----
+### Adım 2: Kritik dosyaları oku
 
-## Dosya Kontrol Listesi
+Şu dosyaları oku ve içeriklerini incele:
 
-| Dosya | YapÄ±lacak Ä°Ålem |
-|-------|-----------------|
-| `src/api/axios.js` | `refreshAccessToken` export eklendi |
-| `src/pages/Profile.jsx` | SÄ±fÄ±rdan oluÅturuldu |
-| `src/App.js` | Lazy import + `/profile` ProtectedRoute eklendi |
-| `result.txt` | DoÄrulama raporu yazÄ±ldÄ± |
+1. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\App.js`
+2. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\api\axios.js`
+3. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\AuthContext.jsx` (veya AuthContext.js)
+4. `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\package.json`
 
----
+### Adım 3: Sayfa dosyalarını oku
+
+Şu sayfaları oku (varsa):
+1. `src\pages\Login.jsx`
+2. `src\pages\Register.jsx`
+3. `src\pages\Home.jsx`
+4. `src\pages\BeachDetail.jsx`
+5. `src\pages\Profile.jsx`
+6. `src\pages\Reservations.jsx`
+7. `src\pages\Favorites.jsx`
+
+### Adım 4: result.txt'e analiz raporu yaz
+
+`C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\result.txt` dosyasına şu formatı kullanarak yaz:
+
+```
+PROJE ANALİZ RAPORU
+===================
+
+MEVCUT SAYFALAR:
+- [her sayfa için: var/yok ve kısa açıklama]
+
+MEVCUT CONTEXT/AUTH:
+- [AuthContext durumu]
+
+MEVCUT API:
+- [axios.js durumu, tanımlı endpoint'ler]
+
+MEVCUT ROUTE'LAR (App.js):
+- [her route listele]
+
+EKSIK SAYFALAR:
+- [görünürde eksik olanlar]
+
+EKSIK FONKSİYONLAR:
+- [axios.js, context vs'de eksik olanlar]
+
+PAKETLER (package.json):
+- [kurulan paketler listesi]
+```
+
+## Başarı Kriteri
+
+`result.txt` dosyası aşağıdaki bilgileri içeriyor olmalı:
+- Mevcut sayfa listesi (var/yok)
+- App.js route listesi
+- AuthContext özeti
+- axios.js özeti
+- Eksik bileşenler listesi
 
 ## Notlar
+- Bu faz sadece ANALİZ fazıdır, hiçbir kaynak dosyayı değiştirme.
+- Okuduğun her dosyanın adını ve kısa içerik özetini result.txt'e ekle.
+- Eğer bir dosya bulunamazsa bunu "YOK" olarak işaretle.
+- result.txt UTF-8 kodlamasıyla yaz.
 
-- Script idempotent'tir: zaten yapÄ±lmÄ±Å deÄiÅiklikleri tekrar yapmaz.
-- TÃ¼rkÃ§e karakterler (`Ã¼`, `Ä`, `Å`) PowerShell here-string iÃ§inde sorun Ã§Ä±karabileceÄinden ASCII-safe alternatiflere Ã§evrildi (`guncellendi`, `olusturuldu` vb.).
-- `ProtectedRoute` adÄ± App.js'deki mevcut yapÄ±ya gÃ¶re kullanÄ±ldÄ±; eÄer `PrivateRoute` ise executor bunu manuel dÃ¼zeltmeli.
-
-<commit_message>fix: Profile.jsx oluÅturuldu, axios.js refreshAccessToken eklendi, App.js /profile route gÃ¼ncellendi</commit_message>
+<commit_message>analysis: BeachGo React proje yapisi analiz edildi, eksikler tespit edildi</commit_message>

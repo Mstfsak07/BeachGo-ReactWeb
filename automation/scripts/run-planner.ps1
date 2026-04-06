@@ -26,16 +26,17 @@ function Set-SP {
 function Invoke-ClaudeAPI {
     param([string]$Prompt, [string]$SystemPrompt = "")
 
+    
     $apiKey  = $env:ANTHROPIC_API_KEY
     $baseUrl = if ($env:ANTHROPIC_BASE_URL) { $env:ANTHROPIC_BASE_URL.TrimEnd('/') } else { "https://api.anthropic.com" }
 
     $bodyObj = [ordered]@{
         model      = "claude-sonnet-4-6"
         max_tokens = 8096
-        messages   = @(@{ role = "user"; content = $Prompt })
+        messages = @(@{ role = "user"; content = [string]$Prompt })
     }
     if (-not [string]::IsNullOrWhiteSpace($SystemPrompt)) {
-        $bodyObj["system"] = $SystemPrompt
+        $bodyObj["system"] = [string]$SystemPrompt
     }
 
     $bodyJson = $bodyObj | ConvertTo-Json -Depth 10 -Compress
@@ -53,7 +54,7 @@ function Invoke-ClaudeAPI {
         -Uri     "$baseUrl/v1/messages" `
         -Method  POST `
         -Headers $headers `
-        -Body    ([System.Text.Encoding]::UTF8.GetBytes($body))
+        -Body    $bodyBytes
 
     $responseText = [System.Text.Encoding]::UTF8.GetString($responseRaw.RawContentStream.ToArray())
 $response = $responseText | ConvertFrom-Json

@@ -1,118 +1,128 @@
-﻿# FAZ 6 â DoÄrudan Dosya Ä°Ã§eriÄi Yazma (Full File Overwrite)
+﻿# DURUM ANALÄ°ZÄ°
 
-## Durum Analizi
+Executor'da mevcut araÃ§lar: `list_directory`, `read_file`, `grep_search`, `glob`, `google_web_search`
 
-Son 3 iterasyonda executor:
-- `run_shell_command` kullanamÄ±yor (engellenmiÅ)
-- `str_replace_editor`, `edit_file`, `insert_content` araÃ§larÄ± da Ã§alÄ±ÅmÄ±yor
-- Sadece `read_file` (okuma) mevcut gÃ¶rÃ¼nÃ¼yor
+Dosya yazma araÃ§larÄ± (`write_file`, `edit_file`, `str_replace_editor`) MEVCUT DEÄÄ°L.
 
-**Yeni strateji**: Executor'dan dosyalarÄ± tam olarak okuyup, **tam iÃ§eriÄiyle birlikte `write_file` veya `create_file` aracÄ±yla Ã¼zerine yazmasÄ±nÄ±** iste. Bu araÃ§lar Iteration 2'de commit baÅarÄ±lÄ± olduÄunda Ã§alÄ±ÅmÄ±Å olabilir.
+Bu nedenle mevcut pipeline ile kod deÄiÅikliÄi yapÄ±lamÄ±yor. Ama gÃ¶rev analiz + plan Ã¼retmek olduÄu iÃ§in bu iterasyonda **projenin mevcut durumunu okuyarak kapsamlÄ± analiz** yapÄ±labilir.
 
 ---
+
+# FAZ 7 â Proje Analizi: Mevcut Dosya YapÄ±sÄ±nÄ± Oku ve Eksikleri Tespit Et
 
 ## Executor TalimatlarÄ±
 
-### AdÄ±m 1: axios.js DosyasÄ±nÄ± Oku
+### AdÄ±m 1: Frontend Dizin YapÄ±sÄ±nÄ± Listele
 
-AracÄ±: `read_file`
-Dosya: `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/axios.js`
+AraÃ§: `list_directory`
+Yollar (sÄ±rayla):
+1. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src`
+2. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages`
+3. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/components`
+4. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api`
+5. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/context`
 
-TÃ¼m iÃ§eriÄi hafÄ±zana al. DosyanÄ±n son satÄ±rÄ±na bak: `refreshAccessToken` export var mÄ±?
-
----
-
-### AdÄ±m 2: axios.js DosyasÄ±nÄ± Tam Ä°Ã§erikle Yeniden Yaz
-
-EÄer `refreshAccessToken` yoksa, mevcut dosya iÃ§eriÄini oku ve sonuna Åu bloÄu ekleyerek **tÃ¼m dosyayÄ± `write_file` ile yeniden yaz**:
-
-```javascript
-export const refreshAccessToken = async () => {
-  const refreshToken = localStorage.getItem('refreshToken');
-  if (!refreshToken) throw new Error('No refresh token');
-  const response = await api.post('/Auth/refresh', { refreshToken });
-  const { accessToken } = response.data;
-  localStorage.setItem('accessToken', accessToken);
-  return accessToken;
-};
-```
-
-AraÃ§: `write_file`
-Yol: `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/axios.js`
-Ä°Ã§erik: [mevcut iÃ§erik] + yukarÄ±daki blok
+Her dizin iÃ§in dosya listesini kaydet.
 
 ---
 
-### AdÄ±m 3: DashboardReservations.jsx DosyasÄ±nÄ± Oku
+### AdÄ±m 2: API DosyalarÄ±nÄ± Oku
 
 AraÃ§: `read_file`
-Dosya: `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx`
 
-TÃ¼m iÃ§eriÄi hafÄ±zana al. ÅunlarÄ± tespit et:
-1. Son `import` satÄ±rÄ± hangisi?
-2. `const initialState` tanÄ±mlÄ± mÄ±?
-3. `React.useMemo` ile tanÄ±mlanmÄ±Å `initialState` var mÄ±?
+SÄ±rayla oku:
+1. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/axios.js`
+2. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/api/auth.js` (varsa)
+3. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/context/AuthContext.jsx` (veya `.js`)
+
+Her dosyada ÅunlarÄ± kontrol et ve kaydet:
+- `refreshAccessToken` export var mÄ±?
+- Token yenileme interceptor'u var mÄ±?
+- Hata yakalama (try/catch) var mÄ±?
 
 ---
 
-### AdÄ±m 4: DashboardReservations.jsx DosyasÄ±nÄ± Tam Ä°Ã§erikle Yeniden Yaz
+### AdÄ±m 3: Kritik Sayfa DosyalarÄ±nÄ± Oku
 
-**YapÄ±lacak deÄiÅiklikler:**
-1. Son `import` satÄ±rÄ±ndan sonra Åu bloÄu ekle:
-```javascript
-const initialState = {
-  search: '',
-  filterType: 'All',
-  filterStatus: 'All',
-  sortType: 'Newest',
-  currentPage: 1
-};
+AraÃ§: `read_file`
+
+SÄ±rayla oku:
+1. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx`
+2. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Login.jsx` (veya `LoginPage.jsx`)
+3. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Register.jsx` (veya `RegisterPage.jsx`)
+4. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Profile.jsx` (varsa)
+5. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/BeachDetail.jsx` (varsa)
+
+Her dosyada ÅunlarÄ± tespit et:
+- Loading state var mÄ±? (`isLoading`, `loading`)
+- Error handling var mÄ±? (`error`, `catch`)
+- Form validation var mÄ±?
+- `initialState` tanÄ±mÄ± nasÄ±l? (static mi, useMemo mu?)
+
+---
+
+### AdÄ±m 4: Backend Dosya YapÄ±sÄ±nÄ± Listele
+
+AraÃ§: `list_directory`
+Yollar:
+1. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGoAPI`
+2. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGoAPI/Controllers` (varsa)
+3. `C:/Users/akMuratNET/Desktop/BeachGo/BeachGoAPI/Models` (varsa)
+
+---
+
+### AdÄ±m 5: Package.json Oku
+
+AraÃ§: `read_file`
+Dosya: `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/package.json`
+
+Hangi kÃ¼tÃ¼phaneler var? (`react-query`, `zustand`, `formik`, `yup`, `react-hook-form`, `axios`, `react-router-dom` vb.)
+
+---
+
+### AdÄ±m 6: Tespit Edilen Eksikleri result.txt'e Yaz
+
+AÅaÄÄ±daki format ile result.txt'e yaz:
+
 ```
-2. EÄer dosyada `const initialState = React.useMemo(` veya `const initialState = useMemo(` geÃ§iyorsa, o bloÄu **sil** (sadece bu satÄ±rÄ± ve kapanÄ±Å parantezine kadar olan kÄ±smÄ± kaldÄ±r, `initialState` deÄiÅkenini yukarÄ±daki statik nesneyle bÄ±rak).
+=== PROJE ANALÄ°Z RAPORU ===
 
-AraÃ§: `write_file`
-Yol: `C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/DashboardReservations.jsx`
-Ä°Ã§erik: DÃ¼zeltilmiÅ tam dosya iÃ§eriÄi
+## Frontend Dosya YapÄ±sÄ±
+[list_directory sonuÃ§larÄ±]
+
+## API KatmanÄ±
+- refreshAccessToken: [VAR/YOK]
+- Token interceptor: [VAR/YOK]
+- Hata yakalama: [VAR/YOK]
+
+## DashboardReservations.jsx
+- initialState tanÄ±mÄ±: [STATIC/USEMEMO/YOK]
+- Loading state: [VAR/YOK]
+- Error handling: [VAR/YOK]
+
+## Login/Register SayfalarÄ±
+- Form validation: [VAR/YOK]
+- Error mesajlarÄ±: [VAR/YOK]
+
+## Profil SayfasÄ±
+- [VAR/YOK] ve durumu
+
+## Backend YapÄ±sÄ±
+[Controller ve Model listesi]
+
+## YÃ¼klÃ¼ KÃ¼tÃ¼phaneler
+[package.json Ã¶zeti]
+
+## Kritik Eksikler (Ãncelik SÄ±rasÄ±na GÃ¶re)
+1. ...
+2. ...
+3. ...
+```
 
 ---
 
-### AdÄ±m 5: DoÄrulama
+## BaÅarÄ± Kriteri
 
-Her iki dosyayÄ± tekrar `read_file` ile oku ve ÅunlarÄ± kontrol et:
-- `axios.js`: `export const refreshAccessToken` satÄ±rÄ± var mÄ±? `api.post` kullanÄ±yor mu?
-- `DashboardReservations.jsx`: `const initialState = {` (statik nesne) var mÄ±? `useMemo` ile Ã§akÄ±Åma yok mu?
+Bu iterasyonun amacÄ± **kod yazmak deÄil, projeyi okuyarak eksiksiz analiz raporu Ã¼retmek**tir. result.txt'de yukarÄ±daki format dolu ve bilgilendirici olmalÄ±dÄ±r.
 
-SonuÃ§larÄ± result.txt'e yaz.
-
----
-
-### AdÄ±m 6: EÄer write_file de ÃalÄ±ÅmÄ±yorsa
-
-EÄer hiÃ§bir dosya yazma aracÄ± mevcut deÄilse, result.txt'e Åunu yaz:
-
-> "ARAÃ YOK: write_file, edit_file, str_replace_editor araÃ§larÄ±nÄ±n hiÃ§biri mevcut deÄil. Mevcut araÃ§ listesi: [araÃ§larÄ± listele]"
-
-Bu bilgi bir sonraki iterasyonda farklÄ± yaklaÅÄ±m planlamak iÃ§in kullanÄ±lacak.
-
----
-
-## BaÅarÄ± Kriterleri
-
-| Kriter | Beklenen |
-|--------|----------|
-| axios.js `refreshAccessToken` | Dosyada mevcut, `api` instance kullanÄ±yor |
-| DashboardReservations.jsx `initialState` | Statik nesne olarak import bloÄundan sonra |
-| `useMemo` Ã§akÄ±ÅmasÄ± | KaldÄ±rÄ±lmÄ±Å |
-
-## Etkilenen Dosyalar
-
-| Dosya | DeÄiÅiklik |
-|-------|-----------|
-| `src/api/axios.js` | `refreshAccessToken` export ekleme |
-| `src/pages/DashboardReservations.jsx` | `initialState` static const + useMemo kaldÄ±rma |
-
-## Risk
-
-EÄer executor dosya iÃ§eriÄini okuyup yazabiliyorsa bu iterasyonda sorun Ã§Ã¶zÃ¼lÃ¼r. EÄer hÃ¢lÃ¢ Ã§alÄ±ÅmÄ±yorsa, bir sonraki iterasyonda **automation pipeline'Ä±na doÄrudan patch dosyasÄ±** ekleme yaklaÅÄ±mÄ± denenecek.
-
-<commit_message>fix: axios.js ve DashboardReservations.jsx tam dosya Ã¼zerine yazma ile dÃ¼zeltildi</commit_message>
+<commit_message>analyse: proje yapÄ±sÄ± ve eksikler analiz raporu Ã¼retildi</commit_message>

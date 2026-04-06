@@ -1,79 +1,156 @@
-﻿Önceki iterasyonlarda executor'ın büyük analiz görevlerinde API rate limit'e çarptığı görülüyor. Ancak son history.log'dan anlaşıldığı üzere, authentication temeli zaten tamamlanmış (commit: "Authentication temeli güçlendirildi"). Şimdi mevcut durumu küçük, odaklı bir analiz fazıyla belirleyip bir sonraki geliştirme adımını planlayacağım.
+﻿# BeachGo Projesi - Kapsamlı Analiz ve Geliştirme Planı
 
-## FAZ: Frontend Eksik Sayfalar - Hızlı Durum Tespiti
+## 1. MEVCUT DURUM ANALİZİ
+
+### Tespit Edilen Yapı
+**Backend (.NET API):**
+- BeachRehberi.API projesi mevcut
+- 11 controller tespit edildi (Admin, Auth, Beaches, Reservations vb.)
+- SQLite veritabanı kullanılıyor (beachrehberi.db)
+
+**Frontend (React):**
+- beach-ui/src/ altında çalışma yapılmış
+- App.js, AuthContext.jsx, axios.js, Navbar.js mevcut
+- Login/Register sayfaları .js ve .jsx karışık uzantılarla mevcut
+- PrivateRoute.jsx oluşturulmuş
+- Bazı servis dosyaları eksik (beachService, favoriteService vb.)
+
+**Son Yapılan:**
+- axios.js interceptorları güncellendi
+- AuthContext.jsx yeniden düzenlendi
+- PrivateRoute.jsx oluşturuldu
+- Login/Register'a validasyon eklendi
+- Navbar auth durumuna göre güncellendi
+
+---
+
+## 2. BULUNAN EKSİKLER (Önem Sırasına Göre)
+
+### KRİTİK (Sistem çalışmayı etkiler)
+1. Frontend servis dosyaları eksik (beachService.js, favoriteService.js, notificationService.js, paymentService.js)
+2. E-posta doğrulama ve şifre sıfırlama akışı frontend'de tamamlanmamış
+3. Beach detay sayfası durumu belirsiz (.js mi .jsx mi?)
+4. Home sayfası durumu belirsiz
+5. Rezervasyon oluşturma/iptal akışı frontend'de eksik
+
+### ÖNEMLİ (UX'i etkiler)
+6. Kullanıcı profil düzenleme sayfası eksik/yarım
+7. Favoriler sayfası mevcut ama servis katmanı eksik
+8. Bildirim sistemi frontend tarafı eksik
+9. Arama, filtreleme, sıralama UI bileşenleri eksik
+10. Loading state'leri ve error boundary'ler eksik
+
+### ORTA (Kaliteyi etkiler)
+11. Admin panel frontend'i belirsiz/eksik
+12. Beach sahipleri yönetim ekranı eksik
+13. Ödeme akışı frontend entegrasyonu eksik
+14. Mobil responsive kontrol yapılmamış
+15. API güvenlik katmanı (rate limiting, validation) kontrol edilmemiş
+
+### DÜŞÜK (İyileştirme)
+16. Kod tekrarları ve refactor ihtiyacı
+17. Test coverage eksik
+18. Production deploy konfigürasyonu eksik
+19. Performance optimizasyonu
+
+---
+
+## FAZ 1: Derinlemesine Dosya Analizi ve Tam Envanter
 
 ### Amaç
-Mevcut projenin hangi aşamada olduğunu net görmek için sadece kritik dosyaların ilk 20 satırını oku ve eksik/placeholder olanları tespit et. Kod yazma.
+Projenin gerçek durumunu dosya bazında tam olarak tespit etmek. Hangi dosyalar var, içerikleri ne durumda, ne eksik - bunları kesin olarak belirlemek.
 
-### Executor için Adımlar
+### Executor'a Verilecek Görevler
 
-**Adım 1:** Şu dosyaların var olup olmadığını ve ilk 20 satırını oku:
+**Adım 1: Frontend tam dosya envanteri çıkar**
+
+Aşağıdaki dizinleri recursive olarak listele ve result.txt'e yaz:
+- `/beach-ui/src/pages/` - tüm dosyalar ve boyutları
+- `/beach-ui/src/services/` veya `/beach-ui/src/api/` - servis dosyaları
+- `/beach-ui/src/components/` - component dosyaları
+- `/beach-ui/src/context/` - context dosyaları
+- `/beach-ui/src/` - root dosyalar (App.js, index.js vb.)
+
+**Adım 2: Kritik frontend dosyalarının içeriklerini kontrol et**
+
+Şu dosyaların ilk 50 satırını oku:
+- `/beach-ui/src/App.js` - route yapısı
+- `/beach-ui/src/pages/Home.js` veya `Home.jsx`
+- `/beach-ui/src/pages/BeachDetail.js` veya `BeachDetail.jsx`
+- `/beach-ui/src/pages/Reservations.jsx` veya `Reservations.js`
+- `/beach-ui/src/pages/Profile.jsx`
+- `/beach-ui/src/pages/Favorites.jsx`
+- `/beach-ui/src/pages/ForgotPassword.jsx`
+
+**Adım 3: Backend dosya envanteri**
+
+Listele:
+- `/BeachRehberi.API/BeachRehberi.API/Controllers/` - tüm controller'lar
+- `/BeachRehberi.API/BeachRehberi.API/Models/` - tüm modeller
+- `/BeachRehberi.API/BeachRehberi.API/Services/` veya benzeri servis klasörü
+- `/BeachRehberi.API/BeachRehberi.API/` - root dosyalar (Program.cs, appsettings.json)
+
+**Adım 4: Her controller için endpoint listesi çıkar**
+
+Şu controller'ları oku ve HTTP metodları + route'larını listele:
+- AuthController
+- BeachesController
+- ReservationsController
+- AdminController
+- Diğerleri
+
+**Adım 5: Veritabanı migration durumu**
+
+Migration klasörünü listele:
+- `/BeachRehberi.API/BeachRehberi.API/Migrations/`
+
+**Adım 6: Package bağımlılıkları**
+
+Oku:
+- `/beach-ui/package.json` - frontend dependencies
+- `/BeachRehberi.API/BeachRehberi.API/BeachRehberi.API.csproj` - backend dependencies
+
+**Adım 7: Sonuçları result.txt'e yaz**
+
+Tüm bulgular şu formatta result.txt'e yazılsın:
 
 ```
-/C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Favorites.jsx
-/C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/ForgotPassword.jsx
-/C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Profile.jsx
-/C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Reservations.jsx
-/C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/BeachDetail.jsx
-/C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/pages/Home.jsx
+=== FRONTEND DOSYA ENVANTERİ ===
+[dosya listesi]
+
+=== KRİTİK FRONTEND DOSYALARI İÇERİĞİ ===
+[her dosyanın özeti]
+
+=== BACKEND DOSYA ENVANTERİ ===
+[dosya listesi]
+
+=== BACKEND ENDPOINT LİSTESİ ===
+[controller -> route -> method]
+
+=== VERİTABANI MİGRASYON DURUMU ===
+[migration listesi]
+
+=== BAĞIMLILIKLAR ===
+[frontend ve backend paketleri]
+
+=== GENEL DEĞERLENDİRME ===
+[eksikler ve bulgular]
 ```
 
-**Adım 2:** Şu dosyaların var olup olmadığını kontrol et (sadece exists/not exists):
+### Etkilenen Dosyalar
+- Sadece okuma yapılacak, değişiklik yok
+- result.txt güncellenecek
 
-```
-/C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/services/beachService.js
-/C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/services/reservationService.js
-/C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/services/favoriteService.js
-/C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/services/authService.js
-```
+### Test Senaryoları
+- Tüm kritik dosyaların var olup olmadığı kontrol edilecek
+- Route yapısının tutarlı olup olmadığı değerlendirilecek
 
-**Adım 3:** App.js veya App.jsx dosyasındaki route listesini oku (sadece ilk 60 satır):
+### Tahmini Riskler
+- Bazı dosyalar farklı konumlarda olabilir, path'leri dikkatli kontrol et
+- .js ve .jsx karışıklığına dikkat et
 
-```
-/C:/Users/akMuratNET/Desktop/BeachGo/BeachGo-ReactWeb/beach-ui/src/App.js
-```
+---
 
-**Adım 4:** Backend controller listesini al:
+Bu faz tamamlandıktan sonra gerçek geliştirme fazları oluşturulabilir. Şu an projenin tam durumu belirsiz olduğu için önce bu analiz kritik.
 
-```
-dir C:\Users\akMuratNET\Desktop\BeachGo\BeachRehberi.API\BeachRehberi.API\Controllers /b
-```
-
-**Adım 5:** result.txt dosyasına SADECE şunu yaz (kısa tut, 300 kelimeyi geçme):
-
-```
-## DURUM TESPİTİ
-
-### Mevcut Sayfalar (placeholder mi, gerçek mi?)
-- Favorites.jsx: [VAR/YOK] - [placeholder/gerçek]
-- ForgotPassword.jsx: [VAR/YOK] - [placeholder/gerçek]
-- Profile.jsx: [VAR/YOK] - [gerçek/placeholder]
-- Reservations.jsx: [VAR/YOK] - [gerçek/placeholder]
-- BeachDetail.jsx: [VAR/YOK] - [gerçek/placeholder]
-- Home.jsx: [VAR/YOK] - [gerçek/placeholder]
-
-### Mevcut Servisler
-- beachService.js: [VAR/YOK]
-- reservationService.js: [VAR/YOK]
-- favoriteService.js: [VAR/YOK]
-- authService.js: [VAR/YOK]
-
-### Mevcut Route'lar (App.js)
-[Route listesi - kısa]
-
-### Backend Controller'lar
-[Liste]
-
-### En Kritik 3 Eksik
-1. ...
-2. ...
-3. ...
-```
-
-**ÖNEMLİ KISITLAMALAR:**
-- Hiç kod yazma
-- 300 kelimeden fazla çıktı üretme
-- Sadece dosyaları oku ve listele
-- Gemini CLI'nin chat geçmişini şişirme, kısa tut
-
-<commit_message>Analiz: Mevcut frontend sayfa durumu ve eksikler tespit edildi</commit_message>
+<commit_message>Analiz: BeachGo projesi kapsamlı dosya ve kod envanteri çıkarıldı</commit_message>

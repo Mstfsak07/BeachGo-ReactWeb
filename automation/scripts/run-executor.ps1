@@ -110,7 +110,7 @@ set GEMINI_MODEL=gemini-3-pro
 set GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8045
 set GEMINI_API_KEY=sk-xxx
 
-type "$tempPrompt" | gemini --approval-mode yolo --model gemini-3-flash
+gemini --approval-mode yolo --model gemini-3-flash < "$tempPrompt"
 exit %ERRORLEVEL%
 "@
         $batContent | Set-Content $tempBat -Encoding ASCII

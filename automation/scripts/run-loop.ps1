@@ -135,13 +135,13 @@ Sadece JSON don:
         } | ConvertTo-Json -Depth 10
 
         $response = Invoke-RestMethod `
-            -Uri "http://127.0.0.1:8045/v1/messages" \
-            -Method Post \
+            -Uri "http://127.0.0.1:8045/v1/messages" `
+            -Method Post `
             -Headers @{
                 "x-api-key"         = $env:BEACHGO_ANTHROPIC_KEY
                 "anthropic-version" = "2023-06-01"
                 "content-type"      = "application/json"
-            } \
+            } `
             -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
 
         $raw = $response.content[0].text

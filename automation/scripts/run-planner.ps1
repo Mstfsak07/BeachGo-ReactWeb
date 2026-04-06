@@ -17,16 +17,9 @@ function Write-Log($msg) {
     Add-Content -Path $logFile -Value $line -Encoding UTF8
 }
 
-function Set-SP {
-    param($Obj, [string]$Name, $Value)
-    if ($Obj.PSObject.Properties[$Name]) { $Obj.$Name = $Value }
-    else { $Obj | Add-Member -NotePropertyName $Name -NotePropertyValue $Value -Force }
-}
-
 function Invoke-ClaudeAPI {
     param([string]$Prompt, [string]$SystemPrompt = "")
 
-    
     $apiKey  = $env:ANTHROPIC_API_KEY
     $baseUrl = if ($env:ANTHROPIC_BASE_URL) { $env:ANTHROPIC_BASE_URL.TrimEnd('/') } else { "https://api.anthropic.com" }
 
@@ -39,7 +32,7 @@ function Invoke-ClaudeAPI {
         $bodyObj["system"] = [string]$SystemPrompt
     }
 
-    $bodyJson = $bodyObj | ConvertTo-Json -Depth 10 -Compress
+    $bodyJson  = $bodyObj | ConvertTo-Json -Depth 10 -Compress
     $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($bodyJson)
 
     $headers = @{
@@ -50,15 +43,14 @@ function Invoke-ClaudeAPI {
 
     Write-Log "Anthropic API cagrisi: $baseUrl/v1/messages (model=claude-sonnet-4-6)"
 
-    $responseRaw = Invoke-WebRequest `
+    $response = Invoke-RestMethod `
         -Uri     "$baseUrl/v1/messages" `
         -Method  POST `
         -Headers $headers `
         -Body    $bodyBytes
 
-    $responseText = [System.Text.Encoding]::UTF8.GetString($responseRaw.RawContentStream.ToArray())
-$response = $responseText | ConvertFrom-Json
-return $response.content[0].text
+    return $response.content[0].text
+
 }
 
 $lockFile = Join-Path $queueDir "planner.lock"

@@ -20,7 +20,7 @@ public class GetMyReservationsQueryHandler
     }
 
     public async Task<Result<PagedResult<ReservationListItemDto>>> Handle(
-        GetMyReservationsQuery request, CancellationToken cancellationToken)
+    GetMyReservationsQuery request, CancellationToken cancellationToken)
     {
         var userId = _currentUser.UserId
             ?? throw new UnauthorizedException("Bu işlem için giriş yapmanız gerekiyor.");
@@ -31,12 +31,8 @@ public class GetMyReservationsQueryHandler
         var query = _unitOfWork.Reservations.Query()
             .Include(r => r.Beach)
                 .ThenInclude(b => b!.Photos)
-            .Where(r => r.UserId == userId && !r.IsDeleted);
-
-        if (request.Status.HasValue)
-            query = query.Where(r => r.Status == request.Status.Value);
-
-        query = query.OrderByDescending(r => r.CreatedAt);
+            .Where(r => r.UserId == userId && !r.IsDeleted)
+            .OrderByDescending(r => r.CreatedAt);
 
         var totalCount = await query.CountAsync(cancellationToken);
 
@@ -46,13 +42,13 @@ public class GetMyReservationsQueryHandler
             .Select(r => new ReservationListItemDto(
                 r.Id,
                 r.Beach != null ? r.Beach.Name : "Bilinmiyor",
+                string.Empty,           // City — Beach.cs'de yok, şimdilik boş
                 r.Beach != null ? r.Beach.CoverImageUrl : null,
-                r.Beach != null ? r.Beach.City : string.Empty,
                 r.ReservationDate,
                 r.GuestCount,
                 r.TotalPrice,
                 r.Status.ToString(),
-                r.IsPaid,
+                r.Notes,
                 r.CreatedAt))
             .ToListAsync(cancellationToken);
 

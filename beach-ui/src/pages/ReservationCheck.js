@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { checkReservation, cancelGuestReservation } from '../services/api';
+import { checkReservation, cancelGuestReservation } from '../services/reservationService';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 

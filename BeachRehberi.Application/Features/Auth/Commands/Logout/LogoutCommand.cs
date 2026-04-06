@@ -24,7 +24,7 @@ public class LogoutCommandHandler : IRequestHandler<LogoutCommand>
         if (user is null)
             throw new NotFoundException("Kullanıcı", request.UserId);
 
-        user.ClearRefreshToken();
+        user.RevokeRefreshToken();
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

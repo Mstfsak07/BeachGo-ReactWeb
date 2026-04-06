@@ -51,6 +51,18 @@ public class Beach : BaseEntity
 
     public int OccupancyPercent { get; private set; }
     public OccupancyLevel OccupancyLevel { get; private set; }
+    // ── Eksik alanlar ─────────────────────────────────────────────────────────────
+    public string City { get; private set; } = string.Empty;
+    public string? District { get; private set; }
+    public string? Location { get; private set; }
+    public decimal PricePerPerson { get; private set; }
+    public int Capacity { get; private set; }
+    public decimal AverageRating { get; private set; }
+    public bool HasLifeguard { get; private set; }
+    public bool IsWheelchairAccessible { get; private set; }
+    public bool AllowsPets { get; private set; }
+    public string? InstagramUsername { get; private set; }
+    public string? SocialContentSource { get; private set; }
 
     // Navigation properties
     private readonly List<Reservation> _reservations = new();
@@ -127,9 +139,10 @@ public class Beach : BaseEntity
     }
 
     public void UpdateFacilities(
-        bool hasSunbeds, bool hasShower, bool hasParking, bool hasRestaurant,
-        bool hasBar, bool hasAlcohol, bool isChildFriendly, bool hasWaterSports,
-        bool hasWifi, bool hasPool, bool hasDJ, bool hasAccessibility)
+     bool hasSunbeds, bool hasShower, bool hasParking, bool hasRestaurant,
+     bool hasBar, bool hasAlcohol, bool isChildFriendly, bool hasWaterSports,
+     bool hasWifi, bool hasPool, bool hasDJ, bool hasAccessibility,
+     bool hasLifeguard = false, bool isWheelchairAccessible = false, bool allowsPets = false)
     {
         HasSunbeds = hasSunbeds;
         HasShower = hasShower;
@@ -143,6 +156,23 @@ public class Beach : BaseEntity
         HasPool = hasPool;
         HasDJ = hasDJ;
         HasAccessibility = hasAccessibility;
+        HasLifeguard = hasLifeguard;
+        IsWheelchairAccessible = isWheelchairAccessible;
+        AllowsPets = allowsPets;
+        MarkAsUpdated();
+    }
+    public void UpdateDetails(
+    string name, string description, string address, string city,
+    string? district, string? location, decimal pricePerPerson, int capacity)
+    {
+        Name = name ?? throw new ArgumentNullException(nameof(name));
+        Description = description ?? string.Empty;
+        Address = address ?? throw new ArgumentNullException(nameof(address));
+        City = city ?? string.Empty;
+        District = district;
+        Location = location;
+        PricePerPerson = pricePerPerson;
+        Capacity = capacity;
         MarkAsUpdated();
     }
 

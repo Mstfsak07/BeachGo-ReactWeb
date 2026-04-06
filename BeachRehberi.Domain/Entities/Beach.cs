@@ -12,6 +12,13 @@ public class Beach : BaseEntity
     public string? District { get; private set; }
     public double Latitude { get; private set; }
     public double Longitude { get; private set; }
+    public bool HasEntryFee { get; set; }
+    public decimal EntryFee { get; set; }
+    public int ReviewCount { get; set; }
+    public bool IsWheelchairAccessible { get; set; }
+    public bool AllowsPets { get; set; }
+
+
 
     public string? Phone { get; private set; }
     public string? Website { get; private set; }

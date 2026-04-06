@@ -31,27 +31,6 @@ export const getBeachEvents = async (beachId) => {
   return unwrapArrayResponse(res.data);
 };
 
-// Reservations
-export const getReservations = async () => {
-  const res = await api.get('/Reservations');
-  return unwrapArrayResponse(res.data);
-};
-
-export const checkReservation = async (code) => {
-  const res = await api.get(`/GuestReservations/${code}`);
-  return unwrapResponse(res.data);
-};
-
-export const cancelGuestReservation = async (code) => {
-  const res = await api.post(`/GuestReservations/cancel/${code}`);
-  return unwrapResponse(res.data);
-};
-
-export const mockPayGuestReservation = async (code) => {
-  const res = await api.post(`/GuestReservations/mock-pay/${code}`);
-  return unwrapResponse(res.data);
-};
-
 // Reviews
 export const getBeachReviews = async (beachId) => {
   const res = await api.get(`/Beaches/${beachId}/Reviews`);

@@ -3,7 +3,7 @@ import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, Copy, Search, Home, Calendar, Users, MapPin, CreditCard } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { mockPayGuestReservation } from '../services/api';
+import { mockPayGuestReservation } from '../services/reservationService';
 
 const ReservationSuccess = () => {
   const location = useLocation();

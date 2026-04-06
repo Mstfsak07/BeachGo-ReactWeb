@@ -115,7 +115,7 @@ public class GetBeachByIdQueryHandler : IRequestHandler<GetBeachByIdQuery, Beach
                 .Where(p => !p.IsDeleted)
                 .OrderBy(p => p.DisplayOrder)
                 .Select(p => new BeachPhotoDto(
-                    p.Id, p.Url, p.Caption, p.IsCover, p.DisplayOrder))
+    p.Id, p.ImageUrl, p.Caption, p.IsCoverPhoto, p.DisplayOrder))
                 .ToList(),
             beach.Reviews
                 .Select(r => new BeachReviewSummaryDto(

@@ -1,0 +1,67 @@
+Test Results:
+
+--- Backend Build ---
+Exit Code: 0
+Output:
+  Geri yüklenecek projeler belirleniyor...
+  Geri yükleme için tüm projeler güncel.
+  Stopping process 16872
+  BeachRehberi.Domain -> C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.Domain\bin\Debug\net8.0\BeachRehberi.Domain.dll
+  BeachRehberi.Application -> C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.Application\bin\Debug\net8.0\BeachRehberi.Application.dll
+  BeachRehberi.API -> C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\bin\Debug\net8.0\BeachRehberi.API.dll
+
+Oluşturma başarılı oldu.
+    0 Uyarı
+    0 Hata
+
+Geçen Süre 00:00:04.19
+
+--- Frontend Build ---
+Exit Code: 0
+Output:
+
+> beach-ui@1.0.0 build
+> react-scripts build
+
+(node:18040) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Creating an optimized production build...
+Compiled successfully.
+
+File sizes after gzip:
+
+  128.33 kB  build\static\js\main.eb3dccbf.js
+  102 kB     build\static\js\67.8a5c1100.chunk.js
+  11.23 kB   build\static\js\639.cf31a206.chunk.js
+  10.65 kB   build\static\css\main.6cf3f4b4.css
+  9.48 kB    build\static\js\749.8b34be33.chunk.js
+  7.89 kB    build\static\js\76.4caeac42.chunk.js
+  6.48 kB    build\static\js\585.9d415f42.chunk.js
+  4.69 kB    build\static\js\955.e1fe368d.chunk.js
+  3.84 kB    build\static\js\142.2bc4685d.chunk.js
+  3.29 kB    build\static\js\416.3376315f.chunk.js
+  3.09 kB    build\static\js\632.ba509c3c.chunk.js
+  2.46 kB    build\static\js\930.eb6a057f.chunk.js
+  2.34 kB    build\static\js\189.e0befe6e.chunk.js
+  2.34 kB    build\static\js\420.50112dcb.chunk.js
+  2.19 kB    build\static\js\520.0639cb26.chunk.js
+  2.15 kB    build\static\js\62.4d5b1325.chunk.js
+  2.13 kB    build\static\js\760.e1ed7dfa.chunk.js
+  1.82 kB    build\static\js\779.13e1ddd1.chunk.js
+  1.77 kB    build\static\js\380.febb8766.chunk.js
+  1.49 kB    build\static\js\490.41cd02f8.chunk.js
+
+The project was built assuming it is hosted at /.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+You may serve it with a static server:
+
+  npm install -g serve
+  serve -s build
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+
+

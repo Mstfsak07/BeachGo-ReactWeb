@@ -38,7 +38,6 @@ public class Reservation : BaseEntity
         GuestCount = guestCount > 0 ? guestCount : throw new ArgumentException("Misafir sayısı 0'dan büyük olmalı.");
         TotalPrice = totalPrice;
         Notes = notes;
-        Status = ReservationStatus.Pending;
     }
 
     public void Approve(string? comment = null)

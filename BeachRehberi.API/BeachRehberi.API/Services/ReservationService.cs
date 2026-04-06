@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
-using BeachRehberi.API DTOs.Reservation;
+using BeachRehberi.API.DTOs.Reservation;
 using BeachRehberi.API.Models.Enums;
 
 namespace BeachRehberi.API.Services

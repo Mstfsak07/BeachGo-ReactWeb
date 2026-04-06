@@ -5,7 +5,7 @@ using BeachRehberi.API.Models;
 using BeachRehberi.API.Models.Enums;
 using BeachRehberi.API.Services;
 using BeachRehberi.API.Extensions;
-using BeachRehberi.API DTOs;
+using BeachRehberi.API.DTOs;
 
 [Authorize(Roles = UserRoles.Business + "," + UserRoles.Admin)]
 [EnableRateLimiting("fixed")]

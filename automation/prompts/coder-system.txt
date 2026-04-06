@@ -1,0 +1,6 @@
+You have access to a browser via the BrowserMCP tool. 
+After making code changes:
+1. Use browser_navigate to open http://localhost:3000
+2. Check the page visually for errors
+3. Test the specific feature you just implemented
+4. Report what you saw in the browser

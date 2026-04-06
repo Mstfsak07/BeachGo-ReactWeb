@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }) => {
 
             if (!data?.accessToken) throw new Error('Sunucudan geçerli bir oturum alınamadı.');
 
-            setAccessToken(data.accessToken, data.accessTokenExpiry);
+            setAccessToken(data.accessToken);
 
             const userData = { email: data.email, role: data.role };
             localStorage.setItem('user', JSON.stringify(userData));
@@ -80,6 +80,18 @@ export const AuthProvider = ({ children }) => {
             setLoading(false);
         }
     }, [scheduleProactiveRefresh]);
+
+    // ── Register ───────────────────────────────────────────────────────────
+    const register = useCallback(async (username, email, password) => {
+        setLoading(true);
+        try {
+            await api.post('/Auth/register-user', { username, email, password });
+            // Login after register
+            return await login(email, password);
+        } finally {
+            setLoading(false);
+        }
+    }, [login]);
 
     // ── Silent Refresh: sayfa açılışında oturum canlandırma ──────────────
     const silentRefresh = useCallback(async () => {
@@ -139,6 +151,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!user,
         login,
         logout,
+        register,
     };
 
     return (

@@ -6,10 +6,25 @@ export function setAccessToken(token) { accessToken = token; }
 export function clearAccessToken() { accessToken = null; }
 export function getAccessToken() { return accessToken; }
 
+const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL,
+  baseURL,
   withCredentials: true,
 });
+
+export async function refreshAccessToken() {
+    try {
+        const res = await axios.post(`${baseURL}/Auth/refresh`, {}, { withCredentials: true });
+        const token = res.data.accessToken;
+        setAccessToken(token);
+        return res.data;
+    } catch (err) {
+        clearAccessToken();
+        window.dispatchEvent(new CustomEvent('auth:logout'));
+        throw err;
+    }
+}
 
 api.interceptors.request.use((config) => {
   if (accessToken) config.headers['Authorization'] = `Bearer ${accessToken}`;
@@ -36,16 +51,12 @@ api.interceptors.response.use(
       orig._retry = true;
       isRefreshing = true;
       try {
-        const res = await axios.post(`${process.env.REACT_APP_API_URL}/Auth/refresh`, {}, { withCredentials: true });
-        const token = res.data.accessToken;
-        setAccessToken(token);
-        processQueue(null, token);
-        orig.headers['Authorization'] = `Bearer ${token}`;
+        const data = await refreshAccessToken();
+        processQueue(null, data.accessToken);
+        orig.headers['Authorization'] = `Bearer ${data.accessToken}`;
         return api(orig);
       } catch (err) {
         processQueue(err, null);
-        clearAccessToken();
-        window.dispatchEvent(new CustomEvent('auth:logout'));
         return Promise.reject(err);
       } finally {
         isRefreshing = false;

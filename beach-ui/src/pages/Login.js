@@ -85,6 +85,7 @@ const Login = () => {
             <div>
               <div className="flex justify-between mb-1">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest block">Şifre</label>
+                <Link to="/forgot-password" className="text-xs font-bold text-blue-500 hover:underline">Şifremi Unuttum</Link>
               </div>
               <input
                 type="password" 

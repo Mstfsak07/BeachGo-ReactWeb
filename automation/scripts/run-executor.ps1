@@ -104,29 +104,34 @@ Final response requirements:
         if (Test-Path $tempOutput) { Remove-Item $tempOutput -Force }
 
         try {
-            # Bat dosyasini olustur
+            # Bat dosyasini olustur — yonlendirme bat icinde, path'ler kacan tirmak gerektirmiyor
             $batContent = @"
 @echo off
 set GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8045
 set GEMINI_API_KEY=$($env:GEMINI_API_KEY)
 set BEACHGO_ANTHROPIC_KEY=$($env:BEACHGO_ANTHROPIC_KEY)
-
+cd /d "$automationDir"
 gemini --approval-mode yolo --model gemini-3-pro < "$tempPrompt" > "$tempOutput" 2>&1
-exit %ERRORLEVEL%
 "@
             $batContent | Set-Content $tempBat -Encoding ASCII
 
             Write-Log "Gemini baslatiliyor (iteration=$iteration, deneme=$retryCount)..."
 
-            Start-Process cmd.exe `
-              -ArgumentList "/k `"$tempBat`"" `
-              -WorkingDirectory $env:TEMP
-              # ❗ BURADA WAIT YOK
-              # ❗ BURADA PROCESS YOK
-              # direkt devam et
-              Start-Sleep -Seconds 2
-              $exitCode = 0
-              $executorOutput = "[INFO] Gemini ayrı terminalde çalışıyor"
+            $proc = Start-Process cmd.exe `
+                -ArgumentList "/c", "`"$tempBat`"" `
+                -WorkingDirectory $automationDir `
+                -Wait `
+                -PassThru `
+                -NoNewWindow
+
+            $exitCode = $proc.ExitCode
+
+            # Ciktiyi oku
+            if (Test-Path $tempOutput) {
+                $executorOutput = Get-Content $tempOutput -Raw -Encoding UTF8
+            } else {
+                $executorOutput = ""
+            }
 
             # Konsola yazdir
             if (-not [string]::IsNullOrWhiteSpace($executorOutput)) {

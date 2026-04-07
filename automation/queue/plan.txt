@@ -1,157 +1,203 @@
-﻿# FAZ 1: Authentication Backend - Email DoÄrulama ve Åifre SÄ±fÄ±rlama
+﻿# FAZ 1 - Authentication Backend Tamamlama
 
-## SCOPE: api
+## Proje YapÄ±sÄ±nÄ± Ãnce KeÅfet
+
+AÅaÄÄ±daki adÄ±mlarÄ± sÄ±rayla uygula:
+
+### ADIM 1: Mevcut dosyalarÄ± bul ve oku
+
+```bash
+find /workspace -name "AuthController.cs" -o -name "AuthService.cs" -o -name "IAuthService.cs" -o -name "AuthModels.cs" -o -name "VerificationCode.cs" -o -name "OtpService.cs" -o -name "IOtpService.cs" -o -name "MockSmsService.cs" 2>/dev/null
+```
+
+Bu komutu Ã§alÄ±ÅtÄ±r ve Ã§Ä±ktÄ±yÄ± not et. Sonra her dosyayÄ± oku.
+
+### ADIM 2: API projesinin kÃ¶k dizinini bul
+
+```bash
+find /workspace -name "*.csproj" | head -20
+```
+
+### ADIM 3: AÅaÄÄ±daki deÄiÅiklikleri uygula
 
 ---
 
-## AdÄ±m 1: Mevcut DosyalarÄ± Oku
+## Dosya DeÄiÅiklikleri
 
-Ãnce mevcut durumu anlamak iÃ§in Åu dosyalarÄ± oku:
+### `/[API_ROOT]/Models/AuthModels.cs` â DTO'larÄ± gÃ¼ncelle
 
-```
-find /workspaces -name "AuthController.cs" -o -name "AuthService.cs" -o -name "IAuthService.cs" -o -name "AuthModels.cs" -o -name "VerificationCode.cs" -o -name "OtpService.cs" -o -name "IOtpService.cs" -o -name "MockSmsService.cs" 2>/dev/null | head -20
-```
-
-Sonra API projesinin root'unu bul:
-
-```
-find /workspaces -name "*.csproj" | grep -i api | head -5
-```
-
----
-
-## AdÄ±m 2: Dosya DeÄiÅiklikleri
-
-### 2.1 `/[API_ROOT]/Models/AuthModels.cs` - DTO'larÄ± gÃ¼ncelle
-
-Mevcut dosyayÄ± oku, ardÄ±ndan Åu DTO'larÄ±n var olduÄunu ve aÅaÄÄ±daki validasyona sahip olduÄunu doÄrula/ekle:
+Mevcut dosyayÄ± oku. Åu DTO'larÄ±n var olduÄunu doÄrula, yoksa ekle:
 
 ```csharp
 public class ForgotPasswordRequest
 {
-    [Required]
-    [EmailAddress]
-    public string Email { get; set; } = string.Empty;
+    [Required, EmailAddress]
+    public string Email { get; set; }
 }
 
 public class ResetPasswordRequest
 {
     [Required]
-    public string Token { get; set; } = string.Empty;
+    public string Token { get; set; }
     
-    [Required]
-    [EmailAddress]
-    public string Email { get; set; } = string.Empty;
+    [Required, EmailAddress]
+    public string Email { get; set; }
     
-    [Required]
-    [MinLength(6)]
-    public string NewPassword { get; set; } = string.Empty;
-    
-    [Required]
-    [Compare("NewPassword")]
-    public string ConfirmPassword { get; set; } = string.Empty;
+    [Required, MinLength(6)]
+    public string NewPassword { get; set; }
 }
 
 public class VerifyEmailRequest
 {
     [Required]
-    [EmailAddress]
-    public string Email { get; set; } = string.Empty;
+    public string Token { get; set; }
     
-    [Required]
-    public string Token { get; set; } = string.Empty;
+    [Required, EmailAddress]
+    public string Email { get; set; }
 }
 
 public class ResendVerificationRequest
 {
-    [Required]
-    [EmailAddress]
-    public string Email { get; set; } = string.Empty;
+    [Required, EmailAddress]
+    public string Email { get; set; }
 }
 ```
 
----
+### `/[API_ROOT]/Services/IOtpService.cs` â Interface kontrol et
 
-### 2.2 `/[API_ROOT]/Services/Interfaces/IAuthService.cs` - Interface metodlarÄ±nÄ± ekle
-
-Åu metodlarÄ±n interface'de tanÄ±mlÄ± olduÄunu doÄrula/ekle:
+Mevcut dosyayÄ± oku. Åu metodlarÄ±n olduÄunu doÄrula, yoksa ekle:
 
 ```csharp
-Task<AuthResult> VerifyEmailAsync(string email, string token);
-Task<AuthResult> ForgotPasswordAsync(string email);
-Task<AuthResult> ResetPasswordAsync(string email, string token, string newPassword);
-Task<AuthResult> ResendVerificationAsync(string email);
+public interface IOtpService
+{
+    string GenerateCode(string purpose, string email);
+    bool VerifyCode(string purpose, string email, string code);
+    void InvalidateCode(string purpose, string email);
+}
 ```
 
----
+### `/[API_ROOT]/Services/OtpService.cs` â Expiry kontrolÃ¼ ekle
 
-### 2.3 `/[API_ROOT]/Services/AuthService.cs` - ImplementasyonlarÄ± ekle
+Mevcut dosyayÄ± oku. Åu mantÄ±ÄÄ±n olduÄunu doÄrula:
+- Kod Ã¼retimde: `DateTime.UtcNow.AddMinutes(15)` expiry ekle
+- DoÄrulamada: `if (stored.ExpiresAt < DateTime.UtcNow) return false;` kontrolÃ¼ yap
+- Dictionary key: `$"{purpose}:{email}"` formatÄ±nda olsun
 
-Eksik metodlarÄ± implement et:
+EÄer `Dictionary<string, (string Code, DateTime ExpiresAt)>` yapÄ±sÄ± yoksa, mevcut yapÄ±yÄ± bu Åekilde gÃ¼ncelle.
+
+### `/[API_ROOT]/Models/VerificationCode.cs` â Model kontrol et
+
+Dosya yoksa oluÅtur:
 
 ```csharp
-public async Task<AuthResult> ForgotPasswordAsync(string email)
+public class VerificationCode
 {
-    // User'Ä± email ile bul
-    // Bulunamazsa: return AuthResult.Failure("User not found") veya gÃ¼venlik iÃ§in success dÃ¶ndÃ¼r
-    // Bulunursa: reset token Ã¼ret (Guid.NewGuid().ToString() veya OtpService kullan)
-    // Token'Ä± DB'ye kaydet (expiry: DateTime.UtcNow.AddHours(1))
-    // MockSmsService veya email service ile gÃ¶nder (log'a yaz)
-    // return AuthResult.Success()
-}
-
-public async Task<AuthResult> ResetPasswordAsync(string email, string token, string newPassword)
-{
-    // User'Ä± email ile bul
-    // Reset token'Ä± DB'de doÄrula (expiry kontrolÃ¼ dahil)
-    // GeÃ§ersizse: return AuthResult.Failure("Invalid or expired token")
-    // GeÃ§erliyse: password hash'le ve gÃ¼ncelle
-    // Token'Ä± kullanÄ±ldÄ± olarak iÅaretle / sil
-    // return AuthResult.Success()
-}
-
-public async Task<AuthResult> VerifyEmailAsync(string email, string token)
-{
-    // User'Ä± email ile bul
-    // Email verification token'Ä±nÄ± kontrol et
-    // GeÃ§erliyse: EmailConfirmed = true yap, token'Ä± temizle
-    // return AuthResult.Success() veya Failure
-}
-
-public async Task<AuthResult> ResendVerificationAsync(string email)
-{
-    // User'Ä± bul
-    // Zaten verify edilmiÅse: return Failure("Already verified")
-    // Yeni token Ã¼ret, kaydet, gÃ¶nder
-    // return AuthResult.Success()
+    public string Code { get; set; }
+    public DateTime ExpiresAt { get; set; }
+    public string Purpose { get; set; }
+    public string Email { get; set; }
 }
 ```
 
----
+### `/[API_ROOT]/Services/IAuthService.cs` â Interface gÃ¼ncelle
 
-### 2.4 `/[API_ROOT]/Controllers/AuthController.cs` - Endpoint'leri ekle/dÃ¼zelt
+Mevcut dosyayÄ± oku. Åu metodlarÄ±n interface'de olduÄunu doÄrula, yoksa ekle:
+
+```csharp
+Task<ServiceResult> ForgotPasswordAsync(string email);
+Task<ServiceResult> ResetPasswordAsync(string email, string token, string newPassword);
+Task<ServiceResult> VerifyEmailAsync(string email, string token);
+Task<ServiceResult> ResendVerificationAsync(string email);
+```
+
+> NOT: `ServiceResult` yoksa `(bool Success, string Message)` tuple veya mevcut projede kullanÄ±lan result tipi kullan.
+
+### `/[API_ROOT]/Services/AuthService.cs` â MetodlarÄ± implement et
+
+Mevcut dosyayÄ± oku. Eksik metodlarÄ± ekle:
+
+**ForgotPasswordAsync:**
+```csharp
+public async Task<ServiceResult> ForgotPasswordAsync(string email)
+{
+    var user = await _userManager.FindByEmailAsync(email);
+    if (user == null)
+        return new ServiceResult { Success = true, Message = "If email exists, reset link sent." };
+    
+    var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+    // MockSmsService veya email service ile gÃ¶nder (log'a yaz yeterli)
+    _logger.LogInformation("Password reset token for {Email}: {Token}", email, token);
+    return new ServiceResult { Success = true, Message = "Reset instructions sent." };
+}
+```
+
+**ResetPasswordAsync:**
+```csharp
+public async Task<ServiceResult> ResetPasswordAsync(string email, string token, string newPassword)
+{
+    var user = await _userManager.FindByEmailAsync(email);
+    if (user == null)
+        return new ServiceResult { Success = false, Message = "Invalid request." };
+    
+    var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+    if (!result.Succeeded)
+        return new ServiceResult { Success = false, Message = string.Join(", ", result.Errors.Select(e => e.Description)) };
+    
+    return new ServiceResult { Success = true, Message = "Password reset successful." };
+}
+```
+
+**VerifyEmailAsync:**
+```csharp
+public async Task<ServiceResult> VerifyEmailAsync(string email, string token)
+{
+    var user = await _userManager.FindByEmailAsync(email);
+    if (user == null)
+        return new ServiceResult { Success = false, Message = "Invalid request." };
+    
+    var result = await _userManager.ConfirmEmailAsync(user, token);
+    if (!result.Succeeded)
+        return new ServiceResult { Success = false, Message = "Invalid or expired token." };
+    
+    return new ServiceResult { Success = true, Message = "Email verified successfully." };
+}
+```
+
+**ResendVerificationAsync:**
+```csharp
+public async Task<ServiceResult> ResendVerificationAsync(string email)
+{
+    var user = await _userManager.FindByEmailAsync(email);
+    if (user == null)
+        return new ServiceResult { Success = true, Message = "If email exists, verification sent." };
+    
+    if (user.EmailConfirmed)
+        return new ServiceResult { Success = false, Message = "Email already verified." };
+    
+    var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+    _logger.LogInformation("Email verification token for {Email}: {Token}", email, token);
+    return new ServiceResult { Success = true, Message = "Verification email sent." };
+}
+```
+
+### `/[API_ROOT]/Controllers/AuthController.cs` â Endpoint'leri ekle
+
+Mevcut dosyayÄ± oku. Åu endpoint'lerin tam olarak implement edildiÄini doÄrula, eksikleri ekle:
 
 ```csharp
 [HttpPost("forgot-password")]
 [AllowAnonymous]
-[ProducesResponseType(200)]
-[ProducesResponseType(400)]
 public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
 {
     if (!ModelState.IsValid)
         return BadRequest(ModelState);
     
     var result = await _authService.ForgotPasswordAsync(request.Email);
-    if (!result.Success)
-        return BadRequest(new { message = result.Error });
-    
-    return Ok(new { message = "If the email exists, a reset link has been sent." });
+    return Ok(new { message = result.Message });
 }
 
 [HttpPost("reset-password")]
 [AllowAnonymous]
-[ProducesResponseType(200)]
-[ProducesResponseType(400)]
 public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
 {
     if (!ModelState.IsValid)
@@ -159,15 +205,13 @@ public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest r
     
     var result = await _authService.ResetPasswordAsync(request.Email, request.Token, request.NewPassword);
     if (!result.Success)
-        return BadRequest(new { message = result.Error });
+        return BadRequest(new { message = result.Message });
     
-    return Ok(new { message = "Password has been reset successfully." });
+    return Ok(new { message = result.Message });
 }
 
 [HttpPost("verify-email")]
 [AllowAnonymous]
-[ProducesResponseType(200)]
-[ProducesResponseType(400)]
 public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
 {
     if (!ModelState.IsValid)
@@ -175,102 +219,70 @@ public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest reque
     
     var result = await _authService.VerifyEmailAsync(request.Email, request.Token);
     if (!result.Success)
-        return BadRequest(new { message = result.Error });
+        return BadRequest(new { message = result.Message });
     
-    return Ok(new { message = "Email verified successfully." });
+    return Ok(new { message = result.Message });
 }
 
 [HttpPost("resend-verification")]
 [AllowAnonymous]
-[ProducesResponseType(200)]
-[ProducesResponseType(400)]
 public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
 {
     if (!ModelState.IsValid)
         return BadRequest(ModelState);
     
     var result = await _authService.ResendVerificationAsync(request.Email);
-    if (!result.Success)
-        return BadRequest(new { message = result.Error });
-    
-    return Ok(new { message = "Verification email resent." });
+    return Ok(new { message = result.Message });
 }
 ```
 
 ---
 
-### 2.5 `/[API_ROOT]/Services/OtpService.cs` - Expiry kontrolÃ¼nÃ¼ doÄrula
+## ADIM 4: Build et
 
-```csharp
-// GenerateCode: 6 haneli random kod Ã¼ret, SHA256 hash ile sakla, expiry = DateTime.UtcNow.AddMinutes(10)
-// ValidateCode: hash karÅÄ±laÅtÄ±r + DateTime.UtcNow < expiry kontrolÃ¼
-// IsExpired property veya metodu VerificationCode modelinde olmalÄ±
-```
-
----
-
-### 2.6 `/[API_ROOT]/Models/VerificationCode.cs` - Expiry alanÄ±nÄ± doÄrula
-
-```csharp
-public class VerificationCode
-{
-    public int Id { get; set; }
-    public string Email { get; set; } = string.Empty;
-    public string CodeHash { get; set; } = string.Empty;
-    public DateTime ExpiresAt { get; set; }
-    public bool IsUsed { get; set; }
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    
-    public bool IsExpired => DateTime.UtcNow > ExpiresAt;
-    public bool IsValid => !IsUsed && !IsExpired;
-}
-```
-
----
-
-## AdÄ±m 3: Build
-
-API projesinin dizinine git ve build al:
+API projesinin `.csproj` dosyasÄ±nÄ±n bulunduÄu dizine git ve:
 
 ```bash
-cd /[API_ROOT] && dotnet build
+cd /workspace/[API_PROJE_DIZINI]
+dotnet build 2>&1
 ```
 
-**Build baÅarÄ±sÄ±z olursa:** Hata mesajlarÄ±nÄ± analiz et, tip uyuÅmazlÄ±klarÄ± veya missing using direktiflerini dÃ¼zelt, tekrar build al.
+Build Ã§Ä±ktÄ±sÄ±nÄ± tam olarak result.txt'e yaz.
 
----
+## ADIM 5: Hata varsa dÃ¼zelt
 
-## AdÄ±m 4: Test
+Build hatasÄ± varsa:
+1. Hata mesajÄ±nÄ± oku
+2. Ä°lgili dosyayÄ± dÃ¼zelt
+3. Tekrar `dotnet build` Ã§alÄ±ÅtÄ±r
+4. BaÅarÄ±lÄ± olana kadar tekrarla
+
+## ADIM 6: Test et
 
 ```bash
-# API'yi baÅlat (arka planda)
-cd /[API_ROOT] && dotnet run &
-sleep 5
-
-# forgot-password endpoint testi
+# API Ã§alÄ±ÅÄ±yorsa (ayrÄ± terminalde dotnet run sonrasÄ±):
 curl -X POST http://localhost:5000/api/auth/forgot-password \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com"}' \
-  -w "\nHTTP Status: %{http_code}\n"
-
-# verify-email endpoint testi  
-curl -X POST http://localhost:5000/api/auth/verify-email \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","token":"invalid-token"}' \
-  -w "\nHTTP Status: %{http_code}\n"
-
-# reset-password endpoint testi
-curl -X POST http://localhost:5000/api/auth/reset-password \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","token":"invalid","newPassword":"Test123!","confirmPassword":"Test123!"}' \
-  -w "\nHTTP Status: %{http_code}\n"
+  -d '{"email":"test@test.com"}'
 ```
 
-**Beklenen sonuÃ§lar:**
-- `forgot-password`: HTTP 200 (email yoksa da gÃ¼venlik iÃ§in 200)
-- `verify-email` invalid token: HTTP 400
-- `reset-password` invalid token: HTTP 400
+Sonucu result.txt'e yaz.
 
 ---
 
-<commit_message>feat: implement forgot-password, reset-password, verify-email, resend-verification endpoints with token validation and expiry control</commit_message>
+## ÃNEMLÄ° NOTLAR
+
+- Mevcut dosyalarÄ± silme, sadece eksik kÄ±sÄ±mlarÄ± ekle
+- Projede zaten varolan `ServiceResult` tipini kullan; yoksa yeni bir class oluÅtur:
+  ```csharp
+  public class ServiceResult
+  {
+      public bool Success { get; set; }
+      public string Message { get; set; }
+  }
+  ```
+- `_userManager` inject edilmemiÅse constructor'a `UserManager<ApplicationUser>` ekle
+- `_logger` inject edilmemiÅse constructor'a `ILogger<AuthService>` ekle
+- MockSmsService sadece log'a yazÄ±yor olsun, gerÃ§ek SMS gÃ¶nderme gerekmiyor
+
+<commit_message>feat: complete auth flow - forgot-password, reset-password, verify-email, resend-verification endpoints implemented</commit_message>

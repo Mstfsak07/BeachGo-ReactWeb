@@ -98,7 +98,8 @@ if (paymentProvider == "Iyzipay" || paymentProvider == "PayTR") {
 }
 
 builder.Services.AddScoped<IOtpService, OtpService>();
-builder.Services.AddScoped<IGuestReservationService, GuestReservationService>();builder.Services.AddScoped<IStoryService, StoryService>();
+builder.Services.AddScoped<IGuestReservationService, GuestReservationService>();
+builder.Services.AddScoped<IStoryService, StoryService>();
 
 // ─────────────────────────────────────────
 // 5. MAPSTER – IMapper DI

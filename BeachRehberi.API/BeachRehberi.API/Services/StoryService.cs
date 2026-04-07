@@ -9,14 +9,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace BeachRehberi.API.Services;
 
-public interface IStoryService
-{
-    Task<List<StoryResponseDto>> GetActiveStoriesAsync();
-    Task<List<StoryResponseDto>> GetStoriesByBeachAsync(int beachId);
-    Task<ServiceResult<StoryResponseDto>> CreateAsync(CreateStoryDto dto);
-    Task<ServiceResult<bool>> DeleteAsync(int id);
-}
-
 public class StoryService : IStoryService
 {
     private readonly BeachDbContext _db;

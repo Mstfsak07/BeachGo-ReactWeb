@@ -7,10 +7,10 @@ public interface IAuthService
 {
     Task<AuthResult> RegisterAsync(RegisterRequest request);
     Task<AuthResult> LoginAsync(LoginRequest request);
-    Task<AuthResult> ForgotPasswordAsync(ForgotPasswordRequest request);
-    Task<AuthResult> ResetPasswordAsync(ResetPasswordRequest request);
-    Task<AuthResult> VerifyEmailAsync(VerifyEmailRequest request);
-    Task<AuthResult> ResendVerificationAsync(ResendVerificationRequest request);
+    Task<AuthResult> ForgotPasswordAsync(string email);
+    Task<AuthResult> ResetPasswordAsync(string email, string token, string newPassword);
+    Task<AuthResult> VerifyEmailAsync(string email, string token);
+    Task<AuthResult> ResendVerificationAsync(string email);
     
     // Kept for backward compatibility
     Task<ServiceResult<AuthResponse>> RefreshTokenAsync(string refreshToken, string ipAddress, string userAgent);

@@ -56,18 +56,18 @@ function startProcess(name, cmd, args, cwd) {
     process.stderr.write(`[${name} ERROR] ${data}`);
   });
 
- proc.on("exit", (code) => {
-  console.log(`[EXIT] ${name} (${code})`);
-  delete processes[name];
+  proc.on("exit", (code) => {
+    console.log(`[EXIT] ${name} (${code})`);
+    delete processes[name];
 
-  // ❌ AGENT restart etmesin (zaten ayrı window)
-  if (name === "AGENT") return;
+    // ❌ AGENT restart etmesin (zaten ayrı window)
+    if (name === "AGENT") return;
 
-  setTimeout(() => {
-    console.log(`[RESTART] ${name}`);
-    startProcess(name, cmd, args, cwd);
-  }, 5000);
-});
+    setTimeout(() => {
+      console.log(`[RESTART] ${name}`);
+      startProcess(name, cmd, args, cwd);
+    }, 5000);
+  });
 }
 
 // 🚀 BAŞLATMA KONTROLÜ
@@ -97,18 +97,23 @@ async function startAll() {
   }
 
   // AGENT (tek instance)
- if (!agentStarted) {
-  agentStarted = true;
+  if (!agentStarted) {
+    agentStarted = true;
 
-  startProcess(
-  "AGENT",
-  "powershell",
-  [
-    "-Command",
-    "Start-Process powershell -ArgumentList '-NoExit','-ExecutionPolicy','Bypass','-File automation/scripts/run-loop.ps1'"
-  ],
-  "."
-);
+    startProcess(
+      "AGENT",
+      "cmd",
+      [
+        "/c",
+        "start",
+        "",
+        "powershell",
+        "-NoExit",
+        "-Command",
+        "cd automation/scripts; Write-Host '=== AGENT STARTED ==='; ./run-loop.ps1"
+      ],
+      process.cwd()
+    );
 
   }
 }

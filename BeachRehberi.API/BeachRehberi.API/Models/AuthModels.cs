@@ -36,26 +36,44 @@ public class LoginResponse
 
 public class ForgotPasswordRequest
 {
-    public required string Email { get; set; }
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.EmailAddress]
+    public string Email { get; set; } = string.Empty;
 }
 
 public class ResetPasswordRequest
 {
-    public required string Token { get; set; }
-    public required string Email { get; set; }
-    public required string NewPassword { get; set; }
-    public required string ConfirmPassword { get; set; }
+    [System.ComponentModel.DataAnnotations.Required]
+    public string Token { get; set; } = string.Empty;
+    
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.EmailAddress]
+    public string Email { get; set; } = string.Empty;
+    
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.MinLength(6)]
+    public string NewPassword { get; set; } = string.Empty;
+    
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.Compare("NewPassword")]
+    public string ConfirmPassword { get; set; } = string.Empty;
 }
 
 public class VerifyEmailRequest
 {
-    public required string Token { get; set; }
-    public required string Email { get; set; }
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.EmailAddress]
+    public string Email { get; set; } = string.Empty;
+    
+    [System.ComponentModel.DataAnnotations.Required]
+    public string Token { get; set; } = string.Empty;
 }
 
 public class ResendVerificationRequest
 {
-    public required string Email { get; set; }
+    [System.ComponentModel.DataAnnotations.Required]
+    [System.ComponentModel.DataAnnotations.EmailAddress]
+    public string Email { get; set; } = string.Empty;
 }
 
 public class AuthResult
@@ -105,52 +123,3 @@ public class UserRegisterRequest
     public required string Email { get; set; }
     public required string Password { get; set; }
 }
-
-public class ForgotPasswordRequestValidator : AbstractValidator<ForgotPasswordRequest>
-{
-    public ForgotPasswordRequestValidator()
-    {
-        RuleFor(x => x.Email)
-            .NotEmpty().WithMessage("Email adresi zorunludur.")
-            .EmailAddress().WithMessage("Geçerli bir email adresi giriniz.");
-    }
-}
-
-public class ResetPasswordRequestValidator : AbstractValidator<ResetPasswordRequest>
-{
-    public ResetPasswordRequestValidator()
-    {
-        RuleFor(x => x.Email)
-            .NotEmpty().WithMessage("Email adresi zorunludur.")
-            .EmailAddress().WithMessage("Geçerli bir email adresi giriniz.");
-        RuleFor(x => x.Token)
-            .NotEmpty().WithMessage("Token zorunludur.");
-        RuleFor(x => x.NewPassword)
-            .NotEmpty().WithMessage("Yeni þifre zorunludur.")
-            .MinimumLength(8).WithMessage("Þifre en az 8 karakter olmalýdýr.")
-            .Matches("[A-Z]").WithMessage("Þifre en az bir büyük harf içermelidir.")
-            .Matches("[0-9]").WithMessage("Þifre en az bir rakam içermelidir.");
-    }
-}
-
-public class VerifyEmailRequestValidator : AbstractValidator<VerifyEmailRequest>
-{
-    public VerifyEmailRequestValidator()
-    {
-        RuleFor(x => x.Email)
-            .NotEmpty().WithMessage("Email zorunludur.");
-        RuleFor(x => x.Token)
-            .NotEmpty().WithMessage("Token zorunludur.");
-    }
-}
-
-public class ResendVerificationRequestValidator : AbstractValidator<ResendVerificationRequest>
-{
-    public ResendVerificationRequestValidator()
-    {
-        RuleFor(x => x.Email)
-            .NotEmpty().WithMessage("Email adresi zorunludur.")
-            .EmailAddress().WithMessage("Geçerli bir email adresi giriniz.");
-    }
-}
-

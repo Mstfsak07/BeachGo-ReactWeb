@@ -82,63 +82,63 @@ public class AuthService : IAuthService
         };
     }
 
-    public async Task<AuthResult> ForgotPasswordAsync(ForgotPasswordRequest request)
+    public async Task<AuthResult> ForgotPasswordAsync(string email)
     {
-        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == request.Email);
+        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == email);
         if (user != null)
         {
-            var token = await _otpService.GenerateTokenAsync(request.Email, "PasswordReset");
-            _logger.LogInformation("Mock Email/SMS sent. Password reset token for {Email} is: {Token}", request.Email, token);
+            var token = await _otpService.GenerateTokenAsync(email, "PasswordReset");
+            _logger.LogInformation("Mock Email/SMS sent. Password reset token for {Email} is: {Token}", email, token);
         }
         
-        return new AuthResult { Success = true, Message = "Reset link sent" };
+        return new AuthResult { Success = true };
     }
 
-    public async Task<AuthResult> ResetPasswordAsync(ResetPasswordRequest request)
+    public async Task<AuthResult> ResetPasswordAsync(string email, string token, string newPassword)
     {
-        var isValid = await _otpService.ValidateTokenAsync(request.Email, "PasswordReset", request.Token);
+        var isValid = await _otpService.ValidateTokenAsync(email, "PasswordReset", token);
         if (!isValid)
             return new AuthResult { Success = false, Message = "Invalid or expired token" };
 
-        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == request.Email);
+        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == email);
         if (user != null)
         {
-            user.ChangePassword(BCrypt.Net.BCrypt.HashPassword(request.NewPassword));
+            user.ChangePassword(BCrypt.Net.BCrypt.HashPassword(newPassword));
             await _db.SaveChangesAsync();
-            await _otpService.InvalidateTokenAsync(request.Email, "PasswordReset");
+            await _otpService.InvalidateTokenAsync(email, "PasswordReset");
         }
 
-        return new AuthResult { Success = true, Message = "Password reset successful" };
+        return new AuthResult { Success = true };
     }
 
-    public async Task<AuthResult> VerifyEmailAsync(VerifyEmailRequest request)
+    public async Task<AuthResult> VerifyEmailAsync(string email, string token)
     {
-        var isValid = await _otpService.ValidateTokenAsync(request.Email, "EmailVerification", request.Token);
+        var isValid = await _otpService.ValidateTokenAsync(email, "EmailVerification", token);
         if (!isValid)
-            return new AuthResult { Success = false };
+            return new AuthResult { Success = false, Message = "Invalid or expired token" };
 
-        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == request.Email);
+        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == email);
         if (user != null)
         {
             user.VerifyEmail();
             await _db.SaveChangesAsync();
-            await _otpService.InvalidateTokenAsync(request.Email, "EmailVerification");
+            await _otpService.InvalidateTokenAsync(email, "EmailVerification");
         }
 
-        return new AuthResult { Success = true, Message = "Email verified" };
+        return new AuthResult { Success = true };
     }
 
-    public async Task<AuthResult> ResendVerificationAsync(ResendVerificationRequest request)
+    public async Task<AuthResult> ResendVerificationAsync(string email)
     {
-        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == request.Email);
+        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == email);
         if (user == null)
-            return new AuthResult { Success = true, Message = "Verification link sent" };
+            return new AuthResult { Success = true };
 
         if (user.IsEmailVerified)
             return new AuthResult { Success = false, Message = "Already verified" };
 
-        var token = await _otpService.GenerateTokenAsync(request.Email, "EmailVerification");
-        _logger.LogInformation("Mock Email/SMS sent. Email verification token for {Email} is: {Token}", request.Email, token);
+        var token = await _otpService.GenerateTokenAsync(email, "EmailVerification");
+        _logger.LogInformation("Mock Email/SMS sent. Email verification token for {Email} is: {Token}", email, token);
 
         return new AuthResult { Success = true };
     }

@@ -42,7 +42,7 @@ public class OtpService : IOtpService
         var verificationCode = new VerificationCode
         {
             Email = email,
-            Code = token,
+            CodeHash = ComputeSha256Hash(token),
             Purpose = purposeEnum,
             ExpiresAt = expiry,
             IsUsed = false,
@@ -59,10 +59,11 @@ public class OtpService : IOtpService
 
     public async Task<bool> ValidateTokenAsync(string email, string purpose, string token)
     {
+        var tokenHash = ComputeSha256Hash(token);
         if (!Enum.TryParse<OtpPurpose>(purpose, out var purposeEnum)) return false;
 
         var verificationCode = await _db.VerificationCodes
-            .Where(x => x.Email == email && x.Code == token && x.Purpose == purposeEnum && !x.IsUsed)
+            .Where(x => x.Email == email && x.CodeHash == tokenHash && x.Purpose == purposeEnum && !x.IsUsed)
             .FirstOrDefaultAsync();
 
         if (verificationCode == null || verificationCode.ExpiresAt <= DateTime.UtcNow)
@@ -101,7 +102,7 @@ public class OtpService : IOtpService
         var verificationCode = new VerificationCode
         {
             Email = email,
-            Code = otpCode,
+            CodeHash = ComputeSha256Hash(otpCode),
             Purpose = purpose,
             ExpiresAt = DateTime.UtcNow.AddMinutes(15),
             IsUsed = false,
@@ -118,8 +119,9 @@ public class OtpService : IOtpService
 
     public async Task<bool> ValidateOtpAsync(string email, string otpCode, OtpPurpose purpose)
     {
+        var otpHash = ComputeSha256Hash(otpCode);
         var verificationCode = await _db.VerificationCodes
-            .Where(x => x.Email == email && x.Code == otpCode && x.Purpose == purpose && !x.IsUsed)
+            .Where(x => x.Email == email && x.CodeHash == otpHash && x.Purpose == purpose && !x.IsUsed)
             .FirstOrDefaultAsync();
 
         if (verificationCode == null || verificationCode.ExpiresAt <= DateTime.UtcNow)
@@ -139,8 +141,9 @@ public class OtpService : IOtpService
 
     public async Task<bool> VerifyOtpAsync(string verificationId, string code)
     {
+        var codeHash = ComputeSha256Hash(code);
         var verificationCode = await _db.VerificationCodes
-            .Where(x => x.Code == code && x.Purpose == OtpPurpose.EmailVerification && !x.IsUsed)
+            .Where(x => x.CodeHash == codeHash && x.Purpose == OtpPurpose.EmailVerification && !x.IsUsed)
             .FirstOrDefaultAsync();
 
         if (verificationCode == null || verificationCode.ExpiresAt <= DateTime.UtcNow)
@@ -156,4 +159,18 @@ public class OtpService : IOtpService
     {
         return await Task.FromResult(true); 
     }
+    private static string ComputeSha256Hash(string rawData)
+    {
+        using (System.Security.Cryptography.SHA256 sha256Hash = System.Security.Cryptography.SHA256.Create())
+        {
+            byte[] bytes = sha256Hash.ComputeHash(System.Text.Encoding.UTF8.GetBytes(rawData));
+            System.Text.StringBuilder builder = new System.Text.StringBuilder();
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                builder.Append(bytes[i].ToString("x2"));
+            }
+            return builder.ToString();
+        }
+    }
 }
+

@@ -118,20 +118,15 @@ exit %ERRORLEVEL%
 
             Write-Log "Gemini baslatiliyor (iteration=$iteration, deneme=$retryCount)..."
 
-            # Process baslat ve bekle
-            $process = New-Object System.Diagnostics.Process
-            $process.StartInfo.FileName        = "cmd.exe"
-            $process.StartInfo.Arguments       = "/c `"$tempBat`""
-            $process.StartInfo.UseShellExecute = $false
-            $process.StartInfo.CreateNoWindow  = $true
-            $process.Start() | Out-Null
-            $process.WaitForExit()
-            $exitCode = $process.ExitCode
-
-            # Output dosyasini oku
-            $executorOutput = if (Test-Path $tempOutput) {
-                Get-Content $tempOutput -Raw -Encoding UTF8
-            } else { "" }
+            Start-Process cmd.exe `
+              -ArgumentList "/k `"$tempBat`"" `
+              -WorkingDirectory $env:TEMP
+              # ❗ BURADA WAIT YOK
+              # ❗ BURADA PROCESS YOK
+              # direkt devam et
+              Start-Sleep -Seconds 2
+              $exitCode = 0
+              $executorOutput = "[INFO] Gemini ayrı terminalde çalışıyor"
 
             # Konsola yazdir
             if (-not [string]::IsNullOrWhiteSpace($executorOutput)) {

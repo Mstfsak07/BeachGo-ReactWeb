@@ -101,19 +101,16 @@ async function startAll() {
     agentStarted = true;
 
     startProcess(
-      "AGENT",
-      "cmd",
-      [
-        "/c",
-        "start",
-        "",
-        "powershell",
-        "-NoExit",
-        "-Command",
-        "cd automation/scripts; Write-Host '=== AGENT STARTED ==='; ./run-loop.ps1"
-      ],
-      process.cwd()
-    );
+  "AGENT",
+  "powershell",
+  [
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    "automation/scripts/run-loop.ps1",
+  ],
+  process.cwd()
+);
 
   }
 }

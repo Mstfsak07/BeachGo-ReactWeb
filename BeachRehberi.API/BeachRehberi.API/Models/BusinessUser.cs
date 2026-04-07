@@ -18,6 +18,11 @@ public class BusinessUser
     public string? ContactName { get; private set; }
     public string? BusinessName { get; private set; }
 
+    public string? FirstName { get; private set; }
+    public string? LastName { get; private set; }
+    public string? PhoneNumber { get; private set; }
+    public bool IsEmailVerified { get; private set; }
+
     public string Role { get; private set; } = string.Empty;
     public DateTime? LastLoginAt { get; private set; }
 
@@ -42,6 +47,23 @@ public class BusinessUser
         if (string.IsNullOrWhiteSpace(email)) throw new DomainException("Email adresi boş olamaz.");
         if (!Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$")) throw new DomainException("Geçersiz email formatı.");
         Email = email;
+    }
+
+    public void UpdatePersonalInfo(string firstName, string lastName, string phoneNumber)
+    {
+        FirstName = firstName;
+        LastName = lastName;
+        PhoneNumber = phoneNumber;
+    }
+
+    public void VerifyEmail()
+    {
+        IsEmailVerified = true;
+    }
+    
+    public void ChangePassword(string newPasswordHash)
+    {
+        PasswordHash = newPasswordHash;
     }
 
     public void AssignToBeach(int? beachId)

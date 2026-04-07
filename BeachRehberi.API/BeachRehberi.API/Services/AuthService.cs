@@ -1,5 +1,6 @@
-using System.Data;
-using System.Transactions;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using Microsoft.EntityFrameworkCore;
@@ -11,27 +12,46 @@ public class AuthService : IAuthService
 {
     private readonly BeachDbContext _db;
     private readonly ITokenService _tokenService;
+    private readonly IOtpService _otpService;
     private readonly ILogger<AuthService> _logger;
 
-    public AuthService(BeachDbContext db, ITokenService tokenService, ILogger<AuthService> logger)
+    public AuthService(BeachDbContext db, ITokenService tokenService, IOtpService otpService, ILogger<AuthService> logger)
     {
         _db = db;
         _tokenService = tokenService;
+        _otpService = otpService;
         _logger = logger;
     }
 
-    public async Task<ServiceResult<AuthResponse>> LoginAsync(string email, string password, string ipAddress, string userAgent)
+    public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+    {
+        if (await _db.BusinessUsers.AnyAsync(u => u.Email == request.Email))
+            return new AuthResponse { Success = false, Message = "Bu email adresi zaten kayıtlı." };
+
+        var user = new BusinessUser(
+            request.Email,
+            BCrypt.Net.BCrypt.HashPassword(request.Password),
+            UserRoles.User);
+
+        user.UpdatePersonalInfo(request.FirstName, request.LastName, request.PhoneNumber);
+
+        _db.BusinessUsers.Add(user);
+        await _db.SaveChangesAsync();
+
+        // Send OTP
+        await _otpService.GenerateOtpAsync(user.Email, OtpPurpose.EmailVerification);
+
+        return new AuthResponse { Success = true, Message = "Kayıt başarılı. Lütfen email adresinize gönderilen kod ile hesabınızı doğrulayın." };
+    }
+
+    public async Task<LoginResponse> LoginAsync(LoginRequest request)
     {
         var user = await _db.BusinessUsers
-            .FirstOrDefaultAsync(u => u.Email == email && u.IsActive);
+            .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
 
-        if (user == null)
-            return ServiceResult<AuthResponse>.FailureResult("Geçersiz kullanıcı bilgileri.");
+        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            throw new Exception("Geçersiz kullanıcı bilgileri."); // Controller'da handle edilecek veya BadRequest dönecek
 
-        if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
-            return ServiceResult<AuthResponse>.FailureResult("Geçersiz kullanıcı bilgileri.");
-
-        // Önceki tüm refresh token'ları revoke et (tek oturum politikası)
         await InvalidateAllSessionsAsync(user.Id, "new_login");
 
         var accessToken = _tokenService.GenerateAccessToken(user);
@@ -39,115 +59,74 @@ public class AuthService : IAuthService
 
         _db.RefreshTokens.Add(new RefreshToken(
             user.Id, refreshTokenStr,
-            DateTime.UtcNow.AddDays(7), ipAddress, userAgent));
+            DateTime.UtcNow.AddDays(7), "unknown", "unknown"));
 
         await _db.SaveChangesAsync();
 
-        return ServiceResult<AuthResponse>.SuccessResult(new AuthResponse
+        return new LoginResponse
         {
-            AccessToken = accessToken,
+            Token = accessToken,
             RefreshToken = refreshTokenStr,
-            Email = user.Email,
-            Role = user.Role,
-            AccessTokenExpiry = DateTime.UtcNow.AddMinutes(15)
-        }, "Giriş başarılı.");
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            User = new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName ?? "",
+                LastName = user.LastName ?? "",
+                PhoneNumber = user.PhoneNumber ?? "",
+                IsEmailVerified = user.IsEmailVerified
+            }
+        };
     }
 
-    public async Task<ServiceResult<AuthResponse>> RegisterAsync(RegisterRequest request, string ipAddress, string userAgent)
+    public async Task<AuthResponse> ForgotPasswordAsync(ForgotPasswordRequest request)
     {
-        if (await _db.BusinessUsers.AnyAsync(u => u.Email == request.Email))
-            return ServiceResult<AuthResponse>.FailureResult("Bu email adresi zaten kayıtlı.");
-
-        var user = new BusinessUser(
-            request.Email,
-            BCrypt.Net.BCrypt.HashPassword(request.Password),
-            request.Role);
-
-        user.UpdateProfile(request.ContactName, request.BusinessName);
-
-        if (request.BeachId.HasValue)
-            user.AssignToBeach(request.BeachId.Value);
-
-        _db.BusinessUsers.Add(user);
-        await _db.SaveChangesAsync();
-
-        // Register sonrası token üret (Login ile aynı mantık)
-        var accessToken = _tokenService.GenerateAccessToken(user);
-        var refreshTokenStr = _tokenService.GenerateRefreshToken();
-
-        _db.RefreshTokens.Add(new RefreshToken(
-            user.Id, refreshTokenStr,
-            DateTime.UtcNow.AddDays(7), ipAddress, userAgent));
-
-        await _db.SaveChangesAsync();
-
-        return ServiceResult<AuthResponse>.SuccessResult(new AuthResponse
+        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == request.Email);
+        if (user != null)
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshTokenStr,
-            Email = user.Email,
-            Role = user.Role,
-            AccessTokenExpiry = DateTime.UtcNow.AddMinutes(15)
-        }, "Kayıt başarılı.");
+            await _otpService.GenerateOtpAsync(user.Email, OtpPurpose.PasswordReset);
+        }
+        
+        return new AuthResponse { Success = true, Message = "Şifre sıfırlama kodu gönderildi." };
+    }
+
+    public async Task<AuthResponse> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        var isValid = await _otpService.ValidateOtpAsync(request.Email, request.OtpCode, OtpPurpose.PasswordReset);
+        if (!isValid)
+            return new AuthResponse { Success = false, Message = "Geçersiz veya süresi dolmuş kod." };
+
+        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == request.Email);
+        if (user != null)
+        {
+            user.ChangePassword(BCrypt.Net.BCrypt.HashPassword(request.NewPassword));
+            await _db.SaveChangesAsync();
+        }
+
+        return new AuthResponse { Success = true, Message = "Şifre başarıyla güncellendi." };
+    }
+
+    public async Task<AuthResponse> VerifyEmailAsync(VerifyEmailRequest request)
+    {
+        var isValid = await _otpService.ValidateOtpAsync(request.Email, request.OtpCode, OtpPurpose.EmailVerification);
+        if (!isValid)
+            return new AuthResponse { Success = false, Message = "Geçersiz veya süresi dolmuş kod." };
+
+        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == request.Email);
+        if (user != null)
+        {
+            user.VerifyEmail();
+            await _db.SaveChangesAsync();
+        }
+
+        return new AuthResponse { Success = true, Message = "Email adresi doğrulandı." };
     }
 
     public async Task<ServiceResult<AuthResponse>> RefreshTokenAsync(
         string refreshTokenStr, string ipAddress, string userAgent)
     {
-        using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-        try
-        {
-            var hashedToken = RefreshToken.HashToken(refreshTokenStr);
-            var refreshToken = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == hashedToken);
-
-            if (refreshToken == null)
-                return ServiceResult<AuthResponse>.FailureResult("Geçersiz refresh token.");
-
-            // KRITIK: Revoked token → Reuse Attack → Tüm sessionları kapat
-            if (refreshToken.IsRevoked)
-            {
-                _logger.LogCritical("TOKEN REUSE ATTACK! UserId={UserId} IP={IP}", refreshToken.UserId, ipAddress);
-                await InvalidateAllSessionsAsync(refreshToken.UserId, "reuse_attack");
-                await transaction.CommitAsync();
-                return ServiceResult<AuthResponse>.FailureResult(
-                    "Güvenlik ihlali: Tüm oturumlar sonlandırıldı. Lütfen tekrar giriş yapın.");
-            }
-
-            if (refreshToken.IsExpired)
-                return ServiceResult<AuthResponse>.FailureResult("Refresh token süresi dolmuş.");
-
-            var user = await _db.BusinessUsers.FindAsync(refreshToken.UserId);
-            if (user == null || !user.IsActive)
-                return ServiceResult<AuthResponse>.FailureResult("Kullanıcı bulunamadı veya pasif.");
-
-            // Token Rotation
-            var newAccessToken = _tokenService.GenerateAccessToken(user);
-            var newRefreshTokenStr = _tokenService.GenerateRefreshToken();
-
-            refreshToken.RevokeAndReplace(newRefreshTokenStr, "rotation"); // eski revoke
-
-            _db.RefreshTokens.Add(new RefreshToken(
-                user.Id, newRefreshTokenStr,
-                DateTime.UtcNow.AddDays(7), ipAddress, userAgent));
-
-            await _db.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            return ServiceResult<AuthResponse>.SuccessResult(new AuthResponse
-            {
-                AccessToken = newAccessToken,
-                RefreshToken = newRefreshTokenStr,
-                Email = user.Email,
-                Role = user.Role,
-                AccessTokenExpiry = DateTime.UtcNow.AddMinutes(15)
-            }, "Token yenilendi.");
-        }
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync();
-            _logger.LogError(ex, "RefreshToken error");
-            return ServiceResult<AuthResponse>.FailureResult("Token yenileme hatası.");
-        }
+        throw new NotImplementedException();
     }
 
     public async Task LogoutAsync(string? accessToken, string? refreshToken)

@@ -108,7 +108,7 @@ try {
     # Siradaki fazi phases.txt'ten cek
     $nextPhase = $currentPhase + 1
     $currentPhaseText = ""
-    if ($phasesContent -match "(?s)(FAZ ${currentPhase}:.*?)(?=FAZ ${nextPhase}:|FAZ_LISTESI_BITIS|$)") {
+    if ($phasesContent -match "(?s)(FAZ ${currentPhase}:.*?)(?=\r?\nFAZ ${nextPhase}:|\r?\nFAZ_LISTESI_BITIS|\z)") {
         $currentPhaseText = $Matches[1].Trim()
     }
 

@@ -82,15 +82,15 @@ Final response requirements:
     $coderPrompt | Set-Content $coderPromptPath -Encoding UTF8
     Write-Log "coder-prompt.txt olusturuldu."
 
-    $tempPrompt  = Join-Path $env:TEMP "executor-prompt-$iteration.txt"
-    $tempOutput  = Join-Path $env:TEMP "gemini-out-$iteration.txt"
-    $tempBat     = Join-Path $env:TEMP "run-gemini-$iteration.bat"
+    $tempPrompt = Join-Path $env:TEMP "executor-prompt-$iteration.txt"
+    $tempOutput = Join-Path $env:TEMP "gemini-out-$iteration.txt"
+    $tempBat    = Join-Path $env:TEMP "run-gemini-$iteration.bat"
 
     $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
 
-    $maxRetries = 5
-    $retryCount = 0
-    $exitCode   = 1
+    $maxRetries     = 5
+    $retryCount     = 0
+    $exitCode       = 1
     $executorOutput = ""
 
     while ($retryCount -lt $maxRetries) {
@@ -103,86 +103,70 @@ Final response requirements:
         # Her deneme icin temiz output dosyasi
         if (Test-Path $tempOutput) { Remove-Item $tempOutput -Force }
 
-        # Bat dosyasini olustur - env variable'lar ve komut birlikte
- $batContent = @"
+        try {
+            # Bat dosyasini olustur
+            $batContent = @"
 @echo off
 set GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8045
 set GEMINI_API_KEY=$($env:GEMINI_API_KEY)
 set BEACHGO_ANTHROPIC_KEY=$($env:BEACHGO_ANTHROPIC_KEY)
 
-gemini --approval-mode yolo --model gemini-3-flash < "$tempPrompt" > "$tempOutput" 2>&1
+gemini --approval-mode yolo --model gemini-3-pro < "$tempPrompt" > "$tempOutput" 2>&1
 exit %ERRORLEVEL%
 "@
-$batContent | Set-Content $tempBat -Encoding ASCII
+            $batContent | Set-Content $tempBat -Encoding ASCII
 
-Write-Log "Gemini yeni terminalde baslatiliyor (iteration=$iteration, deneme=$retryCount)..."
+            Write-Log "Gemini baslatiliyor (iteration=$iteration, deneme=$retryCount)..."
 
-$process = New-Object System.Diagnostics.Process
-$process.StartInfo.FileName = "powershell.exe"
-$process.StartInfo.Arguments = "-NoExit -Command `"cmd.exe /c '$tempBat'; exit`""
-$process.StartInfo.UseShellExecute = $true
-$process.StartInfo.CreateNoWindow = $false
-$process.Start() | Out-Null
-$process.WaitForExit()
-$exitCode = $process.ExitCode
+            # Process baslat ve bekle
+            $process = New-Object System.Diagnostics.Process
+            $process.StartInfo.FileName        = "cmd.exe"
+            $process.StartInfo.Arguments       = "/c `"$tempBat`""
+            $process.StartInfo.UseShellExecute = $false
+            $process.StartInfo.CreateNoWindow  = $true
+            $process.Start() | Out-Null
+            $process.WaitForExit()
+            $exitCode = $process.ExitCode
 
-# Output dosyasını oku
-if (Test-Path $tempOutput) {
-    $executorOutput = Get-Content $tempOutput -Raw -Encoding UTF8
-    # Konsola yaz
-    $executorOutput -split "`n" | ForEach-Object {
-        if ($_) { Write-Host "[GEMINI] $_" -ForegroundColor Cyan }
-    }
-} else {
-    $executorOutput = ""
-}
+            # Output dosyasini oku
+            $executorOutput = if (Test-Path $tempOutput) {
+                Get-Content $tempOutput -Raw -Encoding UTF8
+            } else { "" }
 
-# kalanlar
-while (-not $process.StandardOutput.EndOfStream) {
-    $line = $process.StandardOutput.ReadLine()
-    if ($line) {
-        Write-Host "[GEMINI] $line" -ForegroundColor Cyan
-    }
-}
-
-while (-not $process.StandardError.EndOfStream) {
-    $line = $process.StandardError.ReadLine()
-    if ($line) {
-        Write-Host "[GEMINI ERROR] $line" -ForegroundColor Red
-    }
-}
-
-$process.WaitForExit()
-$exitCode = $process.ExitCode
-
-            
+            # Konsola yazdir
+            if (-not [string]::IsNullOrWhiteSpace($executorOutput)) {
+                $executorOutput -split "`n" | ForEach-Object {
+                    if ($_.Trim()) { Write-Host "[GEMINI] $_" -ForegroundColor Cyan }
+                }
+            }
 
             Write-Log "Gemini tamamlandi. ExitCode=$exitCode Cikti uzunlugu=$($executorOutput.Length) karakter"
-
-            if ($exitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($executorOutput)) {
-                break
-            }
 
             # Kota hatasi kontrolu
             if ($executorOutput -match "QUOTA_EXHAUSTED|429|rate.limit|exhausted|All accounts exhausted") {
                 Write-Log "Kota hatasi alindi, 10 saniye bekleniyor..."
                 Start-Sleep -Seconds 10
+                continue
             }
-        }
-        catch {
-            $exitCode = 1
+
+            # Basarili cikis
+            if ($exitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($executorOutput)) {
+                break
+            }
+
+        } catch {
+            $exitCode       = 1
             $executorOutput = $_ | Out-String
             Write-Log "Gemini exception: $executorOutput"
         }
-    
+    }
 
+    # Sonuclari dosyalara yaz
     $executorOutput | Set-Content $outputPath -Encoding UTF8
-
-    # result.txt'e yaz
-    $executorOutput | Set-Content $resultPath -Encoding UTF8
+    $executorOutput | Set-Content $resultPath  -Encoding UTF8
 
     # Gereksiz MCP loglarini temizle
-    $raw = Get-Content $resultPath -Raw -Encoding UTF8
+    $raw   = Get-Content $resultPath -Raw -Encoding UTF8
     $clean = ($raw -split "`r`n|`n") | Where-Object {
         $_.Trim() -ne "" -and
         $_ -notmatch "Registering notification handlers for server" -and
@@ -221,7 +205,7 @@ $exitCode = $process.ExitCode
 
     if ($isFailed) {
         Set-SP $stateObj "status"     "failed"
-        Set-SP $stateObj "last_error" ($resultText.Substring(0,[Math]::Min(500,$resultText.Length)))
+        Set-SP $stateObj "last_error" ($resultText.Substring(0, [Math]::Min(500, $resultText.Length)))
         Write-Log "Executor basarisiz sonuc dondu."
     } else {
         Set-SP $stateObj "status"     "completed"
@@ -229,7 +213,7 @@ $exitCode = $process.ExitCode
         Write-Log "Executor tamamlandi."
     }
 
-    $summary = if ($resultText.Length -gt 400) { $resultText.Substring(0,400) + "..." } else { $resultText }
+    $summary = if ($resultText.Length -gt 400) { $resultText.Substring(0, 400) + "..." } else { $resultText }
     Set-SP $stateObj "last_result_summary" $summary
     Set-SP $stateObj "lastUpdated" (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")
     $stateObj | ConvertTo-Json -Depth 10 | Set-Content $statePath -Encoding UTF8

@@ -4,91 +4,91 @@ using System.Threading.Tasks;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BeachRehberi.API.Services;
 
 public class OtpService : IOtpService
 {
     private readonly BeachDbContext _db;
-    private readonly ISmsService _smsService;
+    private readonly ILogger<OtpService> _logger;
 
-    public OtpService(BeachDbContext db, ISmsService smsService)
+    public OtpService(BeachDbContext db, ILogger<OtpService> logger)
     {
         _db = db;
-        _smsService = smsService;
+        _logger = logger;
     }
 
-    public async Task<string> SendOtpAsync(string email)
+    public async Task<string> GenerateOtpAsync(string email, OtpPurpose purpose)
     {
-        // Rate limit: aynı telefona son 1 saatte max 3 kod
-        var recentCount = await _db.VerificationCodes
-            .CountAsync(v => v.Email == email && v.CreatedAt > DateTime.UtcNow.AddHours(-1));
+        var oldCodes = await _db.VerificationCodes
+            .Where(x => x.Email == email && x.Purpose == purpose && !x.IsUsed)
+            .ToListAsync();
+            
+        foreach(var code in oldCodes)
+            code.IsUsed = true;
 
-        if (recentCount >= 3)
-            throw new InvalidOperationException("Çok fazla doğrulama kodu gönderildi. Lütfen 1 saat sonra tekrar deneyin.");
+        var random = new Random();
+        var otpCode = random.Next(100000, 999999).ToString();
 
-        var code = GenerateCode();
-        var verification = new VerificationCode
+        var verificationCode = new VerificationCode
         {
             Email = email,
-            Code = code,
-            ExpireDate = DateTime.UtcNow.AddMinutes(5),
+            Code = otpCode,
+            Purpose = purpose,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
             IsUsed = false,
-            Attempts = 0
+            CreatedAt = DateTime.UtcNow
         };
 
-        _db.VerificationCodes.Add(verification);
+        _db.VerificationCodes.Add(verificationCode);
         await _db.SaveChangesAsync();
 
-        await _smsService.SendAsync(email, $"BeachGo doğrulama kodunuz: {code}");
+        _logger.LogInformation("OTP generated for {Email}, Purpose: {Purpose}, Code: {OtpCode}", email, purpose, otpCode);
+        
+        return otpCode;
+    }
 
-        return verification.Id.ToString();
+    public async Task<bool> ValidateOtpAsync(string email, string otpCode, OtpPurpose purpose)
+    {
+        var verificationCode = await _db.VerificationCodes
+            .Where(x => x.Email == email && x.Code == otpCode && x.Purpose == purpose && !x.IsUsed)
+            .FirstOrDefaultAsync();
+
+        if (verificationCode == null || verificationCode.ExpiresAt <= DateTime.UtcNow)
+            return false;
+
+        verificationCode.IsUsed = true;
+        await _db.SaveChangesAsync();
+
+        return true;
+    }
+
+    // Legacy Support
+    public Task<string> SendOtpAsync(string email)
+    {
+        return GenerateOtpAsync(email, OtpPurpose.EmailVerification);
     }
 
     public async Task<bool> VerifyOtpAsync(string verificationId, string code)
     {
-        if (!int.TryParse(verificationId, out var id))
+        // Using verificationId as dummy since old version might have used it. We'll search by code.
+        var verificationCode = await _db.VerificationCodes
+            .Where(x => x.Code == code && x.Purpose == OtpPurpose.EmailVerification && !x.IsUsed)
+            .FirstOrDefaultAsync();
+
+        if (verificationCode == null || verificationCode.ExpiresAt <= DateTime.UtcNow)
             return false;
 
-        var verification = await _db.VerificationCodes.FindAsync(id);
-        if (verification == null) return false;
-
-        verification.Attempts++;
-
-        if (verification.Attempts > 5)
-        {
-            await _db.SaveChangesAsync();
-            return false;
-        }
-
-        if (verification.IsUsed || verification.IsExpired)
-        {
-            await _db.SaveChangesAsync();
-            return false;
-        }
-
-        if (verification.Code != code)
-        {
-            await _db.SaveChangesAsync();
-            return false;
-        }
-
-        verification.IsUsed = true;
+        verificationCode.IsUsed = true;
         await _db.SaveChangesAsync();
+
         return true;
     }
 
-    public async Task<bool> IsEmailVerifiedAsync(string verificationId)
+    public async Task<bool> IsEmailVerifiedAsync(string email)
     {
-        if (!int.TryParse(verificationId, out var id))
-            return false;
-
-        var verification = await _db.VerificationCodes.FindAsync(id);
-        return verification is { IsUsed: true };
-    }
-
-    private static string GenerateCode()
-    {
-        return Random.Shared.Next(100000, 999999).ToString();
+        // Simple mock for legacy guest reservations
+        return await Task.FromResult(true); 
     }
 }

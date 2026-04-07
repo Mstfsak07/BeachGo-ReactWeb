@@ -1,10 +1,15 @@
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using BeachRehberi.API.Models;
 
 namespace BeachRehberi.API.Services;
 
 public interface IOtpService
 {
+    Task<string> GenerateOtpAsync(string email, OtpPurpose purpose);
+    Task<bool> ValidateOtpAsync(string email, string otpCode, OtpPurpose purpose);
+    
+    // Legacy methods
     Task<string> SendOtpAsync(string email);
     Task<bool> VerifyOtpAsync(string verificationId, string code);
-    Task<bool> IsEmailVerifiedAsync(string verificationId);
+    Task<bool> IsEmailVerifiedAsync(string email);
 }

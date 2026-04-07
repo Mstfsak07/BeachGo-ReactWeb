@@ -7,188 +7,380 @@ After making code changes:
 
 Task:
 
-# Faz 2: Proje Analizi - Dosya Sistemi KeÅfi ve Raporlama
+# FAZ 1: Authentication AkÄ±ÅÄ± - Email DoÄrulama ve Åifre SÄ±fÄ±rlama Backend KontrolÃ¼
 
-## Sorun Analizi
+## SCOPE: api
 
-Ãnceki iterasyonda `$process.StandardOutput.ReadLine()` null hatasÄ± oluÅtu. Bu, uzun sÃ¼ren komutlarÄ±n output stream'inin beklenenden Ã¶nce kapanmasÄ±ndan kaynaklanÄ±yor. ÃÃ¶zÃ¼m: komutlarÄ± daha kÃ¼Ã§Ã¼k parÃ§alara bÃ¶lmek ve her birini ayrÄ±, kÄ±sa sÃ¼ren iÅlemler olarak Ã§alÄ±ÅtÄ±rmak.
+---
 
-## Hedef
+## GÃREV
 
-Proje dosya yapÄ±sÄ±nÄ± adÄ±m adÄ±m keÅfedip tÃ¼m bulgularÄ± `result.txt` dosyasÄ±na yazmak.
+Mevcut API projesindeki authentication endpoint'lerini doÄrula ve eksikleri tamamla.
 
-## YapÄ±lacak Ä°Åler
+---
 
-### AdÄ±m 1: Temel dizin yapÄ±sÄ±nÄ± keÅfet
+## ADIM 1: Mevcut DosyalarÄ± Oku ve Analiz Et
 
-AÅaÄÄ±daki PowerShell komutunu Ã§alÄ±ÅtÄ±r (tek satÄ±r, kÄ±sa):
+Ãnce Åu dosyalarÄ± oku (varsa):
+- `/AuthController.cs` veya `Controllers/AuthController.cs`
+- `/Services/AuthService.cs` veya `AuthService.cs`
+- `/Services/OtpService.cs` veya `OtpService.cs`
+- `/Models/AuthModels.cs` veya `AuthModels.cs`
+- `Program.cs` (FallbackPolicy konfigÃ¼rasyonunu gÃ¶rmek iÃ§in)
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Depth 2 -Name | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Encoding UTF8
+Projenin kÃ¶k dizinini bul: `find . -name "*.csproj" -not -path "*/node_modules/*"` komutu ile.
+
+---
+
+## ADIM 2: AuthModels.cs KontrolÃ¼
+
+**Dosya:** `[proje_koku]/Models/AuthModels.cs` (yoksa oluÅtur)
+
+Åu request/response model sÄ±nÄ±flarÄ±nÄ±n var olduÄundan emin ol:
+
+```
+// OLMASI GEREKENLER:
+- RegisterRequest       { Email, Password, FirstName, LastName, PhoneNumber }
+- LoginRequest          { Email, Password }
+- LoginResponse         { Token, RefreshToken, ExpiresAt, User }
+- ForgotPasswordRequest { Email }
+- ResetPasswordRequest  { Email, OtpCode, NewPassword }
+- VerifyEmailRequest    { Email, OtpCode }
+- AuthResponse          { Success, Message }
+- UserDto               { Id, Email, FirstName, LastName, PhoneNumber, IsEmailVerified }
 ```
 
-### AdÄ±m 2: Backend .cs dosyalarÄ±nÄ± listele
+Eksik olan modelleri ekle.
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Filter "*.cs" -Name | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
+---
+
+## ADIM 3: IAuthService.cs KontrolÃ¼
+
+**Dosya:** `[proje_koku]/Services/IAuthService.cs` (yoksa oluÅtur)
+
+Interface'de Åu method signature'larÄ±n olduÄundan emin ol:
+
+```
+Task<AuthResponse> RegisterAsync(RegisterRequest request);
+Task<LoginResponse> LoginAsync(LoginRequest request);
+Task<AuthResponse> ForgotPasswordAsync(ForgotPasswordRequest request);
+Task<AuthResponse> ResetPasswordAsync(ResetPasswordRequest request);
+Task<AuthResponse> VerifyEmailAsync(VerifyEmailRequest request);
 ```
 
-### AdÄ±m 3: Frontend dosyalarÄ±nÄ± listele
+---
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Include "*.tsx","*.ts" -Name | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
+## ADIM 4: IOtpService.cs KontrolÃ¼
+
+**Dosya:** `[proje_koku]/Services/IOtpService.cs` (yoksa oluÅtur)
+
+```
+Task<string> GenerateOtpAsync(string email, OtpPurpose purpose);
+Task<bool> ValidateOtpAsync(string email, string otpCode, OtpPurpose purpose);
 ```
 
-### AdÄ±m 4: Config ve deploy dosyalarÄ±nÄ± listele
+`OtpPurpose` enum: `EmailVerification, PasswordReset`
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Include "*.json","*.env","Dockerfile","docker-compose*","*.yml" -Name | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
+---
+
+## ADIM 5: VerificationCode.cs Entity KontrolÃ¼
+
+**Dosya:** `[proje_koku]/Models/VerificationCode.cs` veya `Entities/VerificationCode.cs`
+
+```
+public class VerificationCode {
+    public int Id { get; set; }
+    public string Email { get; set; }
+    public string Code { get; set; }
+    public OtpPurpose Purpose { get; set; }
+    public DateTime ExpiresAt { get; set; }
+    public bool IsUsed { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
 ```
 
-### AdÄ±m 5: Controller dosyalarÄ±nÄ±n iÃ§eriÄini oku
+---
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Filter "*Controller*.cs" | ForEach-Object { "=== $($_.FullName) ==="; Get-Content $_.FullName } | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
+## ADIM 6: OtpService.cs Implementasyonu KontrolÃ¼
+
+**Dosya:** `[proje_koku]/Services/OtpService.cs`
+
+`GenerateOtpAsync` method'u:
+- 6 haneli random kod Ã¼retmeli
+- VerificationCode entity'sini DB'ye kaydetmeli (EF Core)
+- AynÄ± email + purpose iÃ§in eski kodlarÄ± `IsUsed = true` yapmalÄ±
+- Kodu MockSmsService veya loglayarak "gÃ¶ndermeli" (gerÃ§ek SMS deÄil)
+
+`ValidateOtpAsync` method'u:
+- DB'den email + purpose + IsUsed=false koÅuluyla kodu bul
+- ExpiresAt > DateTime.UtcNow kontrolÃ¼ yap
+- GeÃ§erliyse IsUsed = true yap ve kaydet
+- true/false dÃ¶ndÃ¼r
+
+---
+
+## ADIM 7: AuthController.cs KontrolÃ¼
+
+**Dosya:** `[proje_koku]/Controllers/AuthController.cs`
+
+Åu endpoint'lerin TAMAMININ var olduÄundan emin ol:
+
+```csharp
+[AllowAnonymous]
+[HttpPost("register")]
+public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+
+[AllowAnonymous]
+[HttpPost("login")]
+public async Task<IActionResult> Login([FromBody] LoginRequest request)
+
+[AllowAnonymous]
+[HttpPost("forgot-password")]
+public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+
+[AllowAnonymous]
+[HttpPost("reset-password")]
+public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+
+[AllowAnonymous]
+[HttpPost("verify-email")]
+public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
 ```
 
-### AdÄ±m 6: Entity/Model dosyalarÄ±nÄ± oku
+**KRÄ°TÄ°K:** Controller sÄ±nÄ±fÄ±nÄ±n baÅÄ±nda `[ApiController]` ve `[Route("api/auth")]` attribute'larÄ± olmalÄ±.
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Filter "*.cs" | Where-Object { $_.DirectoryName -match "Model|Entity|Domain" } | ForEach-Object { "=== $($_.FullName) ==="; Get-Content $_.FullName } | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
+Her endpoint'te `[AllowAnonymous]` attribute'Ä± ZORUNLU (FallbackPolicy = RequireAuthenticatedUser olduÄu iÃ§in).
+
+---
+
+## ADIM 8: Program.cs KontrolÃ¼
+
+`Program.cs` iÃ§inde ÅunlarÄ± doÄrula:
+
+```csharp
+// Bu satÄ±r olmalÄ± - FallbackPolicy kontrolÃ¼:
+options.FallbackPolicy = new AuthorizationPolicyBuilder()
+    .RequireAuthenticatedUser()
+    .Build();
 ```
 
-### AdÄ±m 7: Migration dosyalarÄ±nÄ± listele
+EÄer bu varsa, tÃ¼m auth endpoint'lerinde `[AllowAnonymous]` Åart. Yoksa ekle (ama mevcut yapÄ±yÄ± bozmadan).
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Filter "*.cs" | Where-Object { $_.DirectoryName -match "Migration" } | Select-Object -ExpandProperty Name | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
+---
+
+## ADIM 9: Build ve Test
+
+```bash
+cd [proje_koku]
+dotnet build
 ```
 
-### AdÄ±m 8: appsettings ve Program.cs dosyalarÄ±nÄ± oku
+Build hatasÄ±z tamamlanmalÄ±.
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Include "appsettings*.json","Program.cs" | ForEach-Object { "=== $($_.FullName) ==="; Get-Content $_.FullName } | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
+---
+
+## BEKLENEN SONUÃ
+
+- `dotnet build` â 0 error
+- Swagger UI'da gÃ¶rÃ¼nmeli:
+  - `POST /api/auth/register`
+  - `POST /api/auth/login`
+  - `POST /api/auth/forgot-password`
+  - `POST /api/auth/reset-password`
+  - `POST /api/auth/verify-email`
+- Her endpoint `200 OK` veya `400 Bad Request` dÃ¶nebilmeli
+
+---
+
+<commit_message>feat: auth endpoints verified - verify-email, forgot-password, reset-password with AllowAnonymous attributes and OTP service integration</commit_message>
+
+
+# FAZ 1: Authentication AkÄ±ÅÄ± - Email DoÄrulama ve Åifre SÄ±fÄ±rlama Backend KontrolÃ¼
+
+## SCOPE: api
+
+---
+
+## GÃREV
+
+Mevcut API projesindeki authentication endpoint'lerini doÄrula ve eksikleri tamamla.
+
+---
+
+## ADIM 1: Mevcut DosyalarÄ± Oku ve Analiz Et
+
+Ãnce Åu dosyalarÄ± oku (varsa):
+- `/AuthController.cs` veya `Controllers/AuthController.cs`
+- `/Services/AuthService.cs` veya `AuthService.cs`
+- `/Services/OtpService.cs` veya `OtpService.cs`
+- `/Models/AuthModels.cs` veya `AuthModels.cs`
+- `Program.cs` (FallbackPolicy konfigÃ¼rasyonunu gÃ¶rmek iÃ§in)
+
+Projenin kÃ¶k dizinini bul: `find . -name "*.csproj" -not -path "*/node_modules/*"` komutu ile.
+
+---
+
+## ADIM 2: AuthModels.cs KontrolÃ¼
+
+**Dosya:** `[proje_koku]/Models/AuthModels.cs` (yoksa oluÅtur)
+
+Åu request/response model sÄ±nÄ±flarÄ±nÄ±n var olduÄundan emin ol:
+
+```
+// OLMASI GEREKENLER:
+- RegisterRequest       { Email, Password, FirstName, LastName, PhoneNumber }
+- LoginRequest          { Email, Password }
+- LoginResponse         { Token, RefreshToken, ExpiresAt, User }
+- ForgotPasswordRequest { Email }
+- ResetPasswordRequest  { Email, OtpCode, NewPassword }
+- VerifyEmailRequest    { Email, OtpCode }
+- AuthResponse          { Success, Message }
+- UserDto               { Id, Email, FirstName, LastName, PhoneNumber, IsEmailVerified }
 ```
 
-### AdÄ±m 9: Frontend pages/app yapÄ±sÄ±nÄ± oku
+Eksik olan modelleri ekle.
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Include "*.tsx","*.ts" | Where-Object { $_.DirectoryName -match "pages|app|components|store|hooks|services|api" } | ForEach-Object { "=== $($_.FullName) ==="; Get-Content $_.FullName } | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
+---
+
+## ADIM 3: IAuthService.cs KontrolÃ¼
+
+**Dosya:** `[proje_koku]/Services/IAuthService.cs` (yoksa oluÅtur)
+
+Interface'de Åu method signature'larÄ±n olduÄundan emin ol:
+
+```
+Task<AuthResponse> RegisterAsync(RegisterRequest request);
+Task<LoginResponse> LoginAsync(LoginRequest request);
+Task<AuthResponse> ForgotPasswordAsync(ForgotPasswordRequest request);
+Task<AuthResponse> ResetPasswordAsync(ResetPasswordRequest request);
+Task<AuthResponse> VerifyEmailAsync(VerifyEmailRequest request);
 ```
 
-### AdÄ±m 10: package.json dosyalarÄ±nÄ± oku
+---
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Filter "package.json" | Where-Object { $_.FullName -notmatch "node_modules" } | ForEach-Object { "=== $($_.FullName) ==="; Get-Content $_.FullName } | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
+## ADIM 4: IOtpService.cs KontrolÃ¼
+
+**Dosya:** `[proje_koku]/Services/IOtpService.cs` (yoksa oluÅtur)
+
+```
+Task<string> GenerateOtpAsync(string email, OtpPurpose purpose);
+Task<bool> ValidateOtpAsync(string email, string otpCode, OtpPurpose purpose);
 ```
 
-## Executor iÃ§in Notlar
+`OtpPurpose` enum: `EmailVerification, PasswordReset`
 
-- **Her adÄ±mÄ± sÄ±rayla Ã§alÄ±ÅtÄ±r** - bir Ã¶nceki tamamlanmadan sonrakine geÃ§me
-- **`-Append` flag'ini** ilk adÄ±m hariÃ§ tÃ¼m adÄ±mlarda kullan (ilk adÄ±mda `-Encoding UTF8` ile dosya sÄ±fÄ±rlanÄ±r)
-- **Hata olursa** o adÄ±mÄ± atla, bir sonrakine geÃ§
-- **SonuÃ§ta** `result.txt` dosyasÄ±nÄ±n boyutunu kontrol et: minimum 1KB olmalÄ±
-- **`node_modules` klasÃ¶rÃ¼nÃ¼** tÃ¼m komutlarda filtrele: `| Where-Object { $_.FullName -notmatch "node_modules" }`
+---
 
-## BaÅarÄ± Kriterleri
+## ADIM 5: VerificationCode.cs Entity KontrolÃ¼
 
-- `result.txt` dosyasÄ± oluÅturulmuÅ ve en az 1KB boyutunda
-- Dosya iÃ§inde Controller listesi, Entity listesi ve Frontend sayfa listesi mevcut
-- Migration dosyalarÄ± listelenmiÅ
-- appsettings.json iÃ§eriÄi okunmuÅ
+**Dosya:** `[proje_koku]/Models/VerificationCode.cs` veya `Entities/VerificationCode.cs`
 
-<commit_message>Analiz: Proje dosya yapÄ±sÄ± keÅfi ve eksik alan tespiti iÃ§in raporlama tamamlandÄ±</commit_message>
-
-
-# Faz 2: Proje Analizi - Dosya Sistemi KeÅfi ve Raporlama
-
-## Sorun Analizi
-
-Ãnceki iterasyonda `$process.StandardOutput.ReadLine()` null hatasÄ± oluÅtu. Bu, uzun sÃ¼ren komutlarÄ±n output stream'inin beklenenden Ã¶nce kapanmasÄ±ndan kaynaklanÄ±yor. ÃÃ¶zÃ¼m: komutlarÄ± daha kÃ¼Ã§Ã¼k parÃ§alara bÃ¶lmek ve her birini ayrÄ±, kÄ±sa sÃ¼ren iÅlemler olarak Ã§alÄ±ÅtÄ±rmak.
-
-## Hedef
-
-Proje dosya yapÄ±sÄ±nÄ± adÄ±m adÄ±m keÅfedip tÃ¼m bulgularÄ± `result.txt` dosyasÄ±na yazmak.
-
-## YapÄ±lacak Ä°Åler
-
-### AdÄ±m 1: Temel dizin yapÄ±sÄ±nÄ± keÅfet
-
-AÅaÄÄ±daki PowerShell komutunu Ã§alÄ±ÅtÄ±r (tek satÄ±r, kÄ±sa):
-
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Depth 2 -Name | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Encoding UTF8
+```
+public class VerificationCode {
+    public int Id { get; set; }
+    public string Email { get; set; }
+    public string Code { get; set; }
+    public OtpPurpose Purpose { get; set; }
+    public DateTime ExpiresAt { get; set; }
+    public bool IsUsed { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
 ```
 
-### AdÄ±m 2: Backend .cs dosyalarÄ±nÄ± listele
+---
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Filter "*.cs" -Name | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
+## ADIM 6: OtpService.cs Implementasyonu KontrolÃ¼
+
+**Dosya:** `[proje_koku]/Services/OtpService.cs`
+
+`GenerateOtpAsync` method'u:
+- 6 haneli random kod Ã¼retmeli
+- VerificationCode entity'sini DB'ye kaydetmeli (EF Core)
+- AynÄ± email + purpose iÃ§in eski kodlarÄ± `IsUsed = true` yapmalÄ±
+- Kodu MockSmsService veya loglayarak "gÃ¶ndermeli" (gerÃ§ek SMS deÄil)
+
+`ValidateOtpAsync` method'u:
+- DB'den email + purpose + IsUsed=false koÅuluyla kodu bul
+- ExpiresAt > DateTime.UtcNow kontrolÃ¼ yap
+- GeÃ§erliyse IsUsed = true yap ve kaydet
+- true/false dÃ¶ndÃ¼r
+
+---
+
+## ADIM 7: AuthController.cs KontrolÃ¼
+
+**Dosya:** `[proje_koku]/Controllers/AuthController.cs`
+
+Åu endpoint'lerin TAMAMININ var olduÄundan emin ol:
+
+```csharp
+[AllowAnonymous]
+[HttpPost("register")]
+public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+
+[AllowAnonymous]
+[HttpPost("login")]
+public async Task<IActionResult> Login([FromBody] LoginRequest request)
+
+[AllowAnonymous]
+[HttpPost("forgot-password")]
+public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+
+[AllowAnonymous]
+[HttpPost("reset-password")]
+public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+
+[AllowAnonymous]
+[HttpPost("verify-email")]
+public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
 ```
 
-### AdÄ±m 3: Frontend dosyalarÄ±nÄ± listele
+**KRÄ°TÄ°K:** Controller sÄ±nÄ±fÄ±nÄ±n baÅÄ±nda `[ApiController]` ve `[Route("api/auth")]` attribute'larÄ± olmalÄ±.
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Include "*.tsx","*.ts" -Name | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
+Her endpoint'te `[AllowAnonymous]` attribute'Ä± ZORUNLU (FallbackPolicy = RequireAuthenticatedUser olduÄu iÃ§in).
+
+---
+
+## ADIM 8: Program.cs KontrolÃ¼
+
+`Program.cs` iÃ§inde ÅunlarÄ± doÄrula:
+
+```csharp
+// Bu satÄ±r olmalÄ± - FallbackPolicy kontrolÃ¼:
+options.FallbackPolicy = new AuthorizationPolicyBuilder()
+    .RequireAuthenticatedUser()
+    .Build();
 ```
 
-### AdÄ±m 4: Config ve deploy dosyalarÄ±nÄ± listele
+EÄer bu varsa, tÃ¼m auth endpoint'lerinde `[AllowAnonymous]` Åart. Yoksa ekle (ama mevcut yapÄ±yÄ± bozmadan).
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Include "*.json","*.env","Dockerfile","docker-compose*","*.yml" -Name | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
+---
+
+## ADIM 9: Build ve Test
+
+```bash
+cd [proje_koku]
+dotnet build
 ```
 
-### AdÄ±m 5: Controller dosyalarÄ±nÄ±n iÃ§eriÄini oku
+Build hatasÄ±z tamamlanmalÄ±.
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Filter "*Controller*.cs" | ForEach-Object { "=== $($_.FullName) ==="; Get-Content $_.FullName } | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
-```
+---
 
-### AdÄ±m 6: Entity/Model dosyalarÄ±nÄ± oku
+## BEKLENEN SONUÃ
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Filter "*.cs" | Where-Object { $_.DirectoryName -match "Model|Entity|Domain" } | ForEach-Object { "=== $($_.FullName) ==="; Get-Content $_.FullName } | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
-```
+- `dotnet build` â 0 error
+- Swagger UI'da gÃ¶rÃ¼nmeli:
+  - `POST /api/auth/register`
+  - `POST /api/auth/login`
+  - `POST /api/auth/forgot-password`
+  - `POST /api/auth/reset-password`
+  - `POST /api/auth/verify-email`
+- Her endpoint `200 OK` veya `400 Bad Request` dÃ¶nebilmeli
 
-### AdÄ±m 7: Migration dosyalarÄ±nÄ± listele
+---
 
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Filter "*.cs" | Where-Object { $_.DirectoryName -match "Migration" } | Select-Object -ExpandProperty Name | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
-```
-
-### AdÄ±m 8: appsettings ve Program.cs dosyalarÄ±nÄ± oku
-
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Include "appsettings*.json","Program.cs" | ForEach-Object { "=== $($_.FullName) ==="; Get-Content $_.FullName } | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
-```
-
-### AdÄ±m 9: Frontend pages/app yapÄ±sÄ±nÄ± oku
-
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Include "*.tsx","*.ts" | Where-Object { $_.DirectoryName -match "pages|app|components|store|hooks|services|api" } | ForEach-Object { "=== $($_.FullName) ==="; Get-Content $_.FullName } | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
-```
-
-### AdÄ±m 10: package.json dosyalarÄ±nÄ± oku
-
-```powershell
-Get-ChildItem -Path "C:\Users\akMuratNET\Desktop\BeachGo" -Recurse -Filter "package.json" | Where-Object { $_.FullName -notmatch "node_modules" } | ForEach-Object { "=== $($_.FullName) ==="; Get-Content $_.FullName } | Out-File "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\result.txt" -Append -Encoding UTF8
-```
-
-## Executor iÃ§in Notlar
-
-- **Her adÄ±mÄ± sÄ±rayla Ã§alÄ±ÅtÄ±r** - bir Ã¶nceki tamamlanmadan sonrakine geÃ§me
-- **`-Append` flag'ini** ilk adÄ±m hariÃ§ tÃ¼m adÄ±mlarda kullan (ilk adÄ±mda `-Encoding UTF8` ile dosya sÄ±fÄ±rlanÄ±r)
-- **Hata olursa** o adÄ±mÄ± atla, bir sonrakine geÃ§
-- **SonuÃ§ta** `result.txt` dosyasÄ±nÄ±n boyutunu kontrol et: minimum 1KB olmalÄ±
-- **`node_modules` klasÃ¶rÃ¼nÃ¼** tÃ¼m komutlarda filtrele: `| Where-Object { $_.FullName -notmatch "node_modules" }`
-
-## BaÅarÄ± Kriterleri
-
-- `result.txt` dosyasÄ± oluÅturulmuÅ ve en az 1KB boyutunda
-- Dosya iÃ§inde Controller listesi, Entity listesi ve Frontend sayfa listesi mevcut
-- Migration dosyalarÄ± listelenmiÅ
-- appsettings.json iÃ§eriÄi okunmuÅ
-
-<commit_message>Analiz: Proje dosya yapÄ±sÄ± keÅfi ve eksik alan tespiti iÃ§in raporlama tamamlandÄ±</commit_message>
+<commit_message>feat: auth endpoints verified - verify-email, forgot-password, reset-password with AllowAnonymous attributes and OTP service integration</commit_message>
 
 
 Final response requirements:

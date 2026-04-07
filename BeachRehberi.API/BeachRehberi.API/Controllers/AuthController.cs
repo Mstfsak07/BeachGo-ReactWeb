@@ -6,11 +6,17 @@ using BeachRehberi.API.Extensions;
 using Microsoft.AspNetCore.RateLimiting;
 using FluentValidation;
 using Microsoft.Extensions.Configuration;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 
 namespace BeachRehberi.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/auth")]
     [EnableRateLimiting("auth")]
     public class AuthController : ControllerBase
     {
@@ -25,64 +31,65 @@ namespace BeachRehberi.API.Controllers
             _env = env;
         }
 
-        // ===================== LOGIN =====================
-        [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            var result = await _authService.LoginAsync(
-                request.Email,
-                request.Password,
-                GetIpAddress(),
-                Request.Headers["User-Agent"].ToString()
-            );
-
-            if (result.Success && result.Data != null)
-            {
-                Response.Cookies.Append("refreshToken", result.Data.RefreshToken!, new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = !_env.IsDevelopment(),
-                    SameSite = SameSiteMode.Lax,
-                    Expires = DateTime.UtcNow.AddDays(7)
-                });
-
-                result.Data.RefreshToken = null;
-            }
-
-            return result.ToActionResult();
+            var result = await _authService.RegisterAsync(request);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
 
-        // ===================== REFRESH =====================
-        [HttpPost("refresh")]
         [AllowAnonymous]
-        public async Task<IActionResult> Refresh()
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            var refreshToken = Request.Cookies["refreshToken"];
-
-            if (string.IsNullOrWhiteSpace(refreshToken))
-                return Unauthorized("Refresh token bulunamadı.");
-
-            var result = await _authService.RefreshTokenAsync(
-                refreshToken,
-                GetIpAddress(),
-                Request.Headers["User-Agent"].ToString()
-            );
-
-            if (result.Success && result.Data != null)
+            try
             {
-                Response.Cookies.Append("refreshToken", result.Data.RefreshToken!, new CookieOptions
+                var response = await _authService.LoginAsync(request);
+                
+                Response.Cookies.Append("refreshToken", response.RefreshToken, new CookieOptions
                 {
                     HttpOnly = true,
                     Secure = !_env.IsDevelopment(),
                     SameSite = SameSiteMode.Lax,
                     Expires = DateTime.UtcNow.AddDays(7)
                 });
-
-                result.Data.RefreshToken = null;
+                
+                return Ok(response);
             }
+            catch(Exception ex)
+            {
+                return BadRequest(new AuthResponse { Success = false, Message = ex.Message });
+            }
+        }
 
-            return result.ToActionResult();
+        [AllowAnonymous]
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            var result = await _authService.ForgotPasswordAsync(request);
+            if (result.Success) return Ok(result);
+            return BadRequest(result);
+        }
+
+        [AllowAnonymous]
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            var result = await _authService.ResetPasswordAsync(request);
+            if (result.Success) return Ok(result);
+            return BadRequest(result);
+        }
+
+        [AllowAnonymous]
+        [HttpPost("verify-email")]
+        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+        {
+            var result = await _authService.VerifyEmailAsync(request);
+            if (result.Success) return Ok(result);
+            return BadRequest(result);
         }
 
         // ===================== LOGOUT =====================
@@ -91,12 +98,9 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> Logout()
         {
             var refreshToken = Request.Cookies["refreshToken"];
-
             await _authService.LogoutAsync(null, refreshToken);
-
             Response.Cookies.Delete("refreshToken");
-
-            return ((object?)null).ToOkApiResponse("Çıkış başarılı.");
+            return Ok(new AuthResponse { Success = true, Message = "Çıkış başarılı." });
         }
 
         // ===================== REVOKE =====================
@@ -104,140 +108,11 @@ namespace BeachRehberi.API.Controllers
         [Authorize]
         public async Task<IActionResult> Revoke([FromBody] RevokeRequest request)
         {
-            var result = await _authService.RevokeTokenAsync(
-                request.RefreshToken,
-                GetIpAddress(),
-                "manual_revoke"
-            );
-
-            return result.ToActionResult();
+            var result = await _authService.RevokeTokenAsync(request.RefreshToken, GetIpAddress(), "manual_revoke");
+            if (result.Success) return Ok(new AuthResponse { Success = true, Message = result.Message });
+            return BadRequest(new AuthResponse { Success = false, Message = result.Message });
         }
 
-        // ===================== REGISTER USER =====================
-        [HttpPost("register-user")]
-        [AllowAnonymous]
-        public async Task<IActionResult> RegisterUser([FromBody] UserRegisterRequest request)
-        {
-            try
-            {
-                var registerRequest = new RegisterRequest
-                {
-                    Email = request.Email,
-                    Password = request.Password,
-                    BusinessName = request.Username,
-                    ContactName = request.Username,
-                    BeachId = null,
-                    Role = UserRoles.User
-                };
-
-                var result = await _authService.RegisterAsync(
-                    registerRequest,
-                    GetIpAddress(),
-                    Request.Headers["User-Agent"].ToString()
-                );
-
-                // 🔥 COOKIE EKLE (ÖNEMLİ)
-                if (result.Success && result.Data != null)
-                {
-                    Response.Cookies.Append("refreshToken", result.Data.RefreshToken!, new CookieOptions
-                    {
-                        HttpOnly = true,
-                        Secure = !_env.IsDevelopment(),
-                        SameSite = SameSiteMode.Lax,
-                        Expires = DateTime.UtcNow.AddDays(7)
-                    });
-
-                    result.Data.RefreshToken = null;
-                }
-
-                return result.ToActionResult();
-            }
-            catch (FluentValidation.ValidationException ex)
-            {
-                return UnprocessableEntity(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = _configuration["Auth:ValidationErrorMessage"] ?? "Doğrulama hataları var.",
-                    Errors = ex.Errors.Select(e => e.ErrorMessage).ToList()
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = _configuration["Auth:ServerErrorMessage"] ?? "Sunucu hatası oluştu."
-                });
-            }
-        }
-
-        // ===================== REGISTER BUSINESS =====================
-        [HttpPost("register")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
-        {
-            request.Role = UserRoles.Business;
-
-            try
-            {
-                var result = await _authService.RegisterAsync(
-                    request,
-                    GetIpAddress(),
-                    Request.Headers["User-Agent"].ToString()
-                );
-
-                // 🔥 COOKIE EKLE (ÖNEMLİ)
-                if (result.Success && result.Data != null)
-                {
-                    Response.Cookies.Append("refreshToken", result.Data.RefreshToken!, new CookieOptions
-                    {
-                        HttpOnly = true,
-                        Secure = !_env.IsDevelopment(),
-                        SameSite = SameSiteMode.Lax,
-                        Expires = DateTime.UtcNow.AddDays(7)
-                    });
-
-                    result.Data.RefreshToken = null;
-                }
-
-                return result.ToActionResult();
-            }
-            catch (FluentValidation.ValidationException ex)
-            {
-                return UnprocessableEntity(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = _configuration["Auth:ValidationErrorMessage"] ?? "Doğrulama hataları var.",
-                    Errors = ex.Errors.Select(e => e.ErrorMessage).ToList()
-                });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = ex.Message
-                });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = _configuration["Auth:ServerErrorMessage"] ?? "Sunucu hatası oluştu."
-                });
-            }
-        }
-
-        // ===================== IP =====================
         private string GetIpAddress()
         {
             if (Request.Headers.ContainsKey("X-Forwarded-For"))

@@ -24,252 +24,198 @@ KURALLARIN:
 
 === GOREV ===
 
-# FAZ 1 - Authentication Backend Tamamlama
+Ãnceki sonuÃ§ BASARILI ve Build 0 hata ile tamamlanmÄ±Å. Faz 1 baÅarÄ±yla tamamlandÄ±.
 
-## Proje YapÄ±sÄ±nÄ± Ãnce KeÅfet
-
-AÅaÄÄ±daki adÄ±mlarÄ± sÄ±rayla uygula:
-
-### ADIM 1: Mevcut DosyalarÄ± Bul
-
-```bash
-find /workspace -name "*.cs" | grep -E "(Auth|Otp|Verification|Sms)" | head -30
-find /workspace -name "*.csproj" | head -5
-```
-
-### ADIM 2: API Projesinin Yolunu Belirle ve DosyalarÄ± Oku
-
-```bash
-# .csproj dosyasÄ±nÄ±n bulunduÄu dizine git
-# Åu dosyalarÄ± oku (varsa):
-# - Controllers/AuthController.cs
-# - Services/AuthService.cs
-# - Services/IAuthService.cs
-# - Models/AuthModels.cs
-# - Models/VerificationCode.cs
-# - Services/OtpService.cs
-# - Services/IOtpService.cs
-# - Services/MockSmsService.cs
-```
-
-### ADIM 3: Eksik Endpoint'leri ve MetodlarÄ± Tamamla
-
-**`IAuthService.cs`** â Åu metodlarÄ±n interface'de tanÄ±mlÄ± olduÄundan emin ol:
-```csharp
-Task<AuthResult> ForgotPasswordAsync(string email);
-Task<AuthResult> ResetPasswordAsync(string token, string newPassword);
-Task<AuthResult> VerifyEmailAsync(string token);
-Task<AuthResult> ResendVerificationAsync(string email);
-```
-
-**`AuthService.cs`** â YukarÄ±daki metodlarÄ±n implementasyonunu ekle:
-- `ForgotPasswordAsync`: KullanÄ±cÄ±yÄ± email ile bul, reset token Ã¼ret (Guid veya random string), token'Ä± DB'ye kaydet (expiry: 1 saat), MockSmsService veya email ile gÃ¶nder
-- `ResetPasswordAsync`: Token'Ä± DB'de bul, expiry kontrol et, Åifreyi hash'le ve gÃ¼ncelle, token'Ä± geÃ§ersiz kÄ±l
-- `VerifyEmailAsync`: Token ile VerificationCode kaydÄ±nÄ± bul, expiry kontrol et, User.EmailVerified = true yap
-- `ResendVerificationAsync`: KullanÄ±cÄ±yÄ± bul, yeni token Ã¼ret, eski token'larÄ± geÃ§ersiz kÄ±l, yeni token gÃ¶nder
-
-**`AuthController.cs`** â Åu endpoint'lerin tam olarak var olduÄunu doÄrula ve ekle:
-```csharp
-[HttpPost("forgot-password")]
-public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
-
-[HttpPost("reset-password")]  
-public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
-
-[HttpGet("verify-email")]  // veya [HttpPost]
-public async Task<IActionResult> VerifyEmail([FromQuery] string token) // veya [FromBody]
-
-[HttpPost("resend-verification")]
-public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
-```
-
-**`AuthModels.cs`** â DTO'larÄ±n validasyonlu olduÄundan emin ol:
-```csharp
-public class ForgotPasswordRequest {
-    [Required, EmailAddress]
-    public string Email { get; set; }
-}
-
-public class ResetPasswordRequest {
-    [Required]
-    public string Token { get; set; }
-    [Required, MinLength(6)]
-    public string NewPassword { get; set; }
-    [Required, Compare("NewPassword")]
-    public string ConfirmPassword { get; set; }
-}
-
-public class VerifyEmailRequest {
-    [Required]
-    public string Token { get; set; }
-}
-
-public class ResendVerificationRequest {
-    [Required, EmailAddress]
-    public string Email { get; set; }
-}
-```
-
-**`OtpService.cs`** â Kod Ã¼retme ve doÄrulamayÄ± kontrol et:
-- `GenerateCode()`: 6 haneli random sayÄ±, expiry 10 dakika
-- `VerifyCode(string email, string code)`: Kodu bul, expiry kontrol et, IsUsed kontrolÃ¼ yap, baÅarÄ±lÄ± ise IsUsed = true yap
-
-**`VerificationCode.cs`** â Entity'de Åu alanlarÄ±n olduÄundan emin ol:
-```csharp
-public string Token { get; set; }
-public string Email { get; set; }
-public string Code { get; set; }
-public DateTime ExpiresAt { get; set; }
-public bool IsUsed { get; set; }
-public string Type { get; set; } // "email_verify" | "password_reset"
-```
-
-### ADIM 4: Build Et
-
-```bash
-cd [API_PROJE_DIZINI]
-dotnet build
-```
-
-Build hatasÄ± varsa hatalarÄ± oku ve dÃ¼zelt. Sonra tekrar build et.
-
-### ADIM 5: Sonucu result.txt'e Yaz
-
-Build Ã§Ä±ktÄ±sÄ±nÄ± ve hangi dosyalarÄ±n deÄiÅtirildiÄini `/workspace/result.txt` dosyasÄ±na yaz:
-```
-BUILD: SUCCESS veya FAILED
-HATALAR: [varsa listele]
-DEGISTIRILEN_DOSYALAR: [liste]
-TEST_NOTLARI: [endpoint'ler mevcut mu]
-```
+Phases.txt'ten sÄ±radaki faza geÃ§iyorum.
 
 ---
 
-<commit_message>feat: complete auth backend - forgot-password, reset-password, verify-email, resend-verification endpoints with OTP validation</commit_message>
+**FAZ 2 â INSTRUCTION**
 
+**SCOPE:** api
 
-# FAZ 1 - Authentication Backend Tamamlama
+**Hedef:** JWT token Ã¼retimi, refresh token mekanizmasÄ± ve kullanÄ±cÄ± oturum yÃ¶netimini tamamla.
 
-## Proje YapÄ±sÄ±nÄ± Ãnce KeÅfet
+**DeÄiÅtirilecek/OluÅturulacak Dosyalar:**
 
-AÅaÄÄ±daki adÄ±mlarÄ± sÄ±rayla uygula:
+1. `/app/api/Services/TokenService.cs` (yeni veya mevcut)
+2. `/app/api/Services/ITokenService.cs` (yeni veya mevcut)
+3. `/app/api/Controllers/AuthController.cs`
+4. `/app/api/Models/AuthModels.cs`
+5. `/app/api/Models/RefreshToken.cs` (yeni veya mevcut)
 
-### ADIM 1: Mevcut DosyalarÄ± Bul
+**YapÄ±lacaklar:**
 
-```bash
-find /workspace -name "*.cs" | grep -E "(Auth|Otp|Verification|Sms)" | head -30
-find /workspace -name "*.csproj" | head -5
-```
-
-### ADIM 2: API Projesinin Yolunu Belirle ve DosyalarÄ± Oku
-
-```bash
-# .csproj dosyasÄ±nÄ±n bulunduÄu dizine git
-# Åu dosyalarÄ± oku (varsa):
-# - Controllers/AuthController.cs
-# - Services/AuthService.cs
-# - Services/IAuthService.cs
-# - Models/AuthModels.cs
-# - Models/VerificationCode.cs
-# - Services/OtpService.cs
-# - Services/IOtpService.cs
-# - Services/MockSmsService.cs
-```
-
-### ADIM 3: Eksik Endpoint'leri ve MetodlarÄ± Tamamla
-
-**`IAuthService.cs`** â Åu metodlarÄ±n interface'de tanÄ±mlÄ± olduÄundan emin ol:
+**ITokenService.cs:**
 ```csharp
-Task<AuthResult> ForgotPasswordAsync(string email);
-Task<AuthResult> ResetPasswordAsync(string token, string newPassword);
-Task<AuthResult> VerifyEmailAsync(string token);
-Task<AuthResult> ResendVerificationAsync(string email);
+string GenerateAccessToken(ApplicationUser user);
+string GenerateRefreshToken();
+Task<bool> ValidateRefreshTokenAsync(string userId, string refreshToken);
+Task RevokeRefreshTokenAsync(string userId, string refreshToken);
+Task SaveRefreshTokenAsync(string userId, string refreshToken, DateTime expiry);
+ClaimsPrincipal? GetPrincipalFromExpiredToken(string token);
 ```
 
-**`AuthService.cs`** â YukarÄ±daki metodlarÄ±n implementasyonunu ekle:
-- `ForgotPasswordAsync`: KullanÄ±cÄ±yÄ± email ile bul, reset token Ã¼ret (Guid veya random string), token'Ä± DB'ye kaydet (expiry: 1 saat), MockSmsService veya email ile gÃ¶nder
-- `ResetPasswordAsync`: Token'Ä± DB'de bul, expiry kontrol et, Åifreyi hash'le ve gÃ¼ncelle, token'Ä± geÃ§ersiz kÄ±l
-- `VerifyEmailAsync`: Token ile VerificationCode kaydÄ±nÄ± bul, expiry kontrol et, User.EmailVerified = true yap
-- `ResendVerificationAsync`: KullanÄ±cÄ±yÄ± bul, yeni token Ã¼ret, eski token'larÄ± geÃ§ersiz kÄ±l, yeni token gÃ¶nder
+**TokenService.cs:**
+- `GenerateAccessToken`: JWT Ã¼ret, claims iÃ§ine `userId`, `email`, `role` ekle, expiry 15 dakika
+- `GenerateRefreshToken`: `RandomNumberGenerator` ile 64-byte base64 string Ã¼ret
+- `SaveRefreshTokenAsync`: RefreshToken entity'sini DB'ye kaydet (userId, token hash, expiry, isRevoked)
+- `ValidateRefreshTokenAsync`: DB'de token'Ä± bul, sÃ¼resi dolmamÄ±Å ve revoke edilmemiÅ olduÄunu doÄrula
+- `RevokeRefreshTokenAsync`: Token'Ä± DB'de revoke et (isRevoked = true)
+- `GetPrincipalFromExpiredToken`: SÃ¼resi dolmuÅ token'dan ClaimsPrincipal Ã§Ä±kar, imzayÄ± doÄrula
 
-**`AuthController.cs`** â Åu endpoint'lerin tam olarak var olduÄunu doÄrula ve ekle:
+**RefreshToken.cs (Model/Entity):**
 ```csharp
-[HttpPost("forgot-password")]
-public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
-
-[HttpPost("reset-password")]  
-public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
-
-[HttpGet("verify-email")]  // veya [HttpPost]
-public async Task<IActionResult> VerifyEmail([FromQuery] string token) // veya [FromBody]
-
-[HttpPost("resend-verification")]
-public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
-```
-
-**`AuthModels.cs`** â DTO'larÄ±n validasyonlu olduÄundan emin ol:
-```csharp
-public class ForgotPasswordRequest {
-    [Required, EmailAddress]
-    public string Email { get; set; }
-}
-
-public class ResetPasswordRequest {
-    [Required]
-    public string Token { get; set; }
-    [Required, MinLength(6)]
-    public string NewPassword { get; set; }
-    [Required, Compare("NewPassword")]
-    public string ConfirmPassword { get; set; }
-}
-
-public class VerifyEmailRequest {
-    [Required]
-    public string Token { get; set; }
-}
-
-public class ResendVerificationRequest {
-    [Required, EmailAddress]
-    public string Email { get; set; }
+public class RefreshToken {
+    public int Id { get; set; }
+    public string UserId { get; set; }
+    public string Token { get; set; } // SHA256 hash olarak sakla
+    public DateTime ExpiresAt { get; set; }
+    public bool IsRevoked { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
 ```
 
-**`OtpService.cs`** â Kod Ã¼retme ve doÄrulamayÄ± kontrol et:
-- `GenerateCode()`: 6 haneli random sayÄ±, expiry 10 dakika
-- `VerifyCode(string email, string code)`: Kodu bul, expiry kontrol et, IsUsed kontrolÃ¼ yap, baÅarÄ±lÄ± ise IsUsed = true yap
+**AuthController.cs â Yeni Endpoint Ekle:**
+- `POST /api/auth/refresh-token`: Body'den `{ accessToken, refreshToken }` al â `GetPrincipalFromExpiredToken` ile userId Ã§Ä±kar â `ValidateRefreshTokenAsync` â eski token'Ä± revoke et â yeni access + refresh token Ã¼ret â dÃ¶ndÃ¼r
+- `POST /api/auth/revoke-token`: `[Authorize]` â mevcut kullanÄ±cÄ±nÄ±n refresh token'Ä±nÄ± iptal et
+- Login endpoint'inden dÃ¶nen response'a `refreshToken` alanÄ±nÄ± ekle
 
-**`VerificationCode.cs`** â Entity'de Åu alanlarÄ±n olduÄundan emin ol:
+**AuthModels.cs â DTO ekle:**
 ```csharp
-public string Token { get; set; }
-public string Email { get; set; }
-public string Code { get; set; }
-public DateTime ExpiresAt { get; set; }
-public bool IsUsed { get; set; }
-public string Type { get; set; } // "email_verify" | "password_reset"
+public class RefreshTokenRequest {
+    [Required] public string AccessToken { get; set; }
+    [Required] public string RefreshToken { get; set; }
+}
+public class TokenResponse {
+    public string AccessToken { get; set; }
+    public string RefreshToken { get; set; }
+    public DateTime ExpiresAt { get; set; }
+}
 ```
 
-### ADIM 4: Build Et
-
-```bash
-cd [API_PROJE_DIZINI]
-dotnet build
-```
-
-Build hatasÄ± varsa hatalarÄ± oku ve dÃ¼zelt. Sonra tekrar build et.
-
-### ADIM 5: Sonucu result.txt'e Yaz
-
-Build Ã§Ä±ktÄ±sÄ±nÄ± ve hangi dosyalarÄ±n deÄiÅtirildiÄini `/workspace/result.txt` dosyasÄ±na yaz:
-```
-BUILD: SUCCESS veya FAILED
-HATALAR: [varsa listele]
-DEGISTIRILEN_DOSYALAR: [liste]
-TEST_NOTLARI: [endpoint'ler mevcut mu]
-```
+**Program.cs / DI:**
+- `ITokenService` â `TokenService` olarak register et (Scoped)
+- `RefreshToken` entity'sini DbContext'e ekle (eÄer EF kullanÄ±lÄ±yorsa)
+- Migration Ã§alÄ±ÅtÄ±r: `dotnet ef migrations add AddRefreshTokenTable` ve `dotnet ef database update`
 
 ---
 
-<commit_message>feat: complete auth backend - forgot-password, reset-password, verify-email, resend-verification endpoints with OTP validation</commit_message>
+**Build & Test:**
+
+```bash
+cd /app/api
+dotnet build
+```
+
+Build 0 hata ile tamamlanmalÄ±.
+
+**Swagger Testleri:**
+1. `POST /api/auth/login` â response iÃ§inde `refreshToken` alanÄ± bulunmalÄ±
+2. `POST /api/auth/refresh-token` â geÃ§erli token Ã§ifti ile 200 + yeni token Ã§ifti dÃ¶nmeli
+3. `POST /api/auth/refresh-token` â geÃ§ersiz/sÃ¼resi dolmuÅ token ile 401 dÃ¶nmeli
+4. `POST /api/auth/revoke-token` â Bearer token ile 200 dÃ¶nmeli
+
+---
+
+<commit_message>feat: JWT refresh token mechanism with revocation support added</commit_message>
+
+
+Ãnceki sonuÃ§ BASARILI ve Build 0 hata ile tamamlanmÄ±Å. Faz 1 baÅarÄ±yla tamamlandÄ±.
+
+Phases.txt'ten sÄ±radaki faza geÃ§iyorum.
+
+---
+
+**FAZ 2 â INSTRUCTION**
+
+**SCOPE:** api
+
+**Hedef:** JWT token Ã¼retimi, refresh token mekanizmasÄ± ve kullanÄ±cÄ± oturum yÃ¶netimini tamamla.
+
+**DeÄiÅtirilecek/OluÅturulacak Dosyalar:**
+
+1. `/app/api/Services/TokenService.cs` (yeni veya mevcut)
+2. `/app/api/Services/ITokenService.cs` (yeni veya mevcut)
+3. `/app/api/Controllers/AuthController.cs`
+4. `/app/api/Models/AuthModels.cs`
+5. `/app/api/Models/RefreshToken.cs` (yeni veya mevcut)
+
+**YapÄ±lacaklar:**
+
+**ITokenService.cs:**
+```csharp
+string GenerateAccessToken(ApplicationUser user);
+string GenerateRefreshToken();
+Task<bool> ValidateRefreshTokenAsync(string userId, string refreshToken);
+Task RevokeRefreshTokenAsync(string userId, string refreshToken);
+Task SaveRefreshTokenAsync(string userId, string refreshToken, DateTime expiry);
+ClaimsPrincipal? GetPrincipalFromExpiredToken(string token);
+```
+
+**TokenService.cs:**
+- `GenerateAccessToken`: JWT Ã¼ret, claims iÃ§ine `userId`, `email`, `role` ekle, expiry 15 dakika
+- `GenerateRefreshToken`: `RandomNumberGenerator` ile 64-byte base64 string Ã¼ret
+- `SaveRefreshTokenAsync`: RefreshToken entity'sini DB'ye kaydet (userId, token hash, expiry, isRevoked)
+- `ValidateRefreshTokenAsync`: DB'de token'Ä± bul, sÃ¼resi dolmamÄ±Å ve revoke edilmemiÅ olduÄunu doÄrula
+- `RevokeRefreshTokenAsync`: Token'Ä± DB'de revoke et (isRevoked = true)
+- `GetPrincipalFromExpiredToken`: SÃ¼resi dolmuÅ token'dan ClaimsPrincipal Ã§Ä±kar, imzayÄ± doÄrula
+
+**RefreshToken.cs (Model/Entity):**
+```csharp
+public class RefreshToken {
+    public int Id { get; set; }
+    public string UserId { get; set; }
+    public string Token { get; set; } // SHA256 hash olarak sakla
+    public DateTime ExpiresAt { get; set; }
+    public bool IsRevoked { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+```
+
+**AuthController.cs â Yeni Endpoint Ekle:**
+- `POST /api/auth/refresh-token`: Body'den `{ accessToken, refreshToken }` al â `GetPrincipalFromExpiredToken` ile userId Ã§Ä±kar â `ValidateRefreshTokenAsync` â eski token'Ä± revoke et â yeni access + refresh token Ã¼ret â dÃ¶ndÃ¼r
+- `POST /api/auth/revoke-token`: `[Authorize]` â mevcut kullanÄ±cÄ±nÄ±n refresh token'Ä±nÄ± iptal et
+- Login endpoint'inden dÃ¶nen response'a `refreshToken` alanÄ±nÄ± ekle
+
+**AuthModels.cs â DTO ekle:**
+```csharp
+public class RefreshTokenRequest {
+    [Required] public string AccessToken { get; set; }
+    [Required] public string RefreshToken { get; set; }
+}
+public class TokenResponse {
+    public string AccessToken { get; set; }
+    public string RefreshToken { get; set; }
+    public DateTime ExpiresAt { get; set; }
+}
+```
+
+**Program.cs / DI:**
+- `ITokenService` â `TokenService` olarak register et (Scoped)
+- `RefreshToken` entity'sini DbContext'e ekle (eÄer EF kullanÄ±lÄ±yorsa)
+- Migration Ã§alÄ±ÅtÄ±r: `dotnet ef migrations add AddRefreshTokenTable` ve `dotnet ef database update`
+
+---
+
+**Build & Test:**
+
+```bash
+cd /app/api
+dotnet build
+```
+
+Build 0 hata ile tamamlanmalÄ±.
+
+**Swagger Testleri:**
+1. `POST /api/auth/login` â response iÃ§inde `refreshToken` alanÄ± bulunmalÄ±
+2. `POST /api/auth/refresh-token` â geÃ§erli token Ã§ifti ile 200 + yeni token Ã§ifti dÃ¶nmeli
+3. `POST /api/auth/refresh-token` â geÃ§ersiz/sÃ¼resi dolmuÅ token ile 401 dÃ¶nmeli
+4. `POST /api/auth/revoke-token` â Bearer token ile 200 dÃ¶nmeli
+
+---
+
+<commit_message>feat: JWT refresh token mechanism with revocation support added</commit_message>
 
 
 === PROJE DOSYA ICERIKLERI (Claude tarafindan okundu) ===

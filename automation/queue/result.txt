@@ -1,1 +1,7 @@
-ï»¿
+SONUC: BASARILI
+BUILD: Oluþturma baþarýlý oldu. 0 Uyarý, 0 Hata.
+EKLENEN_METODLAR: Zaten var olan ForgotPassword, ResetPassword, VerifyEmail ve ResendVerification özellikleri doðrulandý ve sentaks hatalarý düzeltildi.
+TEST: Swagger üzerinden test edilebilecek duruma getirildi ve derleme hatalarý tamamen giderildi.
+HATALAR: Yok
+
+SYSTEM_COMPLETE

@@ -18,6 +18,9 @@ $phasesFile    = Join-Path $queueDir "phases.txt"
 $MAX_ITERATIONS      = 50
 $MAX_CONSECUTIVE_ERR = 3
 
+# ─── GLOBAL PROCESS TRACKING ────────────────────────────────────
+$script:BackendProcess = $null
+
 function Write-Log($msg) {
     $line = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [LOOP] $msg"
     Write-Host $line
@@ -29,10 +32,120 @@ function Write-History($msg) {
     Add-Content -Path $historyFile -Value $line -Encoding UTF8
 }
 
+# ─── CLEANUP: Tüm child process'leri öldür ──────────────────────
+function Invoke-Cleanup {
+    Write-Log "Cleanup baslatiliyor (orphan process temizleme)..."
+
+    # Backend process
+    if ($script:BackendProcess -and -not $script:BackendProcess.HasExited) {
+        try {
+            $script:BackendProcess.Kill($true)   # recursive = true → child'ları da öldür
+            Write-Log "Backend process durduruldu (PID=$($script:BackendProcess.Id))."
+        } catch {
+            Write-Log "Backend process durdurulamadi: $_"
+        }
+    }
+
+    # Kaçan node.exe process'leri
+    Get-Process -Name "node" -ErrorAction SilentlyContinue | ForEach-Object {
+        try { $_.Kill(); Write-Log "Orphan node.exe durduruldu (PID=$($_.Id))." } catch {}
+    }
+
+    # Kaçan gemini process'leri
+    Get-Process -Name "gemini" -ErrorAction SilentlyContinue | ForEach-Object {
+        try { $_.Kill(); Write-Log "Orphan gemini durduruldu (PID=$($_.Id))." } catch {}
+    }
+
+    # dotnet run ile başlatılan backend'ler
+    Get-Process -Name "dotnet" -ErrorAction SilentlyContinue | Where-Object {
+        $_.MainWindowTitle -eq "" -and $_.CommandLine -match "run" 2>$null
+    } | ForEach-Object {
+        try { $_.Kill(); Write-Log "Orphan dotnet process durduruldu (PID=$($_.Id))." } catch {}
+    }
+
+    # executor.lock temizle
+    $lockFile = Join-Path $queueDir "executor.lock"
+    if (Test-Path $lockFile) { Remove-Item $lockFile -Force -ErrorAction SilentlyContinue }
+    Write-Log "Cleanup tamamlandi."
+}
+
+# ─── ORPHAN CLEANUP: PowerShell kapanınca çalışır ───────────────
+Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
+    Invoke-Cleanup
+} | Out-Null
+
+# Ctrl+C handler
+[Console]::TreatControlCAsInput = $false
+$null = Register-ObjectEvent -InputObject ([Console]) -EventName CancelKeyPress -Action {
+    Write-Host "`n[LOOP] Ctrl+C alindi. Cleanup yapiliyor..." -ForegroundColor Yellow
+    Invoke-Cleanup
+    exit 0
+}
+
+# ─── BACKEND YÖNETİMİ ───────────────────────────────────────────
+function Stop-Backend {
+    if ($script:BackendProcess -and -not $script:BackendProcess.HasExited) {
+        try {
+            $script:BackendProcess.Kill($true)
+            $script:BackendProcess.WaitForExit(5000)
+            Write-Log "Backend durduruldu (PID=$($script:BackendProcess.Id))."
+        } catch {
+            Write-Log "Backend durdurma hatasi: $_"
+        }
+    }
+    $script:BackendProcess = $null
+}
+
+function Start-Backend {
+    param([string]$RepoRoot)
+
+    # Varsa önce durdur
+    Stop-Backend
+
+    # API projesini bul
+    $csproj = Get-ChildItem -Path $RepoRoot -Recurse -Filter "*.csproj" -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -notmatch "\\obj\\" -and $_.FullName -notmatch "\\bin\\" } |
+              Select-Object -First 1
+
+    if (-not $csproj) {
+        Write-Log "Backend csproj bulunamadi, baslatilamadi."
+        return $false
+    }
+
+    $apiDir = $csproj.DirectoryName
+    Write-Log "Backend baslatiliyor: $apiDir"
+
+    try {
+        $psi = [System.Diagnostics.ProcessStartInfo]::new("dotnet", "run --no-build")
+        $psi.WorkingDirectory        = $apiDir
+        $psi.UseShellExecute         = $false
+        $psi.RedirectStandardOutput  = $false
+        $psi.RedirectStandardError   = $false
+        $psi.CreateNoWindow          = $true
+
+        $script:BackendProcess = [System.Diagnostics.Process]::Start($psi)
+        Write-Log "Backend baslatildi (PID=$($script:BackendProcess.Id)). 3 saniye bekleniyor..."
+        Start-Sleep -Seconds 3
+        return $true
+    } catch {
+        Write-Log "Backend baslatma hatasi: $_"
+        return $false
+    }
+}
+
 function Set-SP {
     param($Obj, [string]$Name, $Value)
     if ($Obj.PSObject.Properties[$Name]) { $Obj.$Name = $Value }
     else { $Obj | Add-Member -NotePropertyName $Name -NotePropertyValue $Value -Force }
+}
+
+# ─── BUILD HATA KONTROLÜ ────────────────────────────────────────
+function Test-BuildSuccess {
+    param([string]$ResultText)
+    if ([string]::IsNullOrWhiteSpace($ResultText)) { return $false }
+    # result.txt'te build hatası varsa false
+    if ($ResultText -imatch "Build FAILED|Error\(s\)|error CS[0-9]|HATALI|BUILD: HATALI") { return $false }
+    return $true
 }
 
 function Read-State {
@@ -154,7 +267,8 @@ if (-not (Test-Path $phasesFile)) {
     Write-Log "Initializer tamamlandi. Loop basliyor..."
 }
 
-$state = Read-State
+$state    = Read-State
+$repoRoot = Split-Path $automationDir -Parent
 
 # ─── ANA DONGU ──────────────────────────────────────────────────
 for ($i = 1; $i -le $MAX_ITERATIONS; $i++) {
@@ -164,18 +278,41 @@ for ($i = 1; $i -le $MAX_ITERATIONS; $i++) {
     Set-SP $state "status" "running"
     Save-State $state
 
+    # 1) Planla
     & (Join-Path $scriptsDir "run-planner.ps1")
+
+    $planText = if (Test-Path $planPath) { Get-Content $planPath -Raw -Encoding UTF8 } else { "" }
+    if ($planText -imatch "SYSTEM_COMPLETE") {
+        Write-Log "SYSTEM_COMPLETE (planner). Dongu bitiyor."
+        Set-SP $state "is_complete" $true
+        Set-SP $state "status" "done"
+        Save-State $state
+        break
+    }
+
+    # 2) Backend'i durdur — Gemini kod yazarken restart etmesin
+    Write-Log "Backend durduruluyor (Gemini calisacak)..."
+    Stop-Backend
+
+    # 3) Gemini'yi calistir
     & (Join-Path $scriptsDir "run-executor.ps1")
+
+    $resultText = if (Test-Path $resultPath) { Get-Content $resultPath -Raw -Encoding UTF8 } else { "" }
+
+    # 4) Build basariliysa backend'i yeniden baslat; basarisizsa Gemini'ye geri don
+    $buildOk = Test-BuildSuccess -ResultText $resultText
+    if ($buildOk) {
+        Write-Log "Build basarili. Backend yeniden baslatiliyor..."
+        Start-Backend -RepoRoot $repoRoot | Out-Null
+    } else {
+        Write-Log "Build hatasi var. Backend baslatilmadi, RETRY yapilacak."
+    }
 
     $state = Read-State
 
-    $resultText = if (Test-Path $resultPath) { Get-Content $resultPath -Raw -Encoding UTF8 } else { "" }
-    $planText   = if (Test-Path $planPath)   { Get-Content $planPath   -Raw -Encoding UTF8 } else { "" }
-
     # Tum fazlar bittiyse dur
-    if ($planText -imatch "SYSTEM_COMPLETE" -or $state.is_complete -eq $true) {
-        Write-Log "SYSTEM_COMPLETE alindi. Dongu bitiyor."
-        Set-SP $state "is_complete" $true
+    if ($state.is_complete -eq $true) {
+        Write-Log "is_complete=true. Dongu bitiyor."
         Set-SP $state "status" "done"
         Save-State $state
         break
@@ -186,7 +323,6 @@ for ($i = 1; $i -le $MAX_ITERATIONS; $i++) {
     Write-History "Iteration $i | Faz $($state.current_phase) => $($analysis.status) : $($analysis.reason)"
 
     if ($analysis.status -eq "PHASE_COMPLETE") {
-        # Bir sonraki faza gec
         $nextPhase = [int]$state.current_phase + 1
         Set-SP $state "current_phase" $nextPhase
         Set-SP $state "consecutive_errors" 0
@@ -231,6 +367,9 @@ for ($i = 1; $i -le $MAX_ITERATIONS; $i++) {
     Save-State $state
     Start-Sleep -Seconds 2
 }
+
+# ─── CIKIS CLEANUP ──────────────────────────────────────────────
+Stop-Backend
 
 $finalState = Read-State
 

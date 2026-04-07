@@ -23,16 +23,10 @@ namespace BeachRehberi.API.Controllers
         private readonly IAuthService _authService;
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _env;
+        private readonly ITokenService _tokenService;
+        private readonly BeachRehberi.API.Data.BeachDbContext _db;
 
-                public AuthController(
-            IAuthService authService, 
-            IConfiguration configuration, 
-            IWebHostEnvironment env)
-        {
-            _authService = authService;
-            _configuration = configuration;
-            _env = env;
-        }
+                public AuthController(IAuthService authService, IConfiguration configuration, IWebHostEnvironment env, ITokenService tokenService, BeachRehberi.API.Data.BeachDbContext db) { _authService = authService; _configuration = configuration; _env = env; _tokenService = tokenService; _db = db; }
 
         [AllowAnonymous]
         [HttpPost("register")]

@@ -1,4 +1,5 @@
-﻿using BeachRehberi.API.Models;
+using System.Security.Claims;
+using BeachRehberi.API.Models;
 
 namespace BeachRehberi.API.Services;
 
@@ -9,8 +10,11 @@ public interface ITokenService
     ClaimsPrincipalResult? ValidateExpiredAccessToken(string accessToken); // ← YENİ
     Task BlacklistTokenAsync(string token, DateTime expiry);
     Task<bool> IsTokenBlacklistedAsync(string token);
+    Task<bool> ValidateRefreshTokenAsync(int userId, string refreshToken);
+    Task RevokeRefreshTokenAsync(int userId, string refreshToken);
+    Task SaveRefreshTokenAsync(int userId, string refreshToken, DateTime expiry);
+    ClaimsPrincipal? GetPrincipalFromExpiredToken(string token);
 }
-
 public class ClaimsPrincipalResult
 {
     public string UserId { get; init; } = string.Empty;

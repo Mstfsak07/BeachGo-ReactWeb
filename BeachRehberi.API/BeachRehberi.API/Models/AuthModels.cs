@@ -118,3 +118,14 @@ public class UserRegisterRequest
     public required string Email { get; set; }
     public required string Password { get; set; }
 }
+
+public class RefreshTokenRequest {
+    [System.ComponentModel.DataAnnotations.Required] public string AccessToken { get; set; } = string.Empty;
+    [System.ComponentModel.DataAnnotations.Required] public string RefreshToken { get; set; } = string.Empty;
+}
+
+public class TokenResponse {
+    public string AccessToken { get; set; } = string.Empty;
+    public string RefreshToken { get; set; } = string.Empty;
+    public DateTime ExpiresAt { get; set; }
+}

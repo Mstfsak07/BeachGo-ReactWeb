@@ -1,4 +1,4 @@
-﻿using BeachRehberi.API.Data;
+using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -130,5 +130,60 @@ public class TokenService : ITokenService
         }
 
         return inDb;
+    }
+
+    public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
+    {
+        var tokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = true,
+            ValidateIssuer = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSecret)),
+            ValidateLifetime = false,
+            ValidIssuer = "BeachRehberi.API",
+            ValidAudience = "BeachRehberi.App"
+        };
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        try
+        {
+            var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
+            if (securityToken is not JwtSecurityToken jwtSecurityToken || 
+                !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+            {
+                return null;
+            }
+            return principal;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<bool> ValidateRefreshTokenAsync(int userId, string refreshToken)
+    {
+        var hashedToken = RefreshToken.HashToken(refreshToken);
+        var token = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == hashedToken && rt.UserId == userId);
+        return token != null && token.IsActive;
+    }
+
+    public async Task RevokeRefreshTokenAsync(int userId, string refreshToken)
+    {
+        var hashedToken = RefreshToken.HashToken(refreshToken);
+        var token = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == hashedToken && rt.UserId == userId);
+        if (token != null)
+        {
+            token.Revoke("manual_revoke");
+            await _db.SaveChangesAsync();
+        }
+    }
+
+    public async Task SaveRefreshTokenAsync(int userId, string refreshToken, DateTime expiry)
+    {
+        var tokenEntity = new RefreshToken(userId, refreshToken, expiry, "unknown", "unknown");
+        _db.RefreshTokens.Add(tokenEntity);
+        await _db.SaveChangesAsync();
     }
 }

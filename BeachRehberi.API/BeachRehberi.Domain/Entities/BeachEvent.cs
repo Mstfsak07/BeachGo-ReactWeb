@@ -8,10 +8,10 @@ namespace BeachRehberi.Domain.Entities;
 public class BeachEvent : BaseEntity
 {
     public int BeachId { get; private set; }
-    public Beach Beach { get; private set; }
+    public Beach Beach { get; private set; } = null!;
 
-    public string Title { get; private set; }
-    public string Description { get; private set; }
+    public string Title { get; private set; } = string.Empty;
+    public string Description { get; private set; } = string.Empty;
     public DateTime EventDate { get; private set; }
     public DateTime? EndDate { get; private set; }
 
@@ -25,9 +25,6 @@ public class BeachEvent : BaseEntity
     // EF Core constructor
     private BeachEvent() : base()
     {
-        Beach = null!;
-        Title = string.Empty;
-        Description = string.Empty;
         CurrentParticipants = 0;
         IsActive = true;
     }

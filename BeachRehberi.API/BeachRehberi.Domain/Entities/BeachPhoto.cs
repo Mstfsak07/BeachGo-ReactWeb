@@ -8,9 +8,9 @@ namespace BeachRehberi.Domain.Entities;
 public class BeachPhoto : BaseEntity
 {
     public int BeachId { get; private set; }
-    public Beach Beach { get; private set; }
+    public Beach Beach { get; private set; } = null!;
 
-    public string ImageUrl { get; private set; }
+    public string ImageUrl { get; private set; } = string.Empty;
     public string? Caption { get; private set; }
     public string? AltText { get; private set; }
 
@@ -23,8 +23,6 @@ public class BeachPhoto : BaseEntity
     // EF Core constructor
     private BeachPhoto() : base()
     {
-        Beach = null!;
-        ImageUrl = string.Empty;
         UploadedAt = DateTime.UtcNow;
         DisplayOrder = 0;
     }

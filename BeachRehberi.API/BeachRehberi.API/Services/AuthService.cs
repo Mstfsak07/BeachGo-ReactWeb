@@ -126,7 +126,36 @@ public class AuthService : IAuthService
     public async Task<ServiceResult<AuthResponse>> RefreshTokenAsync(
         string refreshTokenStr, string ipAddress, string userAgent)
     {
-        throw new NotImplementedException();
+        var hashedToken = RefreshToken.HashToken(refreshTokenStr);
+        var token = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == hashedToken);
+
+        if (token == null || !token.IsActive)
+            return ServiceResult<AuthResponse>.FailureResult("Geçersiz veya süresi dolmuş refresh token.");
+
+        var user = await _db.BusinessUsers.FindAsync(token.UserId);
+        if (user == null || !user.IsActive)
+            return ServiceResult<AuthResponse>.FailureResult("Kullanıcı bulunamadı veya pasif durumda.");
+
+        // Token rotation
+        var newAccessToken = _tokenService.GenerateAccessToken(user);
+        var newRefreshTokenStr = _tokenService.GenerateRefreshToken();
+
+        token.RevokeAndReplace(newRefreshTokenStr, "rotation");
+        
+        var newRefreshToken = new RefreshToken(
+            user.Id, newRefreshTokenStr,
+            DateTime.UtcNow.AddDays(7), ipAddress, userAgent);
+
+        _db.RefreshTokens.Add(newRefreshToken);
+        await _db.SaveChangesAsync();
+
+        return ServiceResult<AuthResponse>.SuccessResult(new AuthResponse
+        {
+            Success = true,
+            Message = "Token yenilendi.",
+            Token = newAccessToken,
+            RefreshToken = newRefreshTokenStr
+        });
     }
 
     public async Task LogoutAsync(string? accessToken, string? refreshToken)

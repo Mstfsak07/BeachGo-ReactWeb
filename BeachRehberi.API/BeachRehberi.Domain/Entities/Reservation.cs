@@ -9,13 +9,12 @@ namespace BeachRehberi.Domain.Entities;
 public class Reservation : BaseEntity
 {
     public int BeachId { get; private set; }
-    public Beach Beach { get; private set; }
+    public Beach Beach { get; private set; } = null!;
 
     public int UserId { get; private set; }
-    public BusinessUser User { get; private set; }
+    public BusinessUser User { get; private set; } = null!;
 
     public DateTime ReservationDate { get; private set; }
-    public DateTime CreatedAt { get; private set; }
     public ReservationStatus Status { get; private set; }
 
     public int? GuestCount { get; private set; }
@@ -24,9 +23,6 @@ public class Reservation : BaseEntity
     // EF Core constructor
     private Reservation() : base()
     {
-        Beach = null!;
-        User = null!;
-        CreatedAt = DateTime.UtcNow;
         Status = ReservationStatus.Pending;
     }
 
@@ -36,7 +32,6 @@ public class Reservation : BaseEntity
         BeachId = beachId;
         UserId = userId;
         ReservationDate = reservationDate.Date; // Sadece tarih kısmı
-        CreatedAt = DateTime.UtcNow;
         Status = ReservationStatus.Pending;
     }
 

@@ -12,15 +12,15 @@ public class Beach : BaseEntity
 {
     [Required]
     [MaxLength(200)]
-    public string Name { get; private set; }
+    public string Name { get; private set; } = string.Empty;
 
-    public string Description { get; private set; }
-    public string Address { get; private set; }
-    public string Phone { get; private set; }
-    public string Website { get; private set; }
-    public string Instagram { get; private set; }
-    public string OpenTime { get; private set; }
-    public string CloseTime { get; private set; }
+    public string Description { get; private set; } = string.Empty;
+    public string Address { get; private set; } = string.Empty;
+    public string Phone { get; private set; } = string.Empty;
+    public string Website { get; private set; } = string.Empty;
+    public string Instagram { get; private set; } = string.Empty;
+    public string OpenTime { get; private set; } = string.Empty;
+    public string CloseTime { get; private set; } = string.Empty;
 
     public bool HasEntryFee { get; private set; }
     public Money EntryFee { get; private set; }
@@ -32,8 +32,8 @@ public class Beach : BaseEntity
     public double Rating { get; private set; }
     public int ReviewCount { get; private set; }
 
-    public string GooglePlaceId { get; private set; }
-    public string CoverImageUrl { get; private set; }
+    public string GooglePlaceId { get; private set; } = string.Empty;
+    public string CoverImageUrl { get; private set; } = string.Empty;
 
     // Facilities
     public bool HasSunbeds { get; private set; }

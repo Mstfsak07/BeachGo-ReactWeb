@@ -51,7 +51,7 @@ public class Result<T> : Result
         return new Result<T>(true, default, null, message);
     }
 
-    public static Result<T> Failure(string error, string? message = null)
+    public static new Result<T> Failure(string error, string? message = null)
     {
         return new Result<T>(false, default, error, message);
     }

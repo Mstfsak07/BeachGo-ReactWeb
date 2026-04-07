@@ -123,7 +123,7 @@ public class GuestReservationService : IGuestReservationService
         return ServiceResult<GuestReservationResponseDto>.SuccessResult(new GuestReservationResponseDto
         {
             ReservationId = reservation.Id,
-            ConfirmationCode = reservation.ConfirmationCode,
+            ConfirmationCode = reservation.ConfirmationCode ?? string.Empty,
             Status = reservation.Status.ToString(),
             TotalPrice = reservation.TotalPrice,
             PaymentStatus = reservation.PaymentStatus

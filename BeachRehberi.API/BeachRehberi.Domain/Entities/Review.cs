@@ -8,13 +8,13 @@ namespace BeachRehberi.Domain.Entities;
 public class Review : BaseEntity
 {
     public int BeachId { get; private set; }
-    public Beach Beach { get; private set; }
+    public Beach Beach { get; private set; } = null!;
 
     public int UserId { get; private set; }
-    public BusinessUser User { get; private set; }
+    public BusinessUser User { get; private set; } = null!;
 
     public int Rating { get; private set; } // 1-5 arası
-    public string Comment { get; private set; }
+    public string Comment { get; private set; } = string.Empty;
     public DateTime ReviewDate { get; private set; }
 
     public bool IsVerified { get; private set; }
@@ -22,9 +22,6 @@ public class Review : BaseEntity
     // EF Core constructor
     private Review() : base()
     {
-        Beach = null!;
-        User = null!;
-        Comment = string.Empty;
         ReviewDate = DateTime.UtcNow;
     }
 

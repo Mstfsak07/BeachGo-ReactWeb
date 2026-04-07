@@ -1,122 +1,183 @@
-﻿# FAZ 1 - Authentication Backend Tamamlama
+﻿# FAZ 1 - Authentication Backend - API Scope
 
-## Proje YapÄ±sÄ±nÄ± Ãnce KeÅfet
+## HATA ANALÄ°ZÄ°
 
-AÅaÄÄ±daki adÄ±mlarÄ± sÄ±rayla uygula:
+GeÃ§ici dosyaya eriÅim sorunu (temp file lock) var. Bu sistem sorunudur, kod deÄiÅikliÄi deÄil. Faz 1'i tekrar Ã§alÄ±ÅtÄ±r.
 
-### ADIM 1: Mevcut DosyalarÄ± Bul
+---
 
-```bash
-find /workspace -name "*.cs" | grep -E "(Auth|Otp|Verification|Sms)" | head -30
-find /workspace -name "*.csproj" | head -5
-```
+## INSTRUCTION
 
-### ADIM 2: API Projesinin Yolunu Belirle ve DosyalarÄ± Oku
+**SCOPE: api**
 
-```bash
-# .csproj dosyasÄ±nÄ±n bulunduÄu dizine git
-# Åu dosyalarÄ± oku (varsa):
-# - Controllers/AuthController.cs
-# - Services/AuthService.cs
-# - Services/IAuthService.cs
-# - Models/AuthModels.cs
-# - Models/VerificationCode.cs
-# - Services/OtpService.cs
-# - Services/IOtpService.cs
-# - Services/MockSmsService.cs
-```
+**Proje Dizini:** `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-API`
 
-### ADIM 3: Eksik Endpoint'leri ve MetodlarÄ± Tamamla
+---
 
-**`IAuthService.cs`** â Åu metodlarÄ±n interface'de tanÄ±mlÄ± olduÄundan emin ol:
+### ADIM 1: Mevcut dosyalarÄ± oku
+
+AÅaÄÄ±daki dosyalarÄ± oku ve iÃ§eriklerini gÃ¶ster:
+
+1. `/Controllers/AuthController.cs`
+2. `/Services/AuthService.cs`
+3. `/Services/IAuthService.cs`
+4. `/Models/AuthModels.cs`
+5. `/Models/VerificationCode.cs`
+6. `/Services/OtpService.cs`
+7. `/Services/IOtpService.cs`
+
+---
+
+### ADIM 2: IAuthService.cs â Eksik metodlarÄ± ekle
+
+`IAuthService` interface'inde aÅaÄÄ±daki metodlarÄ±n **tam olarak** var olduÄunu doÄrula, yoksa ekle:
+
 ```csharp
-Task<AuthResult> ForgotPasswordAsync(string email);
-Task<AuthResult> ResetPasswordAsync(string token, string newPassword);
-Task<AuthResult> VerifyEmailAsync(string token);
-Task<AuthResult> ResendVerificationAsync(string email);
-```
-
-**`AuthService.cs`** â YukarÄ±daki metodlarÄ±n implementasyonunu ekle:
-- `ForgotPasswordAsync`: KullanÄ±cÄ±yÄ± email ile bul, reset token Ã¼ret (Guid veya random string), token'Ä± DB'ye kaydet (expiry: 1 saat), MockSmsService veya email ile gÃ¶nder
-- `ResetPasswordAsync`: Token'Ä± DB'de bul, expiry kontrol et, Åifreyi hash'le ve gÃ¼ncelle, token'Ä± geÃ§ersiz kÄ±l
-- `VerifyEmailAsync`: Token ile VerificationCode kaydÄ±nÄ± bul, expiry kontrol et, User.EmailVerified = true yap
-- `ResendVerificationAsync`: KullanÄ±cÄ±yÄ± bul, yeni token Ã¼ret, eski token'larÄ± geÃ§ersiz kÄ±l, yeni token gÃ¶nder
-
-**`AuthController.cs`** â Åu endpoint'lerin tam olarak var olduÄunu doÄrula ve ekle:
-```csharp
-[HttpPost("forgot-password")]
-public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
-
-[HttpPost("reset-password")]  
-public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
-
-[HttpGet("verify-email")]  // veya [HttpPost]
-public async Task<IActionResult> VerifyEmail([FromQuery] string token) // veya [FromBody]
-
-[HttpPost("resend-verification")]
-public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
-```
-
-**`AuthModels.cs`** â DTO'larÄ±n validasyonlu olduÄundan emin ol:
-```csharp
-public class ForgotPasswordRequest {
-    [Required, EmailAddress]
-    public string Email { get; set; }
-}
-
-public class ResetPasswordRequest {
-    [Required]
-    public string Token { get; set; }
-    [Required, MinLength(6)]
-    public string NewPassword { get; set; }
-    [Required, Compare("NewPassword")]
-    public string ConfirmPassword { get; set; }
-}
-
-public class VerifyEmailRequest {
-    [Required]
-    public string Token { get; set; }
-}
-
-public class ResendVerificationRequest {
-    [Required, EmailAddress]
-    public string Email { get; set; }
-}
-```
-
-**`OtpService.cs`** â Kod Ã¼retme ve doÄrulamayÄ± kontrol et:
-- `GenerateCode()`: 6 haneli random sayÄ±, expiry 10 dakika
-- `VerifyCode(string email, string code)`: Kodu bul, expiry kontrol et, IsUsed kontrolÃ¼ yap, baÅarÄ±lÄ± ise IsUsed = true yap
-
-**`VerificationCode.cs`** â Entity'de Åu alanlarÄ±n olduÄundan emin ol:
-```csharp
-public string Token { get; set; }
-public string Email { get; set; }
-public string Code { get; set; }
-public DateTime ExpiresAt { get; set; }
-public bool IsUsed { get; set; }
-public string Type { get; set; } // "email_verify" | "password_reset"
-```
-
-### ADIM 4: Build Et
-
-```bash
-cd [API_PROJE_DIZINI]
-dotnet build
-```
-
-Build hatasÄ± varsa hatalarÄ± oku ve dÃ¼zelt. Sonra tekrar build et.
-
-### ADIM 5: Sonucu result.txt'e Yaz
-
-Build Ã§Ä±ktÄ±sÄ±nÄ± ve hangi dosyalarÄ±n deÄiÅtirildiÄini `/workspace/result.txt` dosyasÄ±na yaz:
-```
-BUILD: SUCCESS veya FAILED
-HATALAR: [varsa listele]
-DEGISTIRILEN_DOSYALAR: [liste]
-TEST_NOTLARI: [endpoint'ler mevcut mu]
+Task<ServiceResult> ForgotPasswordAsync(ForgotPasswordRequest request);
+Task<ServiceResult> ResetPasswordAsync(ResetPasswordRequest request);
+Task<ServiceResult> VerifyEmailAsync(VerifyEmailRequest request);
+Task<ServiceResult> ResendVerificationAsync(ResendVerificationRequest request);
 ```
 
 ---
 
-<commit_message>feat: complete auth backend - forgot-password, reset-password, verify-email, resend-verification endpoints with OTP validation</commit_message>
+### ADIM 3: AuthModels.cs â DTO'larÄ± doÄrula ve ekle
+
+AÅaÄÄ±daki DTO'larÄ±n eksiksiz var olduÄunu kontrol et, yoksa ekle:
+
+```csharp
+public class ForgotPasswordRequest
+{
+    public string Email { get; set; }
+}
+
+public class ResetPasswordRequest
+{
+    public string Email { get; set; }
+    public string Token { get; set; }
+    public string NewPassword { get; set; }
+}
+
+public class VerifyEmailRequest
+{
+    public string Email { get; set; }
+    public string Token { get; set; }
+}
+
+public class ResendVerificationRequest
+{
+    public string Email { get; set; }
+}
+```
+
+---
+
+### ADIM 4: AuthService.cs â MetodlarÄ± implement et
+
+`AuthService` iÃ§inde Åu 4 metodu implement et (yoksa ekle, varsa doÄrula):
+
+**ForgotPasswordAsync:**
+- Email ile kullanÄ±cÄ± bul, bulunamazsa `ServiceResult.Fail("User not found")` dÃ¶n
+- OtpService ile 6 haneli kod Ã¼ret
+- Kodu DB'ye kaydet (VerificationCode tablosu), expiry = 15 dakika
+- `ServiceResult.Success("Reset code sent")` dÃ¶n
+
+**ResetPasswordAsync:**
+- Email + Token ile VerificationCode tablosundan kaydÄ± bul
+- Expiry kontrolÃ¼ yap, sÃ¼resi geÃ§miÅse `Fail("Token expired")` dÃ¶n
+- KullanÄ±cÄ±nÄ±n password hash'ini gÃ¼ncelle
+- VerificationCode kaydÄ±nÄ± sil
+- `ServiceResult.Success("Password reset successful")` dÃ¶n
+
+**VerifyEmailAsync:**
+- Email + Token ile VerificationCode kaydÄ±nÄ± bul
+- Expiry kontrolÃ¼ yap
+- KullanÄ±cÄ±nÄ±n `EmailVerified = true` yap
+- VerificationCode kaydÄ±nÄ± sil
+- `ServiceResult.Success("Email verified")` dÃ¶n
+
+**ResendVerificationAsync:**
+- Email ile kullanÄ±cÄ± bul
+- Zaten verified ise `Fail("Email already verified")` dÃ¶n
+- Yeni OTP Ã¼ret, kaydet, "Code resent" dÃ¶n
+
+---
+
+### ADIM 5: AuthController.cs â Endpoint'leri ekle/doÄrula
+
+```csharp
+[HttpPost("forgot-password")]
+public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+{
+    var result = await _authService.ForgotPasswordAsync(request);
+    return result.Success ? Ok(result) : BadRequest(result);
+}
+
+[HttpPost("reset-password")]
+public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+{
+    var result = await _authService.ResetPasswordAsync(request);
+    return result.Success ? Ok(result) : BadRequest(result);
+}
+
+[HttpPost("verify-email")]
+public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+{
+    var result = await _authService.VerifyEmailAsync(request);
+    return result.Success ? Ok(result) : BadRequest(result);
+}
+
+[HttpPost("resend-verification")]
+public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
+{
+    var result = await _authService.ResendVerificationAsync(request);
+    return result.Success ? Ok(result) : BadRequest(result);
+}
+```
+
+---
+
+### ADIM 6: OtpService.cs â DoÄrula
+
+`OtpService` iÃ§inde ÅunlarÄ±n var olduÄunu kontrol et:
+- `GenerateCode()` â 6 haneli random string dÃ¶ner
+- `ValidateCode(email, code)` â DB'den bulur, expiry kontrolÃ¼ yapar, bool dÃ¶ner
+
+---
+
+### ADIM 7: Build et
+
+```bash
+cd C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-API
+dotnet build
+```
+
+Build Ã§Ä±ktÄ±sÄ±nÄ± **tam olarak** result.txt'e yaz. Hata varsa hata mesajlarÄ±nÄ± dahil et.
+
+---
+
+### ADIM 8: Test et
+
+Swagger Ã¼zerinden Åu endpoint'leri test et:
+- `POST /api/auth/forgot-password` â `{"email":"test@test.com"}` â 200 veya 400 dÃ¶nmeli
+- `POST /api/auth/verify-email` â geÃ§ersiz token â 400 dÃ¶nmeli
+
+Test sonuÃ§larÄ±nÄ± result.txt'e yaz.
+
+---
+
+### RESULT FORMAT
+
+result.txt iÃ§ine Åunu yaz:
+
+```
+SONUC: BASARILI veya HATALI
+BUILD: [dotnet build Ã§Ä±ktÄ±sÄ± - tÃ¼m satÄ±rlar]
+EKLENEN_METODLAR: [hangi metodlar eklendi/gÃ¼ncellendi]
+TEST: [swagger test sonuÃ§larÄ±]
+HATALAR: [varsa hata listesi]
+```
+
+---
+
+<commit_message>feat: auth endpoints - forgot-password, reset-password, verify-email, resend-verification implemented</commit_message>

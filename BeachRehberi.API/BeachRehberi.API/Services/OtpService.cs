@@ -19,6 +19,73 @@ public class OtpService : IOtpService
         _logger = logger;
     }
 
+    public async Task<string> GenerateTokenAsync(string email, string purpose)
+    {
+        if (!Enum.TryParse<OtpPurpose>(purpose, out var purposeEnum))
+        {
+            throw new ArgumentException("Invalid purpose");
+        }
+
+        var oldCodes = await _db.VerificationCodes
+            .Where(x => x.Email == email && x.Purpose == purposeEnum && !x.IsUsed)
+            .ToListAsync();
+            
+        foreach(var c in oldCodes)
+            c.IsUsed = true;
+
+        var token = Guid.NewGuid().ToString("N");
+
+        var expiry = purpose == "EmailVerification" 
+            ? DateTime.UtcNow.AddHours(24) 
+            : DateTime.UtcNow.AddMinutes(15);
+
+        var verificationCode = new VerificationCode
+        {
+            Email = email,
+            Code = token,
+            Purpose = purposeEnum,
+            ExpiresAt = expiry,
+            IsUsed = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.VerificationCodes.Add(verificationCode);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Token generated for {Email}, Purpose: {Purpose}, Token: {Token}", email, purpose, token);
+        
+        return token;
+    }
+
+    public async Task<bool> ValidateTokenAsync(string email, string purpose, string token)
+    {
+        if (!Enum.TryParse<OtpPurpose>(purpose, out var purposeEnum)) return false;
+
+        var verificationCode = await _db.VerificationCodes
+            .Where(x => x.Email == email && x.Code == token && x.Purpose == purposeEnum && !x.IsUsed)
+            .FirstOrDefaultAsync();
+
+        if (verificationCode == null || verificationCode.ExpiresAt <= DateTime.UtcNow)
+            return false;
+
+        return true;
+    }
+
+    public async Task InvalidateTokenAsync(string email, string purpose)
+    {
+        if (!Enum.TryParse<OtpPurpose>(purpose, out var purposeEnum)) return;
+
+        var codes = await _db.VerificationCodes
+            .Where(x => x.Email == email && x.Purpose == purposeEnum && !x.IsUsed)
+            .ToListAsync();
+        
+        foreach(var code in codes)
+        {
+            code.IsUsed = true;
+        }
+        await _db.SaveChangesAsync();
+    }
+
     public async Task<string> GenerateOtpAsync(string email, OtpPurpose purpose)
     {
         var oldCodes = await _db.VerificationCodes
@@ -72,7 +139,6 @@ public class OtpService : IOtpService
 
     public async Task<bool> VerifyOtpAsync(string verificationId, string code)
     {
-        // Using verificationId as dummy since old version might have used it. We'll search by code.
         var verificationCode = await _db.VerificationCodes
             .Where(x => x.Code == code && x.Purpose == OtpPurpose.EmailVerification && !x.IsUsed)
             .FirstOrDefaultAsync();
@@ -88,7 +154,6 @@ public class OtpService : IOtpService
 
     public async Task<bool> IsEmailVerifiedAsync(string email)
     {
-        // Simple mock for legacy guest reservations
         return await Task.FromResult(true); 
     }
 }

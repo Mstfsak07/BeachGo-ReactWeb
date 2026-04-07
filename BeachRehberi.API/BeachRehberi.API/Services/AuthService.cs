@@ -23,10 +23,10 @@ public class AuthService : IAuthService
         _logger = logger;
     }
 
-    public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+    public async Task<AuthResult> RegisterAsync(RegisterRequest request)
     {
         if (await _db.BusinessUsers.AnyAsync(u => u.Email == request.Email))
-            return new AuthResponse { Success = false, Message = "Bu email adresi zaten kayıtlı." };
+            return new AuthResult { Success = false, Message = "Bu email adresi zaten kayıtlı." };
 
         var user = new BusinessUser(
             request.Email,
@@ -38,19 +38,19 @@ public class AuthService : IAuthService
         _db.BusinessUsers.Add(user);
         await _db.SaveChangesAsync();
 
-        // Send OTP
-        await _otpService.GenerateOtpAsync(user.Email, OtpPurpose.EmailVerification);
+        // New token verification logic
+        await _otpService.GenerateTokenAsync(user.Email, "EmailVerification");
 
-        return new AuthResponse { Success = true, Message = "Kayıt başarılı. Lütfen email adresinize gönderilen kod ile hesabınızı doğrulayın." };
+        return new AuthResult { Success = true, Message = "Kayıt başarılı. Lütfen email adresinize gönderilen kod ile hesabınızı doğrulayın." };
     }
 
-    public async Task<LoginResponse> LoginAsync(LoginRequest request)
+    public async Task<AuthResult> LoginAsync(LoginRequest request)
     {
         var user = await _db.BusinessUsers
             .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            throw new Exception("Geçersiz kullanıcı bilgileri."); // Controller'da handle edilecek veya BadRequest dönecek
+            throw new Exception("Geçersiz kullanıcı bilgileri."); 
 
         await InvalidateAllSessionsAsync(user.Id, "new_login");
 
@@ -63,8 +63,10 @@ public class AuthService : IAuthService
 
         await _db.SaveChangesAsync();
 
-        return new LoginResponse
+        return new AuthResult
         {
+            Success = true,
+            Message = "Giriş başarılı.",
             Token = accessToken,
             RefreshToken = refreshTokenStr,
             ExpiresAt = DateTime.UtcNow.AddMinutes(15),
@@ -80,47 +82,65 @@ public class AuthService : IAuthService
         };
     }
 
-    public async Task<AuthResponse> ForgotPasswordAsync(ForgotPasswordRequest request)
+    public async Task<AuthResult> ForgotPasswordAsync(ForgotPasswordRequest request)
     {
         var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == request.Email);
         if (user != null)
         {
-            await _otpService.GenerateOtpAsync(user.Email, OtpPurpose.PasswordReset);
+            var token = await _otpService.GenerateTokenAsync(request.Email, "PasswordReset");
+            _logger.LogInformation("Mock Email/SMS sent. Password reset token for {Email} is: {Token}", request.Email, token);
         }
         
-        return new AuthResponse { Success = true, Message = "Şifre sıfırlama kodu gönderildi." };
+        return new AuthResult { Success = true, Message = "Reset link sent" };
     }
 
-    public async Task<AuthResponse> ResetPasswordAsync(ResetPasswordRequest request)
+    public async Task<AuthResult> ResetPasswordAsync(ResetPasswordRequest request)
     {
-        var isValid = await _otpService.ValidateOtpAsync(request.Email, request.OtpCode, OtpPurpose.PasswordReset);
+        var isValid = await _otpService.ValidateTokenAsync(request.Email, "PasswordReset", request.Token);
         if (!isValid)
-            return new AuthResponse { Success = false, Message = "Geçersiz veya süresi dolmuş kod." };
+            return new AuthResult { Success = false, Message = "Invalid or expired token" };
 
         var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == request.Email);
         if (user != null)
         {
             user.ChangePassword(BCrypt.Net.BCrypt.HashPassword(request.NewPassword));
             await _db.SaveChangesAsync();
+            await _otpService.InvalidateTokenAsync(request.Email, "PasswordReset");
         }
 
-        return new AuthResponse { Success = true, Message = "Şifre başarıyla güncellendi." };
+        return new AuthResult { Success = true, Message = "Password reset successful" };
     }
 
-    public async Task<AuthResponse> VerifyEmailAsync(VerifyEmailRequest request)
+    public async Task<AuthResult> VerifyEmailAsync(VerifyEmailRequest request)
     {
-        var isValid = await _otpService.ValidateOtpAsync(request.Email, request.OtpCode, OtpPurpose.EmailVerification);
+        var isValid = await _otpService.ValidateTokenAsync(request.Email, "EmailVerification", request.Token);
         if (!isValid)
-            return new AuthResponse { Success = false, Message = "Geçersiz veya süresi dolmuş kod." };
+            return new AuthResult { Success = false };
 
         var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == request.Email);
         if (user != null)
         {
             user.VerifyEmail();
             await _db.SaveChangesAsync();
+            await _otpService.InvalidateTokenAsync(request.Email, "EmailVerification");
         }
 
-        return new AuthResponse { Success = true, Message = "Email adresi doğrulandı." };
+        return new AuthResult { Success = true, Message = "Email verified" };
+    }
+
+    public async Task<AuthResult> ResendVerificationAsync(ResendVerificationRequest request)
+    {
+        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == request.Email);
+        if (user == null)
+            return new AuthResult { Success = true, Message = "Verification link sent" };
+
+        if (user.IsEmailVerified)
+            return new AuthResult { Success = false, Message = "Already verified" };
+
+        var token = await _otpService.GenerateTokenAsync(request.Email, "EmailVerification");
+        _logger.LogInformation("Mock Email/SMS sent. Email verification token for {Email} is: {Token}", request.Email, token);
+
+        return new AuthResult { Success = true };
     }
 
     public async Task<ServiceResult<AuthResponse>> RefreshTokenAsync(

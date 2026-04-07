@@ -5,11 +5,12 @@ namespace BeachRehberi.API.Services;
 
 public interface IAuthService
 {
-    Task<AuthResponse> RegisterAsync(RegisterRequest request);
-    Task<LoginResponse> LoginAsync(LoginRequest request);
-    Task<AuthResponse> ForgotPasswordAsync(ForgotPasswordRequest request);
-    Task<AuthResponse> ResetPasswordAsync(ResetPasswordRequest request);
-    Task<AuthResponse> VerifyEmailAsync(VerifyEmailRequest request);
+    Task<AuthResult> RegisterAsync(RegisterRequest request);
+    Task<AuthResult> LoginAsync(LoginRequest request);
+    Task<AuthResult> ForgotPasswordAsync(ForgotPasswordRequest request);
+    Task<AuthResult> ResetPasswordAsync(ResetPasswordRequest request);
+    Task<AuthResult> VerifyEmailAsync(VerifyEmailRequest request);
+    Task<AuthResult> ResendVerificationAsync(ResendVerificationRequest request);
     
     // Kept for backward compatibility
     Task<ServiceResult<AuthResponse>> RefreshTokenAsync(string refreshToken, string ipAddress, string userAgent);

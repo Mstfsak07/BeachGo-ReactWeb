@@ -1,4 +1,6 @@
+using FluentValidation;
 using System;
+using System.Collections.Generic;
 
 namespace BeachRehberi.API.Models;
 
@@ -39,15 +41,34 @@ public class ForgotPasswordRequest
 
 public class ResetPasswordRequest
 {
+    public required string Token { get; set; }
     public required string Email { get; set; }
-    public required string OtpCode { get; set; }
     public required string NewPassword { get; set; }
+    public required string ConfirmPassword { get; set; }
 }
 
 public class VerifyEmailRequest
 {
+    public required string Token { get; set; }
     public required string Email { get; set; }
-    public required string OtpCode { get; set; }
+}
+
+public class ResendVerificationRequest
+{
+    public required string Email { get; set; }
+}
+
+public class AuthResult
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public string? Token { get; set; }
+    public List<string>? Errors { get; set; }
+    
+    // Added to prevent breaking Login/Register mapping
+    public string? RefreshToken { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public UserDto? User { get; set; }
 }
 
 public class AuthResponse
@@ -68,7 +89,6 @@ public class UserDto
     public bool IsEmailVerified { get; set; }
 }
 
-// Keep existing ones to prevent build errors elsewhere if used
 public class RevokeRequest
 {
     public required string RefreshToken { get; set; }
@@ -79,10 +99,58 @@ public class RefreshRequest
     public required string RefreshToken { get; set; }
 }
 
-// UserRegisterRequest for backward compatibility if needed in UI
 public class UserRegisterRequest 
 {
     public required string Username { get; set; }
     public required string Email { get; set; }
     public required string Password { get; set; }
 }
+
+public class ForgotPasswordRequestValidator : AbstractValidator<ForgotPasswordRequest>
+{
+    public ForgotPasswordRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email adresi zorunludur.")
+            .EmailAddress().WithMessage("Geçerli bir email adresi giriniz.");
+    }
+}
+
+public class ResetPasswordRequestValidator : AbstractValidator<ResetPasswordRequest>
+{
+    public ResetPasswordRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email adresi zorunludur.")
+            .EmailAddress().WithMessage("Geçerli bir email adresi giriniz.");
+        RuleFor(x => x.Token)
+            .NotEmpty().WithMessage("Token zorunludur.");
+        RuleFor(x => x.NewPassword)
+            .NotEmpty().WithMessage("Yeni þifre zorunludur.")
+            .MinimumLength(8).WithMessage("Þifre en az 8 karakter olmalýdýr.")
+            .Matches("[A-Z]").WithMessage("Þifre en az bir büyük harf içermelidir.")
+            .Matches("[0-9]").WithMessage("Þifre en az bir rakam içermelidir.");
+    }
+}
+
+public class VerifyEmailRequestValidator : AbstractValidator<VerifyEmailRequest>
+{
+    public VerifyEmailRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email zorunludur.");
+        RuleFor(x => x.Token)
+            .NotEmpty().WithMessage("Token zorunludur.");
+    }
+}
+
+public class ResendVerificationRequestValidator : AbstractValidator<ResendVerificationRequest>
+{
+    public ResendVerificationRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email adresi zorunludur.")
+            .EmailAddress().WithMessage("Geçerli bir email adresi giriniz.");
+    }
+}
+

@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path"; // 👈 EKLE
 
 const processes = {};
+let agentStarted = false;
 
 const backendDir = path.join(process.cwd(), "BeachRehberi.API", "BeachRehberi.API");
 console.log("Backend dir:", backendDir);
@@ -55,16 +56,18 @@ function startProcess(name, cmd, args, cwd) {
     process.stderr.write(`[${name} ERROR] ${data}`);
   });
 
-  proc.on("exit", (code) => {
-    console.log(`[EXIT] ${name} (${code})`);
-    delete processes[name];
+ proc.on("exit", (code) => {
+  console.log(`[EXIT] ${name} (${code})`);
+  delete processes[name];
 
-    // 🔁 Crash restart (delay ile)
-    setTimeout(() => {
-      console.log(`[RESTART] ${name}`);
-      startAll();
-    }, 5000);
-  });
+  // ❌ AGENT restart etmesin (zaten ayrı window)
+  if (name === "AGENT") return;
+
+  setTimeout(() => {
+    console.log(`[RESTART] ${name}`);
+    startProcess(name, cmd, args, cwd);
+  }, 5000);
+});
 }
 
 // 🚀 BAŞLATMA KONTROLÜ
@@ -94,19 +97,19 @@ async function startAll() {
   }
 
   // AGENT (tek instance)
-  if (!processes["AGENT"]) {
-    startProcess(
-      "AGENT",
-      "powershell",
-      [
-        "-NonInteractive",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        "automation/scripts/run-loop.ps1",
-      ],
-      "."
-    );
+ if (!agentStarted) {
+  agentStarted = true;
+
+  startProcess(
+  "AGENT",
+  "powershell",
+  [
+    "-Command",
+    "Start-Process powershell -ArgumentList '-NoExit','-ExecutionPolicy','Bypass','-File automation/scripts/run-loop.ps1'"
+  ],
+  "."
+);
+
   }
 }
 

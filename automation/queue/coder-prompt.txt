@@ -7,444 +7,1240 @@ After making code changes:
 
 Task:
 
-# FAZ 1: Authentication Backend - Email DoÄrulama ve Åifre SÄ±fÄ±rlama
+# FAZ 1 - Authentication Backend: Email DoÄrulama ve Åifre SÄ±fÄ±rlama
 
-## Hedef
-AuthController, AuthService, IAuthService ve ilgili modellerin eksiksiz implement edilmesi; FluentValidation ile gÃ¼Ã§lendirilmesi.
+## SCOPE: api
+
+## Ãn Not
+Ãnceki iterasyonlarda sonuÃ§ boÅ geldiÄi iÃ§in sistem retry yaptÄ±. Bu sefer **her adÄ±mÄ± tek tek ve aÃ§Ä±k olarak** uygula, sonuÃ§larÄ± mutlaka raporla.
 
 ---
 
-## AdÄ±m 1: Mevcut DosyalarÄ± Ä°ncele
+## ADIM 1: Mevcut DosyalarÄ± Oku
 
 Ãnce mevcut durumu anlamak iÃ§in Åu dosyalarÄ± oku:
-- `**/**/AuthController.cs`
-- `**/**/AuthService.cs`
-- `**/**/IAuthService.cs`
-- `**/**/AuthModels.cs`
-- `**/**/VerificationCode.cs`
-- `**/**/OtpService.cs`
-- `**/**/IOtpService.cs`
-- `**/**/MockSmsService.cs`
+```
+/BeachGo/api/Controllers/AuthController.cs
+/BeachGo/api/Services/AuthService.cs
+/BeachGo/api/Services/IAuthService.cs
+/BeachGo/api/Models/AuthModels.cs
+/BeachGo/api/Models/VerificationCode.cs
+/BeachGo/api/Services/OtpService.cs
+/BeachGo/api/Services/IOtpService.cs
+/BeachGo/api/Services/MockSmsService.cs
+```
+
+EÄer bu dosyalar yoksa, aÅaÄÄ±daki iÃ§eriklerle **sÄ±fÄ±rdan oluÅtur**.
 
 ---
 
-## AdÄ±m 2: IAuthService.cs
+## ADIM 2: DosyalarÄ± OluÅtur / GÃ¼ncelle
 
-`IAuthService` interface'ine aÅaÄÄ±daki metodlarÄ±n **tamamÄ±nÄ±n** mevcut olduÄunu doÄrula, eksikse ekle:
-
-```
-Task<AuthResult> RegisterAsync(RegisterRequest request);
-Task<AuthResult> LoginAsync(LoginRequest request);
-Task<AuthResult> VerifyEmailAsync(VerifyEmailRequest request);
-Task<AuthResult> ForgotPasswordAsync(ForgotPasswordRequest request);
-Task<AuthResult> ResetPasswordAsync(ResetPasswordRequest request);
-Task<AuthResult> ResendVerificationAsync(ResendVerificationRequest request);
-```
-
----
-
-## AdÄ±m 3: AuthModels.cs
-
-Eksik DTO'larÄ± ekle veya gÃ¼ncelle:
-
-**ForgotPasswordRequest:**
-```
-public string Email { get; set; }
-```
-
-**ResetPasswordRequest:**
-```
-public string Token { get; set; }
-public string Email { get; set; }
-public string NewPassword { get; set; }
-public string ConfirmPassword { get; set; }
-```
-
-**VerifyEmailRequest:**
-```
-public string Token { get; set; }
-public string Email { get; set; }
-```
-
-**ResendVerificationRequest:**
-```
-public string Email { get; set; }
-```
-
-**AuthResult:**
-```
-public bool Success { get; set; }
-public string Message { get; set; }
-public string? Token { get; set; }  // JWT token (login/register iÃ§in)
-public List<string>? Errors { get; set; }
-```
-
----
-
-## AdÄ±m 4: FluentValidation
-
-Her DTO iÃ§in `Validators` klasÃ¶rÃ¼nde (yoksa oluÅtur: `Api/Validators/`) aÅaÄÄ±daki validator sÄ±nÄ±flarÄ±nÄ± yaz:
-
-**ForgotPasswordRequestValidator:**
-- Email boÅ olmamalÄ±
-- GeÃ§erli email formatÄ± olmalÄ±
-
-**ResetPasswordRequestValidator:**
-- Token boÅ olmamalÄ±
-- Email boÅ olmamalÄ±, geÃ§erli format
-- NewPassword min 8 karakter, en az 1 bÃ¼yÃ¼k harf, 1 rakam
-- ConfirmPassword, NewPassword ile eÅleÅmeli
-
-**VerifyEmailRequestValidator:**
-- Token boÅ olmamalÄ±
-- Email boÅ olmamalÄ±, geÃ§erli format
-
-Validator'larÄ± `Program.cs` veya `Startup.cs`'e kaydet:
+### `/BeachGo/api/Models/VerificationCode.cs`
 ```csharp
-builder.Services.AddValidatorsFromAssemblyContaining<ForgotPasswordRequestValidator>();
+namespace BeachGo.Api.Models;
+
+public class VerificationCode
+{
+    public int Id { get; set; }
+    public string UserId { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // "email_verification" | "password_reset"
+    public DateTime ExpiresAt { get; set; }
+    public bool IsUsed { get; set; } = false;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
 ```
 
----
-
-## AdÄ±m 5: OtpService.cs / IOtpService.cs
-
-`IOtpService`:
-```
-Task<string> GenerateTokenAsync(string email, string purpose);
-Task<bool> ValidateTokenAsync(string email, string purpose, string token);
-Task InvalidateTokenAsync(string email, string purpose);
-```
-
-`OtpService` implementasyonu:
-- Token Ã¼retimi: `Guid.NewGuid().ToString("N")` veya 6 haneli numeric OTP â hangisi mevcut ise koru
-- `VerificationCode` entity'sini kullanarak DB'ye kaydet
-- Expiry: token Ã¼retiminden itibaren **24 saat** (email verify iÃ§in), **15 dakika** (password reset iÃ§in)
-- `ValidateTokenAsync`: token'Ä± DB'de bul, expired deÄilse `true` dÃ¶n, kullanÄ±ldÄ±ysa `false` dÃ¶n
-- `Purpose` alanÄ±: `"EmailVerification"` | `"PasswordReset"`
-
----
-
-## AdÄ±m 6: AuthService.cs
-
-Eksik metodlarÄ± implement et:
-
-**ForgotPasswordAsync:**
-```
-1. Email ile kullanÄ±cÄ±yÄ± bul â bulamazsan SUCCESS dÃ¶n (security: email enumeration Ã¶nleme)
-2. OtpService.GenerateTokenAsync(email, "PasswordReset") Ã§aÄÄ±r
-3. MockSmsService veya email service ile token'Ä± gÃ¶nder (log'a yaz mock iÃ§in)
-4. AuthResult { Success = true, Message = "Reset link sent" } dÃ¶n
-```
-
-**ResetPasswordAsync:**
-```
-1. OtpService.ValidateTokenAsync(email, "PasswordReset", token) Ã§aÄÄ±r
-2. GeÃ§ersizse AuthResult { Success = false, Message = "Invalid or expired token" }
-3. GeÃ§erliyse: kullanÄ±cÄ±nÄ±n password hash'ini gÃ¼ncelle
-4. OtpService.InvalidateTokenAsync ile token'Ä± geÃ§ersiz kÄ±l
-5. AuthResult { Success = true, Message = "Password reset successful" }
-```
-
-**VerifyEmailAsync:**
-```
-1. OtpService.ValidateTokenAsync(email, "EmailVerification", token) Ã§aÄÄ±r
-2. GeÃ§ersizse: AuthResult { Success = false }
-3. GeÃ§erliyse: User.EmailConfirmed = true yap, kaydet
-4. Token'Ä± invalidate et
-5. AuthResult { Success = true, Message = "Email verified" }
-```
-
-**ResendVerificationAsync:**
-```
-1. Email ile kullanÄ±cÄ±yÄ± bul
-2. EmailConfirmed zaten true ise: AuthResult { Success = false, Message = "Already verified" }
-3. Yeni token Ã¼ret, gÃ¶nder
-4. AuthResult { Success = true }
-```
-
----
-
-## AdÄ±m 7: AuthController.cs
-
-Åu endpoint'lerin tam olarak mevcut olduÄunu doÄrula, eksikse ekle:
-
+### `/BeachGo/api/Models/AuthModels.cs`
+Mevcut dosyaya Åu DTO'larÄ± ekle (yoksa oluÅtur, varsa merge et):
 ```csharp
-[HttpPost("forgot-password")]
-public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+using FluentValidation;
+
+namespace BeachGo.Api.Models;
+
+public class RegisterRequest
 {
-    // FluentValidation otomatik Ã§alÄ±Åacak (AddValidatorsFromAssembly ile)
-    var result = await _authService.ForgotPasswordAsync(request);
-    return result.Success ? Ok(result) : BadRequest(result);
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string? PhoneNumber { get; set; }
 }
 
-[HttpPost("reset-password")]
-public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+public class LoginRequest
 {
-    var result = await _authService.ResetPasswordAsync(request);
-    return result.Success ? Ok(result) : BadRequest(result);
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
 }
 
-[HttpPost("verify-email")]
-public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+public class ForgotPasswordRequest
 {
-    var result = await _authService.VerifyEmailAsync(request);
-    return result.Success ? Ok(result) : BadRequest(result);
+    public string Email { get; set; } = string.Empty;
 }
 
-[HttpPost("resend-verification")]
-public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
+public class ResetPasswordRequest
 {
-    var result = await _authService.ResendVerificationAsync(request);
-    return result.Success ? Ok(result) : BadRequest(result);
+    public string Email { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+public class VerifyEmailRequest
+{
+    public string UserId { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
+}
+
+public class ResendVerificationRequest
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public class AuthResponse
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public string? Token { get; set; }
+    public string? UserId { get; set; }
+    public string? Email { get; set; }
+}
+
+// FluentValidation Validators
+public class ForgotPasswordRequestValidator : AbstractValidator<ForgotPasswordRequest>
+{
+    public ForgotPasswordRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email adresi zorunludur.")
+            .EmailAddress().WithMessage("GeÃ§erli bir email adresi giriniz.");
+    }
+}
+
+public class ResetPasswordRequestValidator : AbstractValidator<ResetPasswordRequest>
+{
+    public ResetPasswordRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email adresi zorunludur.")
+            .EmailAddress().WithMessage("GeÃ§erli bir email adresi giriniz.");
+        RuleFor(x => x.Token)
+            .NotEmpty().WithMessage("Token zorunludur.");
+        RuleFor(x => x.NewPassword)
+            .NotEmpty().WithMessage("Yeni Åifre zorunludur.")
+            .MinimumLength(8).WithMessage("Åifre en az 8 karakter olmalÄ±dÄ±r.")
+            .Matches(@"[A-Z]").WithMessage("Åifre en az bir bÃ¼yÃ¼k harf iÃ§ermelidir.")
+            .Matches(@"[0-9]").WithMessage("Åifre en az bir rakam iÃ§ermelidir.");
+    }
+}
+
+public class VerifyEmailRequestValidator : AbstractValidator<VerifyEmailRequest>
+{
+    public VerifyEmailRequestValidator()
+    {
+        RuleFor(x => x.UserId)
+            .NotEmpty().WithMessage("KullanÄ±cÄ± ID zorunludur.");
+        RuleFor(x => x.Token)
+            .NotEmpty().WithMessage("Token zorunludur.");
+    }
+}
+
+public class ResendVerificationRequestValidator : AbstractValidator<ResendVerificationRequest>
+{
+    public ResendVerificationRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email adresi zorunludur.")
+            .EmailAddress().WithMessage("GeÃ§erli bir email adresi giriniz.");
+    }
+}
+```
+
+### `/BeachGo/api/Services/IOtpService.cs`
+```csharp
+namespace BeachGo.Api.Services;
+
+public interface IOtpService
+{
+    Task<string> GenerateAndSaveCodeAsync(string userId, string type);
+    Task<bool> ValidateCodeAsync(string userId, string code, string type);
+    Task InvalidateCodesAsync(string userId, string type);
+}
+```
+
+### `/BeachGo/api/Services/OtpService.cs`
+```csharp
+using BeachGo.Api.Data;
+using BeachGo.Api.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace BeachGo.Api.Services;
+
+public class OtpService : IOtpService
+{
+    private readonly ApplicationDbContext _context;
+    private readonly ILogger<OtpService> _logger;
+
+    public OtpService(ApplicationDbContext context, ILogger<OtpService> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
+
+    public async Task<string> GenerateAndSaveCodeAsync(string userId, string type)
+    {
+        // Mevcut aktif kodlarÄ± geÃ§ersiz kÄ±l
+        await InvalidateCodesAsync(userId, type);
+
+        var code = Guid.NewGuid().ToString("N"); // 32 karakterlik token
+
+        var verificationCode = new VerificationCode
+        {
+            UserId = userId,
+            Code = code,
+            Type = type,
+            ExpiresAt = DateTime.UtcNow.AddHours(24),
+            IsUsed = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.VerificationCodes.Add(verificationCode);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("OTP generated for userId={UserId}, type={Type}", userId, type);
+        return code;
+    }
+
+    public async Task<bool> ValidateCodeAsync(string userId, string code, string type)
+    {
+        var verificationCode = await _context.VerificationCodes
+            .Where(v => v.UserId == userId
+                     && v.Code == code
+                     && v.Type == type
+                     && !v.IsUsed
+                     && v.ExpiresAt > DateTime.UtcNow)
+            .FirstOrDefaultAsync();
+
+        if (verificationCode == null)
+        {
+            _logger.LogWarning("Invalid or expired OTP for userId={UserId}, type={Type}", userId, type);
+            return false;
+        }
+
+        verificationCode.IsUsed = true;
+        await _context.SaveChangesAsync();
+
+        return true;
+    }
+
+    public async Task InvalidateCodesAsync(string userId, string type)
+    {
+        var codes = await _context.VerificationCodes
+            .Where(v => v.UserId == userId && v.Type == type && !v.IsUsed)
+            .ToListAsync();
+
+        foreach (var c in codes)
+            c.IsUsed = true;
+
+        if (codes.Any())
+            await _context.SaveChangesAsync();
+    }
+}
+```
+
+### `/BeachGo/api/Services/MockSmsService.cs`
+```csharp
+namespace BeachGo.Api.Services;
+
+public interface IEmailService
+{
+    Task SendVerificationEmailAsync(string email, string userId, string token);
+    Task SendPasswordResetEmailAsync(string email, string userId, string token);
+}
+
+public class MockEmailService : IEmailService
+{
+    private readonly ILogger<MockEmailService> _logger;
+
+    public MockEmailService(ILogger<MockEmailService> logger)
+    {
+        _logger = logger;
+    }
+
+    public Task SendVerificationEmailAsync(string email, string userId, string token)
+    {
+        _logger.LogInformation(
+            "[MOCK EMAIL] Verification email to {Email}: userId={UserId}, token={Token}",
+            email, userId, token);
+        return Task.CompletedTask;
+    }
+
+    public Task SendPasswordResetEmailAsync(string email, string userId, string token)
+    {
+        _logger.LogInformation(
+            "[MOCK EMAIL] Password reset email to {Email}: userId={UserId}, token={Token}",
+            email, userId, token);
+        return Task.CompletedTask;
+    }
+}
+```
+
+### `/BeachGo/api/Services/IAuthService.cs`
+```csharp
+using BeachGo.Api.Models;
+
+namespace BeachGo.Api.Services;
+
+public interface IAuthService
+{
+    Task<AuthResponse> RegisterAsync(RegisterRequest request);
+    Task<AuthResponse> LoginAsync(LoginRequest request);
+    Task<AuthResponse> VerifyEmailAsync(VerifyEmailRequest request);
+    Task<AuthResponse> ForgotPasswordAsync(ForgotPasswordRequest request);
+    Task<AuthResponse> ResetPasswordAsync(ResetPasswordRequest request);
+    Task<AuthResponse> ResendVerificationAsync(ResendVerificationRequest request);
+}
+```
+
+### `/BeachGo/api/Services/AuthService.cs`
+```csharp
+using BeachGo.Api.Models;
+using Microsoft.AspNetCore.Identity;
+
+namespace BeachGo.Api.Services;
+
+public class AuthService : IAuthService
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IOtpService _otpService;
+    private readonly IEmailService _emailService;
+    private readonly IJwtService _jwtService;
+    private readonly ILogger<AuthService> _logger;
+
+    public AuthService(
+        UserManager<ApplicationUser> userManager,
+        IOtpService otpService,
+        IEmailService emailService,
+        IJwtService jwtService,
+        ILogger<AuthService> logger)
+    {
+        _userManager = userManager;
+        _otpService = otpService;
+        _emailService = emailService;
+        _jwtService = jwtService;
+        _logger = logger;
+    }
+
+    public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+    {
+        var existingUser = await _userManager.FindByEmailAsync(request.Email);
+        if (existingUser != null)
+            return new AuthResponse { Success = false, Message = "Bu email adresi zaten kullanÄ±mda." };
+
+        var user = new ApplicationUser
+        {
+            UserName = request.Email,
+            Email = request.Email,
+            FullName = request.FullName,
+            PhoneNumber = request.PhoneNumber,
+            EmailConfirmed = false
+        };
+
+        var result = await _userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+            return new AuthResponse
+            {
+                Success = false,
+                Message = string.Join(", ", result.Errors.Select(e => e.Description))
+            };
+
+        var token = await _otpService.GenerateAndSaveCodeAsync(user.Id, "email_verification");
+        await _emailService.SendVerificationEmailAsync(user.Email!, user.Id, token);
+
+        return new AuthResponse
+        {
+            Success = true,
+            Message = "KayÄ±t baÅarÄ±lÄ±. Email adresinizi doÄrulayÄ±n.",
+            UserId = user.Id
+        };
+    }
+
+    public async Task<AuthResponse> LoginAsync(LoginRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return new AuthResponse { Success = false, Message = "Email veya Åifre hatalÄ±." };
+
+        var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+        if (!isPasswordValid)
+            return new AuthResponse { Success = false, Message = "Email veya Åifre hatalÄ±." };
+
+        if (!user.EmailConfirmed)
+            return new AuthResponse { Success = false, Message = "Email adresinizi doÄrulamanÄ±z gerekmektedir." };
+
+        var token = _jwtService.GenerateToken(user);
+
+        return new AuthResponse
+        {
+            Success = true,
+            Token = token,
+            UserId = user.Id,
+            Email = user.Email
+        };
+    }
+
+    public async Task<AuthResponse> VerifyEmailAsync(VerifyEmailRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+            return new AuthResponse { Success = false, Message = "KullanÄ±cÄ± bulunamadÄ±." };
+
+        if (user.EmailConfirmed)
+            return new AuthResponse { Success = true, Message = "Email zaten doÄrulanmÄ±Å." };
+
+        var isValid = await _otpService.ValidateCodeAsync(request.UserId, request.Token, "email_verification");
+        if (!isValid)
+            return new AuthResponse { Success = false, Message = "GeÃ§ersiz veya sÃ¼resi dolmuÅ doÄrulama kodu." };
+
+        user.EmailConfirmed = true;
+        await _userManager.UpdateAsync(user);
+
+        return new AuthResponse { Success = true, Message = "Email baÅarÄ±yla doÄrulandÄ±." };
+    }
+
+    public async Task<AuthResponse> ForgotPasswordAsync(ForgotPasswordRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        // GÃ¼venlik: kullanÄ±cÄ± bulunamasa bile baÅarÄ±lÄ± dÃ¶n
+        if (user == null)
+            return new AuthResponse { Success = true, Message = "Åifre sÄ±fÄ±rlama linki gÃ¶nderildi." };
+
+        var token = await _otpService.GenerateAndSaveCodeAsync(user.Id, "password_reset");
+        await _emailService.SendPasswordResetEmailAsync(user.Email!, user.Id, token);
+
+        return new AuthResponse { Success = true, Message = "Åifre sÄ±fÄ±rlama linki email adresinize gÃ¶nderildi." };
+    }
+
+    public async Task<AuthResponse> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return new AuthResponse { Success = false, Message = "KullanÄ±cÄ± bulunamadÄ±." };
+
+        var isValid = await _otpService.ValidateCodeAsync(user.Id, request.Token, "password_reset");
+        if (!isValid)
+            return new AuthResponse { Success = false, Message = "GeÃ§ersiz veya sÃ¼resi dolmuÅ token." };
+
+        var removeResult = await _userManager.RemovePasswordAsync(user);
+        if (!removeResult.Succeeded)
+            return new AuthResponse { Success = false, Message = "Åifre sÄ±fÄ±rlanamadÄ±." };
+
+        var addResult = await _userManager.AddPasswordAsync(user, request.NewPassword);
+        if (!addResult.Succeeded)
+            return new AuthResponse
+            {
+                Success = false,
+                Message = string.Join(", ", addResult.Errors.Select(e => e.Description))
+            };
+
+        return new AuthResponse { Success = true, Message = "Åifreniz baÅarÄ±yla sÄ±fÄ±rlandÄ±." };
+    }
+
+    public async Task<AuthResponse> ResendVerificationAsync(ResendVerificationRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return new AuthResponse { Success = true, Message = "DoÄrulama emaili gÃ¶nderildi." };
+
+        if (user.EmailConfirmed)
+            return new AuthResponse { Success = false, Message = "Email zaten doÄrulanmÄ±Å." };
+
+        var token = await _otpService.GenerateAndSaveCodeAsync(user.Id, "email_verification");
+        await _emailService.SendVerificationEmailAsync(user.Email!, user.Id, token);
+
+        return new AuthResponse { Success = true, Message = "DoÄrulama emaili gÃ¶nderildi." };
+    }
+}
+```
+
+### `/BeachGo/api/Controllers/AuthController.cs`
+```csharp
+using BeachGo.Api.Models;
+using BeachGo.Api.Services;
+using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
+
+namespace BeachGo.Api.Controllers;
+
+[ApiController]
+[Route("api/auth")]
+public class AuthController : ControllerBase
+{
+    private readonly IAuthService _authService;
+    private readonly IValidator<ForgotPasswordRequest> _forgotPasswordValidator;
+    private readonly IValidator<ResetPasswordRequest> _resetPasswordValidator;
+    private readonly IValidator<VerifyEmailRequest> _verifyEmailValidator;
+    private readonly IValidator<ResendVerificationRequest> _resendVerificationValidator;
+
+    public AuthController(
+        IAuthService authService,
+        IValidator<ForgotPasswordRequest> forgotPasswordValidator,
+        IValidator<ResetPasswordRequest> resetPasswordValidator,
+        IValidator<VerifyEmailRequest> verifyEmailValidator,
+        IValidator<ResendVerificationRequest> resendVerificationValidator)
+    {
+        _authService = authService;
+        _forgotPasswordValidator = forgotPasswordValidator;
+        _resetPasswordValidator = resetPasswordValidator;
+        _verifyEmailValidator = verifyEmailValidator;
+        _resendVerificationValidator = resendVerificationValidator;
+    }
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+    {
+        var result = await _authService.RegisterAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    {
+        var result = await _authService.LoginAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+    {
+        var validation = await _verifyEmailValidator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return BadRequest(new { errors = validation.Errors.Select(e => e.ErrorMessage) });
+
+        var result = await _authService.VerifyEmailAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        var validation = await _forgotPasswordValidator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return BadRequest(new { errors = validation.Errors.Select(e => e.ErrorMessage) });
+
+        var result = await _authService.ForgotPasswordAsync(request);
+        return Ok(result); // Her zaman 200 dÃ¶n (gÃ¼venlik)
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        var validation = await _resetPasswordValidator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return BadRequest(new { errors = validation.Errors.Select(e => e.ErrorMessage) });
+
+        var result = await _authService.ResetPasswordAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
+    {
+        var validation = await _resendVerificationValidator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return BadRequest(new { errors = validation.Errors.Select(e => e.ErrorMessage) });
+
+        var result = await _authService.ResendVerificationAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
 }
 ```
 
 ---
 
-## AdÄ±m 8: Build ve Test
+## ADIM 3: DbContext'i Kontrol Et
+
+`ApplicationDbContext.cs` dosyasÄ±nda `VerificationCodes` DbSet var mÄ± kontrol et:
+```csharp
+public DbSet<VerificationCode> VerificationCodes { get; set; }
+```
+Yoksa ekle.
+
+---
+
+## ADIM 4: Program.cs / DI KayÄ±tlarÄ±nÄ± Kontrol Et
+
+`Program.cs` veya `Startup.cs` iÃ§inde Åu kayÄ±tlarÄ±n olduÄundan emin ol:
+```csharp
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<IEmailService, MockEmailService>();
+
+// FluentValidation validators
+builder.Services.AddScoped<IValidator<ForgotPasswordRequest>, ForgotPasswordRequestValidator>();
+builder.Services.AddScoped<IValidator<ResetPasswordRequest>, ResetPasswordRequestValidator>();
+builder.Services.AddScoped<IValidator<VerifyEmailRequest>, VerifyEmailRequestValidator>();
+builder.Services.AddScoped<IValidator<ResendVerificationRequest>, ResendVerificationRequestValidator>();
+```
+
+---
+
+## ADIM 5: Migration OluÅtur
+
+VerificationCode tablosu iÃ§in migration oluÅtur:
+```bash
+cd /BeachGo/api
+dotnet ef migrations add AddVerificationCodes
+dotnet ef database update
+```
+
+EÄer migration zaten varsa bu adÄ±mÄ± atla, sadece build al.
+
+---
+
+## ADIM 6: Build Al
 
 ```bash
-cd <api-proje-klasÃ¶rÃ¼>
+cd /BeachGo/api
 dotnet build
 ```
 
-Build **hatasÄ±z** tamamlanmalÄ±.
-
-ArdÄ±ndan Swagger Ã¼zerinden test et:
-- `POST /api/auth/forgot-password` â geÃ§erli email ile **200**, geÃ§ersiz body ile **400**
-- `POST /api/auth/reset-password` â yanlÄ±Å token ile **400**
-- `POST /api/auth/verify-email` â yanlÄ±Å token ile **400**
+**Build Ã§Ä±ktÄ±sÄ±nÄ± SONUÃ bÃ¶lÃ¼mÃ¼nde mutlaka raporla.**
 
 ---
 
-## Ãnemli Notlar
-- `MockSmsService`: gerÃ§ek SMS gÃ¶ndermez, sadece `ILogger` ile token'Ä± konsola yaz
-- `VerificationCode` entity'sinde `IsUsed` (bool) ve `ExpiresAt` (DateTime) alanlarÄ± olmalÄ±
-- Mevcut Ã§alÄ±Åan kodlarÄ± **bozma**, sadece eksikleri ekle
+## ADIM 7: Test
+
+Build baÅarÄ±lÄ±ysa uygulamayÄ± baÅlat ve Swagger'dan test et:
+```bash
+dotnet run
+```
+
+Test et:
+- `POST /api/auth/forgot-password` â `{"email": "test@test.com"}` â 200 dÃ¶nmeli
+- `POST /api/auth/reset-password` â eksik/yanlÄ±Å body â 400 dÃ¶nmeli  
+- `POST /api/auth/verify-email` â eksik body â 400 dÃ¶nmeli
 
 ---
 
-<commit_message>feat: complete auth backend - email verification, forgot/reset password endpoints with FluentValidation</commit_message>
+<commit_message>feat: implement email verification and password reset auth flow with FluentValidation and OTP service</commit_message>
 
 
-# FAZ 1: Authentication Backend - Email DoÄrulama ve Åifre SÄ±fÄ±rlama
+# FAZ 1 - Authentication Backend: Email DoÄrulama ve Åifre SÄ±fÄ±rlama
 
-## Hedef
-AuthController, AuthService, IAuthService ve ilgili modellerin eksiksiz implement edilmesi; FluentValidation ile gÃ¼Ã§lendirilmesi.
+## SCOPE: api
+
+## Ãn Not
+Ãnceki iterasyonlarda sonuÃ§ boÅ geldiÄi iÃ§in sistem retry yaptÄ±. Bu sefer **her adÄ±mÄ± tek tek ve aÃ§Ä±k olarak** uygula, sonuÃ§larÄ± mutlaka raporla.
 
 ---
 
-## AdÄ±m 1: Mevcut DosyalarÄ± Ä°ncele
+## ADIM 1: Mevcut DosyalarÄ± Oku
 
 Ãnce mevcut durumu anlamak iÃ§in Åu dosyalarÄ± oku:
-- `**/**/AuthController.cs`
-- `**/**/AuthService.cs`
-- `**/**/IAuthService.cs`
-- `**/**/AuthModels.cs`
-- `**/**/VerificationCode.cs`
-- `**/**/OtpService.cs`
-- `**/**/IOtpService.cs`
-- `**/**/MockSmsService.cs`
+```
+/BeachGo/api/Controllers/AuthController.cs
+/BeachGo/api/Services/AuthService.cs
+/BeachGo/api/Services/IAuthService.cs
+/BeachGo/api/Models/AuthModels.cs
+/BeachGo/api/Models/VerificationCode.cs
+/BeachGo/api/Services/OtpService.cs
+/BeachGo/api/Services/IOtpService.cs
+/BeachGo/api/Services/MockSmsService.cs
+```
+
+EÄer bu dosyalar yoksa, aÅaÄÄ±daki iÃ§eriklerle **sÄ±fÄ±rdan oluÅtur**.
 
 ---
 
-## AdÄ±m 2: IAuthService.cs
+## ADIM 2: DosyalarÄ± OluÅtur / GÃ¼ncelle
 
-`IAuthService` interface'ine aÅaÄÄ±daki metodlarÄ±n **tamamÄ±nÄ±n** mevcut olduÄunu doÄrula, eksikse ekle:
-
-```
-Task<AuthResult> RegisterAsync(RegisterRequest request);
-Task<AuthResult> LoginAsync(LoginRequest request);
-Task<AuthResult> VerifyEmailAsync(VerifyEmailRequest request);
-Task<AuthResult> ForgotPasswordAsync(ForgotPasswordRequest request);
-Task<AuthResult> ResetPasswordAsync(ResetPasswordRequest request);
-Task<AuthResult> ResendVerificationAsync(ResendVerificationRequest request);
-```
-
----
-
-## AdÄ±m 3: AuthModels.cs
-
-Eksik DTO'larÄ± ekle veya gÃ¼ncelle:
-
-**ForgotPasswordRequest:**
-```
-public string Email { get; set; }
-```
-
-**ResetPasswordRequest:**
-```
-public string Token { get; set; }
-public string Email { get; set; }
-public string NewPassword { get; set; }
-public string ConfirmPassword { get; set; }
-```
-
-**VerifyEmailRequest:**
-```
-public string Token { get; set; }
-public string Email { get; set; }
-```
-
-**ResendVerificationRequest:**
-```
-public string Email { get; set; }
-```
-
-**AuthResult:**
-```
-public bool Success { get; set; }
-public string Message { get; set; }
-public string? Token { get; set; }  // JWT token (login/register iÃ§in)
-public List<string>? Errors { get; set; }
-```
-
----
-
-## AdÄ±m 4: FluentValidation
-
-Her DTO iÃ§in `Validators` klasÃ¶rÃ¼nde (yoksa oluÅtur: `Api/Validators/`) aÅaÄÄ±daki validator sÄ±nÄ±flarÄ±nÄ± yaz:
-
-**ForgotPasswordRequestValidator:**
-- Email boÅ olmamalÄ±
-- GeÃ§erli email formatÄ± olmalÄ±
-
-**ResetPasswordRequestValidator:**
-- Token boÅ olmamalÄ±
-- Email boÅ olmamalÄ±, geÃ§erli format
-- NewPassword min 8 karakter, en az 1 bÃ¼yÃ¼k harf, 1 rakam
-- ConfirmPassword, NewPassword ile eÅleÅmeli
-
-**VerifyEmailRequestValidator:**
-- Token boÅ olmamalÄ±
-- Email boÅ olmamalÄ±, geÃ§erli format
-
-Validator'larÄ± `Program.cs` veya `Startup.cs`'e kaydet:
+### `/BeachGo/api/Models/VerificationCode.cs`
 ```csharp
-builder.Services.AddValidatorsFromAssemblyContaining<ForgotPasswordRequestValidator>();
+namespace BeachGo.Api.Models;
+
+public class VerificationCode
+{
+    public int Id { get; set; }
+    public string UserId { get; set; } = string.Empty;
+    public string Code { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty; // "email_verification" | "password_reset"
+    public DateTime ExpiresAt { get; set; }
+    public bool IsUsed { get; set; } = false;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
 ```
 
----
-
-## AdÄ±m 5: OtpService.cs / IOtpService.cs
-
-`IOtpService`:
-```
-Task<string> GenerateTokenAsync(string email, string purpose);
-Task<bool> ValidateTokenAsync(string email, string purpose, string token);
-Task InvalidateTokenAsync(string email, string purpose);
-```
-
-`OtpService` implementasyonu:
-- Token Ã¼retimi: `Guid.NewGuid().ToString("N")` veya 6 haneli numeric OTP â hangisi mevcut ise koru
-- `VerificationCode` entity'sini kullanarak DB'ye kaydet
-- Expiry: token Ã¼retiminden itibaren **24 saat** (email verify iÃ§in), **15 dakika** (password reset iÃ§in)
-- `ValidateTokenAsync`: token'Ä± DB'de bul, expired deÄilse `true` dÃ¶n, kullanÄ±ldÄ±ysa `false` dÃ¶n
-- `Purpose` alanÄ±: `"EmailVerification"` | `"PasswordReset"`
-
----
-
-## AdÄ±m 6: AuthService.cs
-
-Eksik metodlarÄ± implement et:
-
-**ForgotPasswordAsync:**
-```
-1. Email ile kullanÄ±cÄ±yÄ± bul â bulamazsan SUCCESS dÃ¶n (security: email enumeration Ã¶nleme)
-2. OtpService.GenerateTokenAsync(email, "PasswordReset") Ã§aÄÄ±r
-3. MockSmsService veya email service ile token'Ä± gÃ¶nder (log'a yaz mock iÃ§in)
-4. AuthResult { Success = true, Message = "Reset link sent" } dÃ¶n
-```
-
-**ResetPasswordAsync:**
-```
-1. OtpService.ValidateTokenAsync(email, "PasswordReset", token) Ã§aÄÄ±r
-2. GeÃ§ersizse AuthResult { Success = false, Message = "Invalid or expired token" }
-3. GeÃ§erliyse: kullanÄ±cÄ±nÄ±n password hash'ini gÃ¼ncelle
-4. OtpService.InvalidateTokenAsync ile token'Ä± geÃ§ersiz kÄ±l
-5. AuthResult { Success = true, Message = "Password reset successful" }
-```
-
-**VerifyEmailAsync:**
-```
-1. OtpService.ValidateTokenAsync(email, "EmailVerification", token) Ã§aÄÄ±r
-2. GeÃ§ersizse: AuthResult { Success = false }
-3. GeÃ§erliyse: User.EmailConfirmed = true yap, kaydet
-4. Token'Ä± invalidate et
-5. AuthResult { Success = true, Message = "Email verified" }
-```
-
-**ResendVerificationAsync:**
-```
-1. Email ile kullanÄ±cÄ±yÄ± bul
-2. EmailConfirmed zaten true ise: AuthResult { Success = false, Message = "Already verified" }
-3. Yeni token Ã¼ret, gÃ¶nder
-4. AuthResult { Success = true }
-```
-
----
-
-## AdÄ±m 7: AuthController.cs
-
-Åu endpoint'lerin tam olarak mevcut olduÄunu doÄrula, eksikse ekle:
-
+### `/BeachGo/api/Models/AuthModels.cs`
+Mevcut dosyaya Åu DTO'larÄ± ekle (yoksa oluÅtur, varsa merge et):
 ```csharp
-[HttpPost("forgot-password")]
-public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+using FluentValidation;
+
+namespace BeachGo.Api.Models;
+
+public class RegisterRequest
 {
-    // FluentValidation otomatik Ã§alÄ±Åacak (AddValidatorsFromAssembly ile)
-    var result = await _authService.ForgotPasswordAsync(request);
-    return result.Success ? Ok(result) : BadRequest(result);
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string? PhoneNumber { get; set; }
 }
 
-[HttpPost("reset-password")]
-public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+public class LoginRequest
 {
-    var result = await _authService.ResetPasswordAsync(request);
-    return result.Success ? Ok(result) : BadRequest(result);
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
 }
 
-[HttpPost("verify-email")]
-public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+public class ForgotPasswordRequest
 {
-    var result = await _authService.VerifyEmailAsync(request);
-    return result.Success ? Ok(result) : BadRequest(result);
+    public string Email { get; set; } = string.Empty;
 }
 
-[HttpPost("resend-verification")]
-public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
+public class ResetPasswordRequest
 {
-    var result = await _authService.ResendVerificationAsync(request);
-    return result.Success ? Ok(result) : BadRequest(result);
+    public string Email { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+public class VerifyEmailRequest
+{
+    public string UserId { get; set; } = string.Empty;
+    public string Token { get; set; } = string.Empty;
+}
+
+public class ResendVerificationRequest
+{
+    public string Email { get; set; } = string.Empty;
+}
+
+public class AuthResponse
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public string? Token { get; set; }
+    public string? UserId { get; set; }
+    public string? Email { get; set; }
+}
+
+// FluentValidation Validators
+public class ForgotPasswordRequestValidator : AbstractValidator<ForgotPasswordRequest>
+{
+    public ForgotPasswordRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email adresi zorunludur.")
+            .EmailAddress().WithMessage("GeÃ§erli bir email adresi giriniz.");
+    }
+}
+
+public class ResetPasswordRequestValidator : AbstractValidator<ResetPasswordRequest>
+{
+    public ResetPasswordRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email adresi zorunludur.")
+            .EmailAddress().WithMessage("GeÃ§erli bir email adresi giriniz.");
+        RuleFor(x => x.Token)
+            .NotEmpty().WithMessage("Token zorunludur.");
+        RuleFor(x => x.NewPassword)
+            .NotEmpty().WithMessage("Yeni Åifre zorunludur.")
+            .MinimumLength(8).WithMessage("Åifre en az 8 karakter olmalÄ±dÄ±r.")
+            .Matches(@"[A-Z]").WithMessage("Åifre en az bir bÃ¼yÃ¼k harf iÃ§ermelidir.")
+            .Matches(@"[0-9]").WithMessage("Åifre en az bir rakam iÃ§ermelidir.");
+    }
+}
+
+public class VerifyEmailRequestValidator : AbstractValidator<VerifyEmailRequest>
+{
+    public VerifyEmailRequestValidator()
+    {
+        RuleFor(x => x.UserId)
+            .NotEmpty().WithMessage("KullanÄ±cÄ± ID zorunludur.");
+        RuleFor(x => x.Token)
+            .NotEmpty().WithMessage("Token zorunludur.");
+    }
+}
+
+public class ResendVerificationRequestValidator : AbstractValidator<ResendVerificationRequest>
+{
+    public ResendVerificationRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email adresi zorunludur.")
+            .EmailAddress().WithMessage("GeÃ§erli bir email adresi giriniz.");
+    }
+}
+```
+
+### `/BeachGo/api/Services/IOtpService.cs`
+```csharp
+namespace BeachGo.Api.Services;
+
+public interface IOtpService
+{
+    Task<string> GenerateAndSaveCodeAsync(string userId, string type);
+    Task<bool> ValidateCodeAsync(string userId, string code, string type);
+    Task InvalidateCodesAsync(string userId, string type);
+}
+```
+
+### `/BeachGo/api/Services/OtpService.cs`
+```csharp
+using BeachGo.Api.Data;
+using BeachGo.Api.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace BeachGo.Api.Services;
+
+public class OtpService : IOtpService
+{
+    private readonly ApplicationDbContext _context;
+    private readonly ILogger<OtpService> _logger;
+
+    public OtpService(ApplicationDbContext context, ILogger<OtpService> logger)
+    {
+        _context = context;
+        _logger = logger;
+    }
+
+    public async Task<string> GenerateAndSaveCodeAsync(string userId, string type)
+    {
+        // Mevcut aktif kodlarÄ± geÃ§ersiz kÄ±l
+        await InvalidateCodesAsync(userId, type);
+
+        var code = Guid.NewGuid().ToString("N"); // 32 karakterlik token
+
+        var verificationCode = new VerificationCode
+        {
+            UserId = userId,
+            Code = code,
+            Type = type,
+            ExpiresAt = DateTime.UtcNow.AddHours(24),
+            IsUsed = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.VerificationCodes.Add(verificationCode);
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("OTP generated for userId={UserId}, type={Type}", userId, type);
+        return code;
+    }
+
+    public async Task<bool> ValidateCodeAsync(string userId, string code, string type)
+    {
+        var verificationCode = await _context.VerificationCodes
+            .Where(v => v.UserId == userId
+                     && v.Code == code
+                     && v.Type == type
+                     && !v.IsUsed
+                     && v.ExpiresAt > DateTime.UtcNow)
+            .FirstOrDefaultAsync();
+
+        if (verificationCode == null)
+        {
+            _logger.LogWarning("Invalid or expired OTP for userId={UserId}, type={Type}", userId, type);
+            return false;
+        }
+
+        verificationCode.IsUsed = true;
+        await _context.SaveChangesAsync();
+
+        return true;
+    }
+
+    public async Task InvalidateCodesAsync(string userId, string type)
+    {
+        var codes = await _context.VerificationCodes
+            .Where(v => v.UserId == userId && v.Type == type && !v.IsUsed)
+            .ToListAsync();
+
+        foreach (var c in codes)
+            c.IsUsed = true;
+
+        if (codes.Any())
+            await _context.SaveChangesAsync();
+    }
+}
+```
+
+### `/BeachGo/api/Services/MockSmsService.cs`
+```csharp
+namespace BeachGo.Api.Services;
+
+public interface IEmailService
+{
+    Task SendVerificationEmailAsync(string email, string userId, string token);
+    Task SendPasswordResetEmailAsync(string email, string userId, string token);
+}
+
+public class MockEmailService : IEmailService
+{
+    private readonly ILogger<MockEmailService> _logger;
+
+    public MockEmailService(ILogger<MockEmailService> logger)
+    {
+        _logger = logger;
+    }
+
+    public Task SendVerificationEmailAsync(string email, string userId, string token)
+    {
+        _logger.LogInformation(
+            "[MOCK EMAIL] Verification email to {Email}: userId={UserId}, token={Token}",
+            email, userId, token);
+        return Task.CompletedTask;
+    }
+
+    public Task SendPasswordResetEmailAsync(string email, string userId, string token)
+    {
+        _logger.LogInformation(
+            "[MOCK EMAIL] Password reset email to {Email}: userId={UserId}, token={Token}",
+            email, userId, token);
+        return Task.CompletedTask;
+    }
+}
+```
+
+### `/BeachGo/api/Services/IAuthService.cs`
+```csharp
+using BeachGo.Api.Models;
+
+namespace BeachGo.Api.Services;
+
+public interface IAuthService
+{
+    Task<AuthResponse> RegisterAsync(RegisterRequest request);
+    Task<AuthResponse> LoginAsync(LoginRequest request);
+    Task<AuthResponse> VerifyEmailAsync(VerifyEmailRequest request);
+    Task<AuthResponse> ForgotPasswordAsync(ForgotPasswordRequest request);
+    Task<AuthResponse> ResetPasswordAsync(ResetPasswordRequest request);
+    Task<AuthResponse> ResendVerificationAsync(ResendVerificationRequest request);
+}
+```
+
+### `/BeachGo/api/Services/AuthService.cs`
+```csharp
+using BeachGo.Api.Models;
+using Microsoft.AspNetCore.Identity;
+
+namespace BeachGo.Api.Services;
+
+public class AuthService : IAuthService
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IOtpService _otpService;
+    private readonly IEmailService _emailService;
+    private readonly IJwtService _jwtService;
+    private readonly ILogger<AuthService> _logger;
+
+    public AuthService(
+        UserManager<ApplicationUser> userManager,
+        IOtpService otpService,
+        IEmailService emailService,
+        IJwtService jwtService,
+        ILogger<AuthService> logger)
+    {
+        _userManager = userManager;
+        _otpService = otpService;
+        _emailService = emailService;
+        _jwtService = jwtService;
+        _logger = logger;
+    }
+
+    public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+    {
+        var existingUser = await _userManager.FindByEmailAsync(request.Email);
+        if (existingUser != null)
+            return new AuthResponse { Success = false, Message = "Bu email adresi zaten kullanÄ±mda." };
+
+        var user = new ApplicationUser
+        {
+            UserName = request.Email,
+            Email = request.Email,
+            FullName = request.FullName,
+            PhoneNumber = request.PhoneNumber,
+            EmailConfirmed = false
+        };
+
+        var result = await _userManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded)
+            return new AuthResponse
+            {
+                Success = false,
+                Message = string.Join(", ", result.Errors.Select(e => e.Description))
+            };
+
+        var token = await _otpService.GenerateAndSaveCodeAsync(user.Id, "email_verification");
+        await _emailService.SendVerificationEmailAsync(user.Email!, user.Id, token);
+
+        return new AuthResponse
+        {
+            Success = true,
+            Message = "KayÄ±t baÅarÄ±lÄ±. Email adresinizi doÄrulayÄ±n.",
+            UserId = user.Id
+        };
+    }
+
+    public async Task<AuthResponse> LoginAsync(LoginRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return new AuthResponse { Success = false, Message = "Email veya Åifre hatalÄ±." };
+
+        var isPasswordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+        if (!isPasswordValid)
+            return new AuthResponse { Success = false, Message = "Email veya Åifre hatalÄ±." };
+
+        if (!user.EmailConfirmed)
+            return new AuthResponse { Success = false, Message = "Email adresinizi doÄrulamanÄ±z gerekmektedir." };
+
+        var token = _jwtService.GenerateToken(user);
+
+        return new AuthResponse
+        {
+            Success = true,
+            Token = token,
+            UserId = user.Id,
+            Email = user.Email
+        };
+    }
+
+    public async Task<AuthResponse> VerifyEmailAsync(VerifyEmailRequest request)
+    {
+        var user = await _userManager.FindByIdAsync(request.UserId);
+        if (user == null)
+            return new AuthResponse { Success = false, Message = "KullanÄ±cÄ± bulunamadÄ±." };
+
+        if (user.EmailConfirmed)
+            return new AuthResponse { Success = true, Message = "Email zaten doÄrulanmÄ±Å." };
+
+        var isValid = await _otpService.ValidateCodeAsync(request.UserId, request.Token, "email_verification");
+        if (!isValid)
+            return new AuthResponse { Success = false, Message = "GeÃ§ersiz veya sÃ¼resi dolmuÅ doÄrulama kodu." };
+
+        user.EmailConfirmed = true;
+        await _userManager.UpdateAsync(user);
+
+        return new AuthResponse { Success = true, Message = "Email baÅarÄ±yla doÄrulandÄ±." };
+    }
+
+    public async Task<AuthResponse> ForgotPasswordAsync(ForgotPasswordRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        // GÃ¼venlik: kullanÄ±cÄ± bulunamasa bile baÅarÄ±lÄ± dÃ¶n
+        if (user == null)
+            return new AuthResponse { Success = true, Message = "Åifre sÄ±fÄ±rlama linki gÃ¶nderildi." };
+
+        var token = await _otpService.GenerateAndSaveCodeAsync(user.Id, "password_reset");
+        await _emailService.SendPasswordResetEmailAsync(user.Email!, user.Id, token);
+
+        return new AuthResponse { Success = true, Message = "Åifre sÄ±fÄ±rlama linki email adresinize gÃ¶nderildi." };
+    }
+
+    public async Task<AuthResponse> ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return new AuthResponse { Success = false, Message = "KullanÄ±cÄ± bulunamadÄ±." };
+
+        var isValid = await _otpService.ValidateCodeAsync(user.Id, request.Token, "password_reset");
+        if (!isValid)
+            return new AuthResponse { Success = false, Message = "GeÃ§ersiz veya sÃ¼resi dolmuÅ token." };
+
+        var removeResult = await _userManager.RemovePasswordAsync(user);
+        if (!removeResult.Succeeded)
+            return new AuthResponse { Success = false, Message = "Åifre sÄ±fÄ±rlanamadÄ±." };
+
+        var addResult = await _userManager.AddPasswordAsync(user, request.NewPassword);
+        if (!addResult.Succeeded)
+            return new AuthResponse
+            {
+                Success = false,
+                Message = string.Join(", ", addResult.Errors.Select(e => e.Description))
+            };
+
+        return new AuthResponse { Success = true, Message = "Åifreniz baÅarÄ±yla sÄ±fÄ±rlandÄ±." };
+    }
+
+    public async Task<AuthResponse> ResendVerificationAsync(ResendVerificationRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return new AuthResponse { Success = true, Message = "DoÄrulama emaili gÃ¶nderildi." };
+
+        if (user.EmailConfirmed)
+            return new AuthResponse { Success = false, Message = "Email zaten doÄrulanmÄ±Å." };
+
+        var token = await _otpService.GenerateAndSaveCodeAsync(user.Id, "email_verification");
+        await _emailService.SendVerificationEmailAsync(user.Email!, user.Id, token);
+
+        return new AuthResponse { Success = true, Message = "DoÄrulama emaili gÃ¶nderildi." };
+    }
+}
+```
+
+### `/BeachGo/api/Controllers/AuthController.cs`
+```csharp
+using BeachGo.Api.Models;
+using BeachGo.Api.Services;
+using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
+
+namespace BeachGo.Api.Controllers;
+
+[ApiController]
+[Route("api/auth")]
+public class AuthController : ControllerBase
+{
+    private readonly IAuthService _authService;
+    private readonly IValidator<ForgotPasswordRequest> _forgotPasswordValidator;
+    private readonly IValidator<ResetPasswordRequest> _resetPasswordValidator;
+    private readonly IValidator<VerifyEmailRequest> _verifyEmailValidator;
+    private readonly IValidator<ResendVerificationRequest> _resendVerificationValidator;
+
+    public AuthController(
+        IAuthService authService,
+        IValidator<ForgotPasswordRequest> forgotPasswordValidator,
+        IValidator<ResetPasswordRequest> resetPasswordValidator,
+        IValidator<VerifyEmailRequest> verifyEmailValidator,
+        IValidator<ResendVerificationRequest> resendVerificationValidator)
+    {
+        _authService = authService;
+        _forgotPasswordValidator = forgotPasswordValidator;
+        _resetPasswordValidator = resetPasswordValidator;
+        _verifyEmailValidator = verifyEmailValidator;
+        _resendVerificationValidator = resendVerificationValidator;
+    }
+
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+    {
+        var result = await _authService.RegisterAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    {
+        var result = await _authService.LoginAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
+    {
+        var validation = await _verifyEmailValidator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return BadRequest(new { errors = validation.Errors.Select(e => e.ErrorMessage) });
+
+        var result = await _authService.VerifyEmailAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        var validation = await _forgotPasswordValidator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return BadRequest(new { errors = validation.Errors.Select(e => e.ErrorMessage) });
+
+        var result = await _authService.ForgotPasswordAsync(request);
+        return Ok(result); // Her zaman 200 dÃ¶n (gÃ¼venlik)
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        var validation = await _resetPasswordValidator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return BadRequest(new { errors = validation.Errors.Select(e => e.ErrorMessage) });
+
+        var result = await _authService.ResetPasswordAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
+
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
+    {
+        var validation = await _resendVerificationValidator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return BadRequest(new { errors = validation.Errors.Select(e => e.ErrorMessage) });
+
+        var result = await _authService.ResendVerificationAsync(request);
+        return result.Success ? Ok(result) : BadRequest(result);
+    }
 }
 ```
 
 ---
 
-## AdÄ±m 8: Build ve Test
+## ADIM 3: DbContext'i Kontrol Et
+
+`ApplicationDbContext.cs` dosyasÄ±nda `VerificationCodes` DbSet var mÄ± kontrol et:
+```csharp
+public DbSet<VerificationCode> VerificationCodes { get; set; }
+```
+Yoksa ekle.
+
+---
+
+## ADIM 4: Program.cs / DI KayÄ±tlarÄ±nÄ± Kontrol Et
+
+`Program.cs` veya `Startup.cs` iÃ§inde Åu kayÄ±tlarÄ±n olduÄundan emin ol:
+```csharp
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<IEmailService, MockEmailService>();
+
+// FluentValidation validators
+builder.Services.AddScoped<IValidator<ForgotPasswordRequest>, ForgotPasswordRequestValidator>();
+builder.Services.AddScoped<IValidator<ResetPasswordRequest>, ResetPasswordRequestValidator>();
+builder.Services.AddScoped<IValidator<VerifyEmailRequest>, VerifyEmailRequestValidator>();
+builder.Services.AddScoped<IValidator<ResendVerificationRequest>, ResendVerificationRequestValidator>();
+```
+
+---
+
+## ADIM 5: Migration OluÅtur
+
+VerificationCode tablosu iÃ§in migration oluÅtur:
+```bash
+cd /BeachGo/api
+dotnet ef migrations add AddVerificationCodes
+dotnet ef database update
+```
+
+EÄer migration zaten varsa bu adÄ±mÄ± atla, sadece build al.
+
+---
+
+## ADIM 6: Build Al
 
 ```bash
-cd <api-proje-klasÃ¶rÃ¼>
+cd /BeachGo/api
 dotnet build
 ```
 
-Build **hatasÄ±z** tamamlanmalÄ±.
-
-ArdÄ±ndan Swagger Ã¼zerinden test et:
-- `POST /api/auth/forgot-password` â geÃ§erli email ile **200**, geÃ§ersiz body ile **400**
-- `POST /api/auth/reset-password` â yanlÄ±Å token ile **400**
-- `POST /api/auth/verify-email` â yanlÄ±Å token ile **400**
+**Build Ã§Ä±ktÄ±sÄ±nÄ± SONUÃ bÃ¶lÃ¼mÃ¼nde mutlaka raporla.**
 
 ---
 
-## Ãnemli Notlar
-- `MockSmsService`: gerÃ§ek SMS gÃ¶ndermez, sadece `ILogger` ile token'Ä± konsola yaz
-- `VerificationCode` entity'sinde `IsUsed` (bool) ve `ExpiresAt` (DateTime) alanlarÄ± olmalÄ±
-- Mevcut Ã§alÄ±Åan kodlarÄ± **bozma**, sadece eksikleri ekle
+## ADIM 7: Test
+
+Build baÅarÄ±lÄ±ysa uygulamayÄ± baÅlat ve Swagger'dan test et:
+```bash
+dotnet run
+```
+
+Test et:
+- `POST /api/auth/forgot-password` â `{"email": "test@test.com"}` â 200 dÃ¶nmeli
+- `POST /api/auth/reset-password` â eksik/yanlÄ±Å body â 400 dÃ¶nmeli  
+- `POST /api/auth/verify-email` â eksik body â 400 dÃ¶nmeli
 
 ---
 
-<commit_message>feat: complete auth backend - email verification, forgot/reset password endpoints with FluentValidation</commit_message>
+<commit_message>feat: implement email verification and password reset auth flow with FluentValidation and OTP service</commit_message>
 
 
 Final response requirements:

@@ -24,11 +24,27 @@ namespace BeachRehberi.API.Controllers
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _env;
 
-        public AuthController(IAuthService authService, IConfiguration configuration, IWebHostEnvironment env)
+                private readonly IValidator<ForgotPasswordRequest> _forgotPasswordValidator;
+        private readonly IValidator<ResetPasswordRequest> _resetPasswordValidator;
+        private readonly IValidator<VerifyEmailRequest> _verifyEmailValidator;
+        private readonly IValidator<ResendVerificationRequest> _resendVerificationValidator;
+
+        public AuthController(
+            IAuthService authService, 
+            IConfiguration configuration, 
+            IWebHostEnvironment env,
+            IValidator<ForgotPasswordRequest> forgotPasswordValidator,
+            IValidator<ResetPasswordRequest> resetPasswordValidator,
+            IValidator<VerifyEmailRequest> verifyEmailValidator,
+            IValidator<ResendVerificationRequest> resendVerificationValidator)
         {
             _authService = authService;
             _configuration = configuration;
             _env = env;
+            _forgotPasswordValidator = forgotPasswordValidator;
+            _resetPasswordValidator = resetPasswordValidator;
+            _verifyEmailValidator = verifyEmailValidator;
+            _resendVerificationValidator = resendVerificationValidator;
         }
 
         [AllowAnonymous]
@@ -61,35 +77,56 @@ namespace BeachRehberi.API.Controllers
             }
             catch(Exception ex)
             {
-                return BadRequest(new AuthResponse { Success = false, Message = ex.Message });
+                return BadRequest(new AuthResult { Success = false, Message = ex.Message });
             }
         }
 
-        [AllowAnonymous]
+                [AllowAnonymous]
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
+            var validation = await _forgotPasswordValidator.ValidateAsync(request);
+            if (!validation.IsValid)
+                return BadRequest(new { errors = validation.Errors.Select(e => e.ErrorMessage) });
+
             var result = await _authService.ForgotPasswordAsync(request);
-            if (result.Success) return Ok(result);
-            return BadRequest(result);
+            return Ok(result); // Her zaman 200 d�n (g�venlik)
         }
 
-        [AllowAnonymous]
+                [AllowAnonymous]
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
         {
+            var validation = await _resetPasswordValidator.ValidateAsync(request);
+            if (!validation.IsValid)
+                return BadRequest(new { errors = validation.Errors.Select(e => e.ErrorMessage) });
+
             var result = await _authService.ResetPasswordAsync(request);
-            if (result.Success) return Ok(result);
-            return BadRequest(result);
+            return result.Success ? Ok(result) : BadRequest(result);
         }
 
-        [AllowAnonymous]
+                [AllowAnonymous]
         [HttpPost("verify-email")]
         public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
         {
+            var validation = await _verifyEmailValidator.ValidateAsync(request);
+            if (!validation.IsValid)
+                return BadRequest(new { errors = validation.Errors.Select(e => e.ErrorMessage) });
+
             var result = await _authService.VerifyEmailAsync(request);
-            if (result.Success) return Ok(result);
-            return BadRequest(result);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
+                [AllowAnonymous]
+        [HttpPost("resend-verification")]
+        public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
+        {
+            var validation = await _resendVerificationValidator.ValidateAsync(request);
+            if (!validation.IsValid)
+                return BadRequest(new { errors = validation.Errors.Select(e => e.ErrorMessage) });
+
+            var result = await _authService.ResendVerificationAsync(request);
+            return result.Success ? Ok(result) : BadRequest(result);
         }
 
         // ===================== LOGOUT =====================
@@ -100,7 +137,7 @@ namespace BeachRehberi.API.Controllers
             var refreshToken = Request.Cookies["refreshToken"];
             await _authService.LogoutAsync(null, refreshToken);
             Response.Cookies.Delete("refreshToken");
-            return Ok(new AuthResponse { Success = true, Message = "Çıkış başarılı." });
+            return Ok(new AuthResult { Success = true, Message = "Çıkış başarılı." });
         }
 
         // ===================== REVOKE =====================
@@ -109,8 +146,8 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> Revoke([FromBody] RevokeRequest request)
         {
             var result = await _authService.RevokeTokenAsync(request.RefreshToken, GetIpAddress(), "manual_revoke");
-            if (result.Success) return Ok(new AuthResponse { Success = true, Message = result.Message });
-            return BadRequest(new AuthResponse { Success = false, Message = result.Message });
+            if (result.Success) return Ok(new AuthResult { Success = true, Message = result.Message });
+            return BadRequest(new AuthResult { Success = false, Message = result.Message });
         }
 
         private string GetIpAddress()

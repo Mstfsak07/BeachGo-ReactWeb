@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using BeachRehberi.API.Models;
 
 namespace BeachRehberi.API.Validators;
@@ -41,5 +41,50 @@ public class LoginRequestValidator : AbstractValidator<LoginRequest>
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Şifre zorunludur.");
+    }
+}
+
+public class ForgotPasswordRequestValidator : AbstractValidator<ForgotPasswordRequest>
+{
+    public ForgotPasswordRequestValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email boş olmamalı")
+            .EmailAddress().WithMessage("Geçerli email formatı olmalı");
+    }
+}
+
+public class ResetPasswordRequestValidator : AbstractValidator<ResetPasswordRequest>
+{
+    public ResetPasswordRequestValidator()
+    {
+        RuleFor(x => x.Token)
+            .NotEmpty().WithMessage("Token boş olmamalı");
+            
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email boş olmamalı")
+            .EmailAddress().WithMessage("Geçerli email formatı olmalı");
+            
+        RuleFor(x => x.NewPassword)
+            .NotEmpty().WithMessage("Yeni şifre boş olmamalı")
+            .MinimumLength(8).WithMessage("Yeni şifre min 8 karakter olmalı")
+            .Matches("[A-Z]").WithMessage("Yeni şifre en az 1 büyük harf içermeli")
+            .Matches("[0-9]").WithMessage("Yeni şifre en az 1 rakam içermeli");
+            
+        RuleFor(x => x.ConfirmPassword)
+            .Equal(x => x.NewPassword).WithMessage("Şifreler eşleşmiyor");
+    }
+}
+
+public class VerifyEmailRequestValidator : AbstractValidator<VerifyEmailRequest>
+{
+    public VerifyEmailRequestValidator()
+    {
+        RuleFor(x => x.Token)
+            .NotEmpty().WithMessage("Token boş olmamalı");
+            
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email boş olmamalı")
+            .EmailAddress().WithMessage("Geçerli email formatı olmalı");
     }
 }

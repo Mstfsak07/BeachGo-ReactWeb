@@ -179,25 +179,30 @@ Final response requirements:
         if (Test-Path $tempOutput) { Remove-Item $tempOutput -Force }
 
         try {
-            # Bat dosyasini olustur — yonlendirme bat icinde, path'ler kacan tirmak gerektirmiyor
+            # CI=true ve NO_COLOR=1 → Gemini PTY açmaya çalışmaz, headless çalışır
             $batContent = @"
 @echo off
 set GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8045
 set GEMINI_API_KEY=$($env:GEMINI_API_KEY)
 set BEACHGO_ANTHROPIC_KEY=$($env:BEACHGO_ANTHROPIC_KEY)
+set CI=true
+set NO_COLOR=1
+set TERM=dumb
 cd /d "$automationDir"
 gemini --approval-mode yolo --model gemini-3-pro < "$tempPrompt" > "$tempOutput" 2>&1
+exit /b %ERRORLEVEL%
 "@
             $batContent | Set-Content $tempBat -Encoding ASCII
 
             Write-Log "Gemini baslatiliyor (iteration=$iteration, deneme=$retryCount)..."
 
+            # WindowStyle Hidden: gercek console var ama gizli — PTY attach sorunu olmaz
             $proc = Start-Process cmd.exe `
-                -ArgumentList "/c", "`"$tempBat`"" `
+                -ArgumentList "/c `"$tempBat`"" `
                 -WorkingDirectory $automationDir `
+                -WindowStyle Hidden `
                 -Wait `
-                -PassThru `
-                -NoNewWindow
+                -PassThru
 
             $exitCode = $proc.ExitCode
 

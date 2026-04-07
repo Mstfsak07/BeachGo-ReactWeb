@@ -27,6 +27,10 @@ public class BusinessUser
     public DateTime? LastLoginAt { get; private set; }
 
     public bool IsActive { get; private set; }
+    public string? PasswordResetToken { get; set; }
+    public DateTime? PasswordResetTokenExpiry { get; set; }
+    public string? EmailVerificationToken { get; set; }
+    public bool EmailVerified { get; set; } = false;
     public bool IsDeleted { get; private set; }
     public DateTime CreatedAt { get; private set; }
 

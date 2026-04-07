@@ -36,24 +36,22 @@ public class LoginResponse
 
 public class ForgotPasswordRequest
 {
-    [System.ComponentModel.DataAnnotations.Required]
-    [System.ComponentModel.DataAnnotations.EmailAddress]
     public string Email { get; set; } = string.Empty;
 }
 
 public class ResetPasswordRequest
 {
     [System.ComponentModel.DataAnnotations.Required]
-    public string Token { get; set; } = string.Empty;
-    
-    [System.ComponentModel.DataAnnotations.Required]
     [System.ComponentModel.DataAnnotations.EmailAddress]
     public string Email { get; set; } = string.Empty;
-    
+
+    [System.ComponentModel.DataAnnotations.Required]
+    public string Token { get; set; } = string.Empty;
+
     [System.ComponentModel.DataAnnotations.Required]
     [System.ComponentModel.DataAnnotations.MinLength(6)]
     public string NewPassword { get; set; } = string.Empty;
-    
+
     [System.ComponentModel.DataAnnotations.Required]
     [System.ComponentModel.DataAnnotations.Compare("NewPassword")]
     public string ConfirmPassword { get; set; } = string.Empty;
@@ -64,15 +62,13 @@ public class VerifyEmailRequest
     [System.ComponentModel.DataAnnotations.Required]
     [System.ComponentModel.DataAnnotations.EmailAddress]
     public string Email { get; set; } = string.Empty;
-    
+
     [System.ComponentModel.DataAnnotations.Required]
     public string Token { get; set; } = string.Empty;
 }
 
 public class ResendVerificationRequest
 {
-    [System.ComponentModel.DataAnnotations.Required]
-    [System.ComponentModel.DataAnnotations.EmailAddress]
     public string Email { get; set; } = string.Empty;
 }
 
@@ -82,8 +78,6 @@ public class AuthResult
     public string Message { get; set; } = string.Empty;
     public string? Token { get; set; }
     public List<string>? Errors { get; set; }
-    
-    // Added to prevent breaking Login/Register mapping
     public string? RefreshToken { get; set; }
     public DateTime? ExpiresAt { get; set; }
     public UserDto? User { get; set; }
@@ -111,13 +105,14 @@ public class RevokeRequest
 {
     public required string RefreshToken { get; set; }
 }
+
 public class RefreshRequest
 {
     public required string AccessToken { get; set; }
     public required string RefreshToken { get; set; }
 }
 
-public class UserRegisterRequest 
+public class UserRegisterRequest
 {
     public required string Username { get; set; }
     public required string Email { get; set; }

@@ -189,7 +189,7 @@ set CI=true
 set NO_COLOR=1
 set TERM=dumb
 cd /d "$automationDir"
-gemini --approval-mode yolo --model gemini-3-pro < "$tempPrompt" > "$tempOutput" 2>&1
+gemini --approval-mode yolo --model gemini-3-pro -p "@$tempPrompt" > "$tempOutput" 2>&1
 exit /b %ERRORLEVEL%
 "@
             $batContent | Set-Content $tempBat -Encoding ASCII

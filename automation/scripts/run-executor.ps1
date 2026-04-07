@@ -65,22 +65,97 @@ try {
     if (-not (Test-Path $coderSystemPath)) { throw "coder-system.txt bulunamadi." }
     $coderSystem = Get-Content $coderSystemPath -Raw -Encoding UTF8
 
+    # ── CONTEXT ENRICHMENT ──────────────────────────────────────────
+    # Plan'daki [API_ROOT] / [WEB_ROOT] placeholder'larini gercek path'e coz
+    $repoRoot = Split-Path $automationDir -Parent
+
+    # Otomatik proje koku tespiti
+    $apiRoot = ""
+    $webRoot = ""
+    $csprojFiles = @(Get-ChildItem -Path $repoRoot -Recurse -Filter "*.csproj" -ErrorAction SilentlyContinue | Select-Object -First 1)
+    if ($csprojFiles.Count -gt 0) { $apiRoot = $csprojFiles[0].DirectoryName }
+
+    $packageJsonFiles = @(Get-ChildItem -Path $repoRoot -Recurse -Filter "package.json" -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch "node_modules" } | Select-Object -First 1)
+    if ($packageJsonFiles.Count -gt 0) { $webRoot = $packageJsonFiles[0].DirectoryName }
+
+    Write-Log "Context: apiRoot=$apiRoot webRoot=$webRoot"
+
+    # Plan'daki referans dosyalari bul ve oku — [API_ROOT] ve gercek path'ler
+    $contextBlocks = [System.Text.StringBuilder]::new()
+    [void]$contextBlocks.AppendLine("=== PROJE DOSYA ICERIKLERI (Claude tarafindan okundu) ===")
+    [void]$contextBlocks.AppendLine("")
+
+    # Plan'da gecen .cs, .ts, .tsx, .json (package/program) dosya referanslarini yakala
+    $filePatterns = [regex]::Matches($planText, '`[^`]+\.(cs|ts|tsx|json|txt|csproj)`|(?:cat|type)\s+"?([^">\s]+\.[a-z]+)"?')
+    $resolvedFiles = [System.Collections.Generic.HashSet[string]]::new()
+
+    foreach ($m in $filePatterns) {
+        $raw = $m.Value -replace '^`|`$' -replace '^(cat|type)\s+"?' -replace '"?$'
+        $raw = $raw.Trim()
+        if ([string]::IsNullOrWhiteSpace($raw)) { continue }
+
+        # [API_ROOT] placeholder'ini gercek path ile degistir
+        $raw = $raw -replace '\[API_ROOT\]', $apiRoot -replace '\[WEB_ROOT\]', $webRoot
+
+        if (-not [System.IO.Path]::IsPathRooted($raw)) {
+            $raw = Join-Path $repoRoot $raw
+        }
+        if (-not $resolvedFiles.Add($raw)) { continue }
+
+        if (Test-Path $raw) {
+            $content = Get-Content $raw -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+            [void]$contextBlocks.AppendLine("--- FILE: $raw ---")
+            [void]$contextBlocks.AppendLine($content)
+            [void]$contextBlocks.AppendLine("")
+            Write-Log "Dosya okundu: $raw"
+        }
+    }
+
+    # Her zaman ekle: AuthController, AuthService, IAuthService, Program.cs (varsa)
+    $alwaysRead = @("AuthController.cs","AuthService.cs","IAuthService.cs","Program.cs","AuthModels.cs")
+    foreach ($fname in $alwaysRead) {
+        $found = Get-ChildItem -Path $repoRoot -Recurse -Filter $fname -ErrorAction SilentlyContinue |
+                 Where-Object { $_.FullName -notmatch "\\obj\\" -and $_.FullName -notmatch "\\bin\\" } |
+                 Select-Object -First 1
+        if ($found -and $resolvedFiles.Add($found.FullName)) {
+            $content = Get-Content $found.FullName -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+            [void]$contextBlocks.AppendLine("--- FILE: $($found.FullName) ---")
+            [void]$contextBlocks.AppendLine($content)
+            [void]$contextBlocks.AppendLine("")
+            Write-Log "Otomatik eklendi: $($found.FullName)"
+        }
+    }
+
+    $contextSection = $contextBlocks.ToString()
+    # ── CONTEXT ENRICHMENT SONU ─────────────────────────────────────
+
     $coderPrompt = @"
 $coderSystem
 
-Task:
+=== GOREV ===
 
 $instructionText
 
 $planText
 
+$contextSection
+
+=== TALIMATLAR ===
+- Yukarida FILE bloklari olarak verilen dosya iceriklerini kullan. Bu dosyalari tekrar okuman GEREKMEZ.
+- [API_ROOT] = $apiRoot
+- [WEB_ROOT] = $webRoot
+- Dosyalari DOGRUDAN bu tam path'lere yaz. Baska path deneme.
+- find, cat, ls gibi kesfetme komutlari calistirma — bilgi sana yukarida verildi.
+- Sadece kod yaz, dosyalara kaydet, build al, result.txt'e yaz.
+
 Final response requirements:
-- Briefly list the files changed.
-- Mention any remaining issue or follow-up work.
+- Briefly list the files changed (full paths).
+- Build result (success/fail + error if any).
 - Show the git commit message used.
 "@
     $coderPrompt | Set-Content $coderPromptPath -Encoding UTF8
-    Write-Log "coder-prompt.txt olusturuldu."
+    Write-Log "coder-prompt.txt olusturuldu (context enriched, $($resolvedFiles.Count) dosya eklendi)."
 
     $tempPrompt = Join-Path $env:TEMP "executor-prompt-$iteration.txt"
     $tempOutput = Join-Path $env:TEMP "gemini-out-$iteration.txt"

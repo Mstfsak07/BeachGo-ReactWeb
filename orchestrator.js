@@ -1,9 +1,12 @@
 import { spawn } from "child_process";
 import net from "net";
 import fs from "fs";
+import path from "path"; // 👈 EKLE
 
 const processes = {};
 
+const backendDir = path.join(process.cwd(), "BeachRehberi.API", "BeachRehberi.API");
+console.log("Backend dir:", backendDir);
 // 🔍 PORT KONTROL
 function isRunning(port) {
   return new Promise((resolve) => {
@@ -69,10 +72,10 @@ async function startAll() {
   // BACKEND
   if (!(await isRunning(5144))) {
     startProcess(
-      "BACKEND",
+      "Backend",
       "dotnet",
-      ["run"],
-      "./BeachRehberi.API"
+      ["run", "--project", "BeachRehberi.API.csproj"],
+      backendDir
     );
   } else {
     console.log("[OK] Backend already running");

@@ -22,8 +22,8 @@ public record BeachDetailDto(
     string Location,
     string City,
     string? District,
-    double Latitude,
-    double Longitude,
+    decimal Latitude,
+    decimal Longitude,
     string? Phone,
     string? Website,
     string? Instagram,
@@ -91,8 +91,8 @@ public class GetBeachByIdQueryHandler : IRequestHandler<GetBeachByIdQuery, Beach
             beach.Location,
             beach.City,
             beach.District,
-            beach.Latitude,
-            beach.Longitude,
+            (decimal)beach.Latitude,
+            (decimal)beach.Longitude,
             beach.Phone,
             beach.Website,
             beach.Instagram,
@@ -102,7 +102,7 @@ public class GetBeachByIdQueryHandler : IRequestHandler<GetBeachByIdQuery, Beach
             beach.CloseTime,
             beach.PricePerPerson,
             beach.Capacity,
-            beach.AverageRating,
+            (decimal)beach.AverageRating,
             beach.ReviewCount,
             beach.CoverImageUrl, // maps to ImageUrl
             beach.HasParking,
@@ -115,7 +115,7 @@ public class GetBeachByIdQueryHandler : IRequestHandler<GetBeachByIdQuery, Beach
                 .Where(p => !p.IsDeleted)
                 .OrderBy(p => p.DisplayOrder)
                 .Select(p => new BeachPhotoDto(
-    p.Id, p.ImageUrl, p.Caption, p.IsCoverPhoto, p.DisplayOrder))
+    p.Id, p.Url, p.Caption, p.IsCover, p.DisplayOrder))
                 .ToList(),
             beach.Reviews
                 .Select(r => new BeachReviewSummaryDto(

@@ -11,6 +11,7 @@ public class BeachPhoto : BaseEntity
     public string? Caption { get; private set; }
     public bool IsCover { get; private set; } = false;
     public int Order { get; private set; } = 0;
+    public int DisplayOrder { get; set; }
 
     // EF Core constructor
     private BeachPhoto() { }

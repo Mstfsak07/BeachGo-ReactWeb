@@ -81,7 +81,7 @@ public class GetBeachesQueryHandler
                 b.District,
                 b.CoverImageUrl, // maps to ImageUrl
                 b.PricePerPerson,
-                b.AverageRating,
+                (decimal)b.AverageRating,
                 b.TotalReviews,
                 b.IsVerified,
                 b.HasParking,
@@ -95,7 +95,7 @@ public class GetBeachesQueryHandler
 
         _logger.LogDebug(
             "Beach listesi sorgulandı → Toplam: {Total}, Sayfa: {Page}/{TotalPages}",
-            totalCount, pageNumber, (int)Math.Ceiling(totalCount / (double)pageSize));
+            totalCount, pageNumber, (int)Math.Ceiling(totalCount / (decimal)pageSize));
 
         return Result<PagedResult<BeachListItemDto>>.Success(
             PagedResult<BeachListItemDto>.Create(items, totalCount, pageNumber, pageSize));

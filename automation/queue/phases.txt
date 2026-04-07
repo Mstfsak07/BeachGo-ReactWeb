@@ -1,0 +1,139 @@
+﻿FAZ_LISTESI_BASLANGIC
+FAZ 1: Authentication AkÄ±ÅÄ± - Email DoÄrulama ve Åifre SÄ±fÄ±rlama Backend Tamamlama
+SCOPE: api
+DOSYALAR: AuthController.cs, AuthService.cs, IAuthService.cs, AuthModels.cs, VerificationCode.cs, OtpService.cs, IOtpService.cs, MockSmsService.cs
+GÃREV: VerifyEmail endpoint'inin token tabanlÄ± Ã§alÄ±ÅtÄ±ÄÄ±nÄ± doÄrula; ForgotPassword, ResetPassword, ResendVerification endpoint'lerinin AuthController'da tam ve tutarlÄ± implement edildiÄini kontrol et. Eksik metodlarÄ± IAuthService/AuthService'e ekle. AuthModels'deki ForgotPasswordRequest, ResetPasswordRequest, VerifyEmailRequest DTO'larÄ±nÄ±n validasyonunu FluentValidation ile gÃ¼Ã§lendir. OtpService'in kod Ã¼retme/doÄrulama mantÄ±ÄÄ±nÄ± ve expiry kontrolÃ¼nÃ¼ gÃ¶zden geÃ§ir.
+TEST: dotnet build hatasÄ±z tamamlanmalÄ±; Swagger Ã¼zerinden /api/auth/forgot-password, /api/auth/reset-password, /api/auth/verify-email endpoint'leri 200/400 dÃ¶ndÃ¼rmeli
+---
+FAZ 2: Authentication AkÄ±ÅÄ± - Frontend Email DoÄrulama ve Åifre SÄ±fÄ±rlama SayfalarÄ±
+SCOPE: web
+DOSYALAR: VerifyEmail.jsx, ForgotPassword.jsx, ResetPassword.jsx, authService.js, api.js
+GÃREV: VerifyEmail.jsx sayfasÄ±nda URL'den token parametresi okunup API'ye gÃ¶nderilmeli; yÃ¼kleniyor/baÅarÄ±/hata state'leri eklenip kullanÄ±cÄ± yÃ¶nlendirmesi yapÄ±lmalÄ±. ForgotPassword.jsx'e loading state, baÅarÄ± mesajÄ± ve hata yÃ¶netimi ekle. ResetPassword.jsx'e URL'den token okuma, Åifre eÅleÅme validasyonu, loading/hata state'leri ekle. authService.js'deki ilgili metodlarÄ±n doÄru endpoint'leri Ã§aÄÄ±rdÄ±ÄÄ±nÄ± kontrol et.
+TEST: npm run build hatasÄ±z tamamlanmalÄ±; geÃ§ersiz token ile /verify-email?token=abc aÃ§Ä±ldÄ±ÄÄ±nda hata mesajÄ± gÃ¶sterilmeli
+---
+FAZ 3: Rezervasyon AkÄ±ÅÄ± - Backend OluÅturma ve Validasyon
+SCOPE: api
+DOSYALAR: ReservationsController.cs, ReservationService.cs, IReservationService.cs, GuestReservationsController.cs, GuestReservationService.cs, IGuestReservationService.cs, ReservationCommandHandler.cs, Reservation.cs, ReservationPayment.cs
+GÃREV: ReservationService'de CreateReservation metodunun kapasite kontrolÃ¼, Ã§akÄ±Åma kontrolÃ¼ ve Ã¶deme entegrasyonu (MockPaymentService) yaptÄ±ÄÄ±nÄ± doÄrula. GuestReservationService'de misafir rezervasyon oluÅturma akÄ±ÅÄ±nÄ± kontrol et, eksik validasyonlarÄ± ekle. ReservationsController'daki endpoint'lerde [Authorize] attribute'larÄ±nÄ±n doÄru role gÃ¶re ayarlandÄ±ÄÄ±nÄ± kontrol et. CancelReservation metodunun sadece rezervasyon sahibinin iptal edebildiÄini doÄrula.
+TEST: dotnet build hatasÄ±z; Swagger Ã¼zerinden yetkisiz kullanÄ±cÄ± ile POST /api/reservations 401 dÃ¶ndÃ¼rmeli, geÃ§ersiz veri ile 400 dÃ¶ndÃ¼rmeli
+---
+FAZ 4: Rezervasyon AkÄ±ÅÄ± - Frontend Rezervasyon OluÅturma AdÄ±mlarÄ±
+SCOPE: web
+DOSYALAR: StepDateType.js, StepEmailVerify.js, StepPayment.js, StepPersonalInfo.js, StepSuccess.js, reservationService.js, GuestReservation (lazy import)
+GÃREV: Step bileÅenlerinde loading state'leri, hata mesajlarÄ± ve geri/ileri navigasyonunda state korunmasÄ±nÄ± kontrol et. StepPayment.js'de Ã¶deme baÅarÄ±sÄ±z/baÅarÄ±lÄ± senaryolarda kullanÄ±cÄ±ya net geri bildirim verildiÄini doÄrula. StepEmailVerify.js'de OTP gÃ¶nderme/doÄrulama akÄ±ÅÄ±ndaki hatalarÄ± yakala. reservationService.js'deki metodlarÄ±n API response'larÄ±nÄ± doÄru handle ettiÄini kontrol et; eksik error handling ekle.
+TEST: npm run build hatasÄ±z; /reservation/:beachId rotasÄ± aÃ§Ä±labilmeli ve adÄ±mlar arasÄ± geÃ§iÅ Ã§alÄ±ÅmalÄ±
+---
+FAZ 5: Rezervasyon AkÄ±ÅÄ± - Frontend Rezervasyon Listesi ve Ä°ptal
+SCOPE: web
+DOSYALAR: Reservations.jsx, reservationService.js, api.js
+GÃREV: Reservations.jsx sayfasÄ±nda kullanÄ±cÄ±nÄ±n kendi rezervasyonlarÄ±nÄ± listeleyen API Ã§aÄrÄ±sÄ±nÄ±n doÄru endpoint'i kullandÄ±ÄÄ±nÄ± kontrol et. Sayfa loading skeleton'Ä± (Skeleton.js bileÅenini kullan), boÅ liste durumu ve hata state'i ekle. Ä°ptal iÅleminde onay dialogu, loading state ve baÅarÄ±/hata feedback'i ekle. GeÃ§miÅ/aktif rezervasyon filtreleme iÃ§in tab veya filtre UI'Ä± ekle.
+TEST: npm run build hatasÄ±z; /reservations rotasÄ± login sonrasÄ± aÃ§Ä±labilmeli, liste gÃ¶rÃ¼nmeli
+---
+FAZ 6: KullanÄ±cÄ± Profili - Backend Endpoint GÃ¼Ã§lendirme
+SCOPE: api
+DOSYALAR: UsersController.cs, AuthService.cs, IAuthService.cs, AuthModels.cs, BusinessUser.cs
+GÃREV: UsersController'da GET /api/users/me, PUT /api/users/me (profil gÃ¼ncelleme), PUT /api/users/me/password (Åifre deÄiÅtirme) endpoint'lerinin tam ve gÃ¼venli implement edildiÄini doÄrula. Åifre deÄiÅtirme endpoint'inde mevcut Åifre doÄrulamasÄ± zorunlu olmalÄ±. PUT isteÄinde gÃ¼ncellenebilir alanlar (ad, soyad, telefon) FluentValidation ile kontrol edilmeli. Endpoint'lerin [Authorize] ile korunduÄunu doÄrula.
+TEST: dotnet build hatasÄ±z; Swagger'da geÃ§erli JWT ile GET /api/users/me 200 ve kullanÄ±cÄ± verisi dÃ¶ndÃ¼rmeli
+---
+FAZ 7: KullanÄ±cÄ± Profili - Frontend Profil GÃ¶rÃ¼ntÃ¼leme ve DÃ¼zenleme
+SCOPE: web
+DOSYALAR: Profile.jsx, userService.js, api.js
+GÃREV: Profile.jsx'te kullanÄ±cÄ± bilgilerini GET /api/users/me'den Ã§eken loading/hata state'li bir yapÄ± kur. Profil dÃ¼zenleme formu: ad, soyad, telefon alanlarÄ±nÄ± dÃ¼zenlenebilir yap, kaydet butonunda loading state ekle. Åifre deÄiÅtirme bÃ¶lÃ¼mÃ¼: mevcut Åifre, yeni Åifre, yeni Åifre tekrar alanlarÄ±yla ayrÄ± bir form ekle. Toast notification'larla baÅarÄ±/hata mesajlarÄ± gÃ¶ster. userService.js'de eksik metodlarÄ± (updateProfile, changePassword) ekle.
+TEST: npm run build hatasÄ±z; /profile sayfasÄ± aÃ§Ä±labilmeli, kullanÄ±cÄ± adÄ± gÃ¶rÃ¼nmeli
+---
+FAZ 8: Favoriler - Backend ve Frontend Tamamlama
+SCOPE: api
+DOSYALAR: UsersController.cs veya ayrÄ± FavoritesController (yoksa ekle), favoriteService.js, Favorites.jsx
+GÃREV: Backend'de GET /api/users/favorites, POST /api/users/favorites/{beachId}, DELETE /api/users/favorites/{beachId} endpoint'lerini kontrol et; yoksa UsersController'a ekle. BeachDbContext'te User-Beach favori iliÅkisinin tanÄ±mlÄ± olduÄunu doÄrula. Frontend Favorites.jsx'te favorileri listeleyen, loading skeleton kullanan, boÅ durum mesajÄ± gÃ¶steren ve favoriden Ã§Ä±karma yapabilen tam bir sayfa oluÅtur. favoriteService.js metodlarÄ±nÄ± endpoint'lerle eÅleÅtir.
+TEST: dotnet build ve npm run build hatasÄ±z; /favorites sayfasÄ± aÃ§Ä±labilmeli
+---
+FAZ 9: Admin Paneli - Eksik Endpoint'ler ve GÃ¼venlik
+SCOPE: api
+DOSYALAR: AdminController.cs, BusinessUser.cs, Beach.cs, AuthModels.cs
+GÃREV: AdminController'da kullanÄ±cÄ± listeleme (GET /api/admin/users), kullanÄ±cÄ± rolÃ¼ deÄiÅtirme (PUT /api/admin/users/{id}/role), kullanÄ±cÄ± deaktive etme (DELETE/PUT /api/admin/users/{id}/status), plaj onaylama (PUT /api/admin/beaches/{id}/approve), tÃ¼m rezervasyonlarÄ± gÃ¶rme endpoint'lerini kontrol et ve eksikleri ekle. TÃ¼m Admin endpoint'lerinin [Authorize(Policy="AdminOnly")] ile korunduÄunu doÄrula. Endpoint'lere sayfalama (PagedResponse) desteÄi ekle.
+TEST: dotnet build hatasÄ±z; Admin olmayan JWT ile /api/admin/* endpoint'leri 403 dÃ¶ndÃ¼rmeli
+---
+FAZ 10: Admin Paneli - Frontend Tamamlama
+SCOPE: web
+DOSYALAR: AdminPanel.jsx, api.js
+GÃREV: AdminPanel.jsx'te kullanÄ±cÄ± listesi tablosu (loading skeleton, pagination ile), plaj onay/red iÅlemleri, kullanÄ±cÄ± rol deÄiÅtirme ve deaktive etme UI'larÄ±nÄ± ekle. Her aksiyon iÃ§in onay dialogu ve loading state ekle. Hata durumlarÄ±nda toast notification gÃ¶ster. Veri boÅ geldiÄinde empty state mesajÄ± ekle. TÃ¼m admin iÅlemlerinin sadece Admin rolÃ¼yle eriÅildiÄini ProtectedRoute Ã¼zerinden kontrol et.
+TEST: npm run build hatasÄ±z; /admin rotasÄ± Admin rolÃ¼yle aÃ§Ä±labilmeli, kullanÄ±cÄ± listesi gÃ¶rÃ¼nmeli
+---
+FAZ 11: Business Dashboard - Ä°statistik ve Rezervasyon YÃ¶netimi
+SCOPE: web
+DOSYALAR: Dashboard.jsx, DashboardStats.jsx, DashboardReservations.jsx, businessService.js, api.js
+GÃREV: DashboardStats.jsx'te plaj istatistiklerini (gÃ¼nlÃ¼k/haftalÄ±k/aylÄ±k rezervasyon sayÄ±sÄ±, doluluk oranÄ±, gelir) gÃ¶steren kartlarÄ± API'den Ã§ekecek Åekilde dÃ¼zenle; loading skeleton ve hata state'i ekle. DashboardReservations.jsx'te rezervasyon listesini durum filtreleme, tarih sÄ±ralama ve onay/red/iptal aksiyonlarÄ±yla tamamla. businessService.js'deki eksik metodlarÄ± (getStats, getReservations, updateReservationStatus) ekle. Dashboard.jsx'te navigasyon tutarlÄ±lÄ±ÄÄ±nÄ± kontrol et.
+TEST: npm run build hatasÄ±z; /dashboard/stats ve /dashboard/reservations sayfalarÄ± Business rolÃ¼yle aÃ§Ä±labilmeli
+---
+FAZ 12: Business Dashboard - Beach Settings Tamamlama
+SCOPE: web
+DOSYALAR: BeachSettings.jsx, businessService.js, api.js
+GÃREV: BeachSettings.jsx'te plaj bilgileri dÃ¼zenleme formunu (ad, aÃ§Ä±klama, konum, Ã¶zellikler, fiyatlar, Ã§alÄ±Åma saatleri, kapasite) tam implement et. Form submit'te loading state ve validasyon hatalarÄ± gÃ¶ster. Plaj fotoÄrafÄ± yÃ¼kleme/silme UI'Ä± ekle (API endpoint kontrolÃ¼ yaparak). DeÄiÅiklikleri kaydetmede optimistic update veya reload stratejisi belirle. businessService.js'de updateBeach, uploadPhoto metodlarÄ±nÄ± kontrol et ve ekle.
+TEST: npm run build hatasÄ±z; /beach-settings sayfasÄ± aÃ§Ä±labilmeli, form alanlarÄ± dolu gelmeli
+---
+FAZ 13: API GÃ¼venliÄi - Global Hata YÃ¶netimi ve Validasyon GÃ¼Ã§lendirme
+SCOPE: api
+DOSYALAR: GlobalExceptionMiddleware.cs (Middlewares), JwtBlacklistMiddleware.cs, Validators/ klasÃ¶rÃ¼, ApiResponse.cs, ServiceResult.cs
+GÃREV: GlobalExceptionMiddleware'in tÃ¼m exception tiplerini (ValidationException, DomainException, UnauthorizedAccessException, NotFoundException) tutarlÄ± ApiResponse formatÄ±nda dÃ¶ndÃ¼rdÃ¼ÄÃ¼nÃ¼ doÄrula; eksik exception tiplerini ekle. FluentValidation validator'larÄ±nÄ±n tÃ¼m controller input modelleri iÃ§in eksiksiz olduÄunu kontrol et; eksik validator'larÄ± (CreateReservationRequestValidator, UpdateProfileRequestValidator vb.) ekle. JwtBlacklistMiddleware'de revoked token kontrolÃ¼nÃ¼n performanslÄ± (MemoryCache ile) Ã§alÄ±ÅtÄ±ÄÄ±nÄ± doÄrula.
+TEST: dotnet build hatasÄ±z; geÃ§ersiz model gÃ¶nderildiÄinde tÃ¼m endpoint'ler tutarlÄ± 400 formatÄ± dÃ¶ndÃ¼rmeli
+---
+FAZ 14: Frontend - Global Hata YÃ¶netimi ve Loading State Standardizasyonu
+SCOPE: web
+DOSYALAR: api.js, ErrorBoundary.jsx, LoadingSpinner.jsx, Skeleton.js, Loading.js
+GÃREV: api.js axios interceptor'Ä±nda 401 (token yenileme/logout), 403 (unauthorized sayfasÄ±na yÃ¶nlendirme), 429 (rate limit mesajÄ±), 500 (genel hata toast) yanÄ±tlarÄ±nÄ± merkezi olarak handle et. ErrorBoundary.jsx'in tÃ¼m lazy-loaded route'larÄ± sardÄ±ÄÄ±nÄ± doÄrula (App.js'de kontrol et). LoadingSpinner ve Skeleton bileÅenlerinin tÃ¼m sayfalarda tutarlÄ± kullanÄ±ldÄ±ÄÄ±nÄ± denetle; eksik loading state'leri olan sayfalara Skeleton ekle. Her API Ã§aÄrÄ±sÄ±nda en az loading + error state olduÄunu Reservations, Profile, Favorites sayfalarÄ±nda doÄrula.
+TEST: npm run build hatasÄ±z; aÄ hatasÄ± simÃ¼le edildiÄinde (offline mod) uygulama Ã§Ã¶kmemeli, hata mesajÄ± gÃ¶stermeli
+---
+FAZ 15: Build TemizliÄi - Warning ve Unused Import Giderme
+SCOPE: web
+DOSYALAR: TÃ¼m .jsx/.js sayfalar ve bileÅenler
+GÃREV: npm run build Ã§Ä±ktÄ±sÄ±ndaki tÃ¼m ESLint warning'lerini ve unused variable/import hatalarÄ±nÄ± gider. React Hook dependency array uyarÄ±larÄ±nÄ± (useEffect, useCallback) dÃ¼zelt. Console.log ifadelerini production build'den kaldÄ±r veya development guard ekle. PropTypes eksikliÄi olan bileÅenlere prop-types ekle ya da TypeScript'e geÃ§iÅe hazÄ±rlÄ±k olarak JSDoc ekle. App.js'deki tÃ¼m lazy import'larÄ±n karÅÄ±lÄ±k gelen dosyalarÄ±n var olduÄunu doÄrula (GuestReservation lazy import Ã¶zellikle kontrol edilmeli).
+TEST: npm run build sonucunda 0 error, minimum warning Ã§Ä±ktÄ±sÄ± alÄ±nmalÄ±
+---
+FAZ 16: React Native - Proje Kurulumu ve Temel YapÄ±
+SCOPE: mobile
+DOSYALAR: /mobile/ (yeni dizin), package.json, app.json, babel.config.js, tsconfig.json, App.tsx
+GÃREV: Expo CLI ile TypeScript destekli yeni React Native projesi oluÅtur: npx create-expo-app mobile --template expo-template-blank-typescript. Gerekli paketleri yÃ¼kle: @react-navigation/native, @react-navigation/stack, @react-navigation/bottom-tabs, axios, @react-native-async-storage/async-storage, react-native-safe-area-context, react-native-screens, expo-secure-store. /mobile/src/ altÄ±nda screens/, components/, services/, context/, navigation/, hooks/, constants/ klasÃ¶r yapÄ±sÄ±nÄ± oluÅtur. constants/colors.ts ve constants/api.ts dosyalarÄ±nÄ± BeachGo marka renkleri ve API base URL ile oluÅtur.
+TEST: cd mobile && npx expo start hatasÄ±z baÅlamalÄ±; Expo Go ile QR kod taranabilmeli
+---
+FAZ 17: React Native - Authentication Context ve Navigasyon
+SCOPE: mobile
+DOSYALAR: mobile/src/context/AuthContext.tsx, mobile/src/navigation/AppNavigator.tsx, mobile/src/navigation/AuthNavigator.tsx, mobile/src/navigation/MainNavigator.tsx, mobile/src/services/authService.ts, mobile/src/services/api.ts
+GÃREV: AuthContext.tsx'i web versiyonundaki mantÄ±kla oluÅtur: kullanÄ±cÄ± bilgisi, token, login/logout/register metodlarÄ±, expo-secure-store ile token kalÄ±cÄ±lÄ±ÄÄ±. api.ts'de axios instance oluÅtur, base URL'i constants/api.ts'ten al, token interceptor ekle. AppNavigator.tsx'te auth durumuna gÃ¶re AuthNavigator (Login/Register stack) veya MainNavigator (tab + stack) gÃ¶ster. MainNavigator'da alt tab: Anasayfa, Plajlar, Rezervasyonlar, Profil.
+TEST: npx expo start; uygulama aÃ§Ä±ldÄ±ÄÄ±nda Login ekranÄ± gelmeli, dummy login sonrasÄ± ana ekrana geÃ§meli
+---
+FAZ 18: React Native - Login ve Register EkranlarÄ±
+SCOPE: mobile
+DOSYALAR: mobile/src/screens/auth/LoginScreen.tsx, mobile/src/screens/auth/RegisterScreen.tsx, mobile/src/screens/auth/ForgotPasswordScreen.tsx, mobile/src/components/ui/Button.tsx, mobile/src/components/ui/Input.tsx
+GÃREV: Tekrar kullanÄ±labilir Button.tsx (loading state destekli, BeachGo renkleriyle) ve Input.tsx (hata mesajÄ± gÃ¶sterimli, secureTextEntry destekli) bileÅenlerini oluÅtur. LoginScreen.tsx'te email/Åifre formu, validasyon, loading state, AuthContext.login Ã§aÄrÄ±sÄ± ve hata gÃ¶sterimi implement et. RegisterScreen.tsx'te ad/soyad/email/Åifre/Åifre tekrar formu, client-side validasyon, baÅarÄ± sonrasÄ± login ekranÄ±na yÃ¶nlendirme ekle. ForgotPasswordScreen'i email formuyla oluÅtur.
+TEST: npx expo start; Login ekranÄ±nda boÅ form submit edildiÄinde validasyon hatalarÄ± gÃ¶rÃ¼nmeli
+---
+FAZ 19: React Native - Ana Sayfa ve Plaj Listesi EkranlarÄ±
+SCOPE: mobile
+DOSYALAR: mobile/src/screens/main/HomeScreen.tsx, mobile/src/screens/main/BeachesScreen.tsx, mobile/src/components/BeachCard.tsx, mobile/src/services/beachService.ts
+GÃREV: beachService.ts'de getBeaches (filtreli/sayfalÄ±), getBeachById metodlarÄ±nÄ± API'ye baÄla. BeachCard.tsx bileÅenini oluÅtur: kapak gÃ¶rseli (expo-image), plaj adÄ±, konum, rating, doluluk gÃ¶stergesi. HomeScreen.tsx'te Ã¶ne Ã§Ä±kan plajlar (FlatList yatay), yakÄ±ndaki plajlar bÃ¶lÃ¼mÃ¼ ve arama Ã§ubuÄu yerleÅtir. BeachesScreen.tsx'te arama ve filtre destekli tam plaj listesi (FlatList dikey), pull-to-refresh, sayfa sonu yÃ¼klemesi (infinite scroll) ekle. GÃ¶rsel yÃ¼klenirken placeholder/skeleton gÃ¶ster.
+TEST: npx expo start; Plajlar sekmesi aÃ§Ä±lÄ±nca API'den plaj listesi gelmeli, kaydÄ±rmada yeni veriler yÃ¼klenmeli
+---
+FAZ 20: React Native - Plaj Detay EkranÄ±
+SCOPE: mobile
+DOSYALAR: mobile/src/screens/main/BeachDetailScreen.tsx, mobile/src/components/AmenityBadge.tsx, mobile/src/components/OccupancyBar.tsx, mobile/src/navigation/MainNavigator.tsx
+GÃREV: BeachDetailScreen.tsx'te Ã¼stte kaydÄ±rÄ±labilir galeri (ImageScrollView veya FlatList yatay), plaj adÄ±/konum/rating, Ã¶zellik rozetleri (AmenityBadge: wifi, duÅ, otopark vb.), doluluk Ã§ubuÄu (OccupancyBar), aÃ§Ä±klama metni, Ã§alÄ±Åma saatleri ve fiyat bilgisi gÃ¶ster. SayfanÄ±n altÄ±na sabit "Rezervasyon Yap" ve "Favorilere Ekle" butonlarÄ± ekle. MainNavigator'a BeachDetail stack ekrØ§ÙÄ±nÄ± ekle; BeachCard'dan navigate iÅlemini baÄla.
+TEST: Plaj listesinden bir plaja tÄ±klandÄ±ÄÄ±nda detay ekranÄ± aÃ§Ä±lmalÄ±, tÃ¼m bilgiler gÃ¶rÃ¼nmeli
+---
+FAZ 21: React Native - Rezervasyon OluÅturma ve Listeleme
+SCOPE: mobile
+DOSYALAR: mobile/src/screens/main/ReservationCreateScreen.tsx, mobile/src/screens/main/ReservationsScreen.tsx, mobile/src/services/reservationService.ts
+GÃREV: reservationService.ts'de createReservation, getUserReservations, cancelReservation metodlarÄ±nÄ± implement et. ReservationCreateScreen.tsx'te tarih seÃ§ici (DateTimePicker), Åezlong sayÄ±sÄ±, kiÅi sayÄ±sÄ± ve toplam tutarÄ± hesaplayan form oluÅtur; submit'te loading state ve baÅarÄ±/hata alert ekle. ReservationsScreen.tsx'te kullanÄ±cÄ±nÄ±n rezervasyonlarÄ±nÄ± aktif/geÃ§miÅ olarak gruplandÄ±rÄ±lmÄ±Å FlatList'te gÃ¶ster; kaydÄ±rarak iptal aksiyonu (swipe-to-cancel) veya uzun basma menÃ¼sÃ¼ ekle.
+TEST: npx expo start; Rezervasyonlar sekmesi aÃ§Ä±lÄ±nca liste gelmeli; rezervasyon oluÅturma formu submit edilebilmeli
+---
+FAZ 22: React Native - Profil EkranÄ± ve Ayarlar
+SCOPE: mobile
+DOSYALAR: mobile/src/screens/main/ProfileScreen.tsx, mobile/src/screens/main/EditProfileScreen.tsx, mobile/src/services/userService.ts
+GÃREV: userService.ts'de getProfile, updateProfile, changePassword metodlarÄ±nÄ± implement et. ProfileScreen.tsx'te kullanÄ±cÄ± adÄ±/email/avatar placeholder, rezervasyon Ã¶zeti kartÄ±, FavorilerÄ±m ve RezervasyonlarÄ±m kÄ±sayollarÄ±, ÃÄ±kÄ±Å Yap butonu oluÅtur. EditProfileScreen.tsx'te ad/soyad/telefon dÃ¼zenleme formu ve Åifre deÄiÅtirme bÃ¶lÃ¼mÃ¼ ekle; kaydet butonunda loading state ve baÅarÄ± bildirimi gÃ¶ster. ÃÄ±kÄ±Å yapÄ±nca AuthContext.logout Ã§aÄrÄ±lÄ±p Login ekranÄ±na yÃ¶nlendirme yapÄ±lmalÄ±.
+TEST: Profil sekmesi aÃ§Ä±lÄ±nca kullanÄ±cÄ± bilgileri gelmeli; ÃÄ±kÄ±Å Yap sonrasÄ± Login ekranÄ±na dÃ¶nÃ¼lmeli
+---
+FAZ 23: React Native - Build ve Production HazÄ±rlÄ±k
+SCOPE: mobile
+DOSYALAR: mobile/app.json, mobile/eas.json, mobile/.env, mobile/src/constants/api.ts
+GÃREV: app.json'da uygulama adÄ± (BeachGo), bundle identifier (com.beachgo.app), versiyon, ikon (assets/icon.png) ve splash screen yapÄ±landÄ±r. eas.json'da development, preview, production build profilleri tanÄ±mla. API base URL'ini .env dosyasÄ±ndan okuyan yapÄ± kur (expo-constants veya react-native-dotenv ile). TÃ¼m console.log'larÄ± __DEV__ guard ile sar. Gereksiz baÄÄ±mlÄ±lÄ±klarÄ± temizle. expo-status-bar, expo-splash-screen entegrasyonunu tamamla. npx expo-doctor ile tÃ¼m uyumluluk sorunlarÄ±nÄ± gider.
+TEST: npx expo start --no-dev hatasÄ±z Ã§alÄ±ÅmalÄ±; eas build --platform android --profile preview baÅarÄ±yla kuyruÄa girmeli
+FAZ_LISTESI_BITIS

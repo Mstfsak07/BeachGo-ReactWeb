@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+    @apply bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans antialiased transition-colors duration-300;
   }
 }
 
@@ -16,17 +16,17 @@
     @apply btn bg-primary-500 text-white hover:bg-primary-600 hover:shadow-lg focus:ring-primary-500 transform hover:-translate-y-0.5 active:translate-y-0;
   }
   .btn-secondary {
-    @apply btn bg-white text-primary-600 border-primary-100 hover:bg-primary-50 hover:shadow-md focus:ring-primary-500;
+    @apply btn bg-white dark:bg-slate-800 text-primary-600 dark:text-primary-400 border-primary-100 dark:border-slate-700 hover:bg-primary-50 dark:hover:bg-slate-700 hover:shadow-md focus:ring-primary-500;
   }
   .card {
-    @apply bg-white rounded-2xl shadow-soft hover:shadow-hover transition-all duration-300 border border-slate-100 overflow-hidden;
+    @apply bg-white dark:bg-slate-800 rounded-2xl shadow-soft hover:shadow-hover transition-all duration-300 border border-slate-100 dark:border-slate-700 overflow-hidden;
   }
   .input-field {
-    @apply block w-full px-4 py-3 rounded-xl border-slate-200 bg-white focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all outline-none text-slate-700 shadow-sm;
+    @apply block w-full px-4 py-3 rounded-xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all outline-none text-slate-700 dark:text-slate-200 shadow-sm;
   }
 }
 
 /* Glassmorphism for Navbar */
 .glass-nav {
-  @apply sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-white/20 shadow-sm;
+  @apply sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-white/20 dark:border-slate-800/20 shadow-sm;
 }

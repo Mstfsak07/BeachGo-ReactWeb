@@ -4,7 +4,8 @@
       "Bash(dotnet *)",
       "Bash(head *)",
       "Bash(cd *)",
-      "Bash(npm run build *)"
+      "Bash(npm run build *)",
+      "Bash(powershell *)"
     ]
   }
 }

@@ -248,6 +248,10 @@ or
 "@
 
     try {
+        $env:ANTHROPIC_API_KEY  = $env:BEACHGO_ANTHROPIC_KEY
+        $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:8045"
+        $env:CLAUDE_CONFIG_DIR  = "$env:USERPROFILE\.claude-antigravity"
+
         $body = @{
             model      = $ANALYZER_MODEL
             max_tokens = 200

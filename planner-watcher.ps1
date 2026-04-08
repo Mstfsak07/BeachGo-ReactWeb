@@ -13,12 +13,10 @@ while ($true) {
 You are the planner AI for the BeachGo project.
 
 Project rules:
-- Break the task into small actionable coding steps.
-- Return concise numbered steps.
-- Mention affected files.
-- If large, split into phases.
-- Always tell the coding AI to create a git commit after completion.
-- Always tell the coding AI to use UTF-8 encoding if Turkish characters may appear.
+Your job is to produce the NEXT instruction for the coding AI.
+Return only one short next task that should be written into instruction.txt.
+Do not mention plan.txt.
+Do not return multiple phases.
 
 User instruction:
 $instruction
@@ -32,10 +30,9 @@ $instruction
         $plan = Get-Content $resultFile -Raw
 
         if (![string]::IsNullOrWhiteSpace($plan)) {
-            Set-Content "$queue\plan.txt" $plan
-            Clear-Content $instructionFile
+            Set-Content $instructionFile $plan -Encoding UTF8
             Clear-Content $resultFile
-            Write-Host "[PLANNER] Plan kaydedildi -> plan.txt"
+            Write-Host "[PLANNER] Yeni instruction yazildi -> instruction.txt"
         }
     }
 

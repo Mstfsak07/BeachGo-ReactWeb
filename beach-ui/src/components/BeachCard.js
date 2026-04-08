@@ -41,6 +41,16 @@ const BeachCard = React.memo(({ beach }) => {
                 Ucretsiz
               </span>
             )}
+            {beach.isOpen === true && (
+              <span className="bg-emerald-500/90 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg w-fit">
+                Açık
+              </span>
+            )}
+            {beach.isOpen === false && (
+              <span className="bg-rose-500/90 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg w-fit">
+                Kapalı
+              </span>
+            )}
           </div>
           
           {rating > 0 && (

@@ -1,2 +1,0 @@
-# Dosyayı projeden kaldır (sil veya .csproj'dan çıkar)
-del "BeachRehberi.API\BeachRehberi.API\DTOs\AuthDtos.cs"

@@ -124,14 +124,16 @@ namespace BeachRehberi.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
             
-            var result = await _authService.ForgotPasswordAsync(request.Email);
-            if (!result.Success)
-                return BadRequest(new { message = result.Message });
+            var command = new BeachRehberi.Application.Features.Auth.Commands.ForgotPassword.ForgotPasswordCommand(request.Email);
+            var result = await _mediator.Send(command);
             
-            return Ok(new { message = "If the email exists, a reset link has been sent." });
+            if (!result.IsSuccess)
+                return BadRequest(new { message = result.Error });
+            
+            return Ok(new { message = result.Message });
         }
 
-                [HttpPost("reset-password")]
+        [HttpPost("reset-password")]
         [AllowAnonymous]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
@@ -140,11 +142,13 @@ namespace BeachRehberi.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
             
-            var result = await _authService.ResetPasswordAsync(request.Email, request.Token, request.NewPassword);
-            if (!result.Success)
-                return BadRequest(new { message = result.Message });
+            var command = new BeachRehberi.Application.Features.Auth.Commands.ResetPassword.ResetPasswordCommand(request.Email, request.Token, request.NewPassword);
+            var result = await _mediator.Send(command);
             
-            return Ok(new { message = "Password has been reset successfully." });
+            if (!result.IsSuccess)
+                return BadRequest(new { message = result.Error });
+            
+            return Ok(new { message = result.Message });
         }
 
         // GET: /api/auth/verify-email?token=... (frontend link-click flow)
@@ -172,11 +176,13 @@ namespace BeachRehberi.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _authService.VerifyEmailAsync(request.Email, request.Token);
-            if (!result.Success)
-                return BadRequest(new { message = result.Message });
+            var command = new BeachRehberi.Application.Features.Auth.Commands.VerifyEmail.VerifyEmailCommand(request.Email, request.Token);
+            var result = await _mediator.Send(command);
+            
+            if (!result.IsSuccess)
+                return BadRequest(new { message = result.Error });
 
-            return Ok(new { message = "Email verified successfully." });
+            return Ok(new { message = result.Message });
         }
 
         [HttpPost("resend-verification")]
@@ -188,11 +194,42 @@ namespace BeachRehberi.API.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
             
-            var result = await _authService.ResendVerificationAsync(request.Email);
-            if (!result.Success)
-                return BadRequest(new { message = result.Message });
+            var command = new BeachRehberi.Application.Features.Auth.Commands.ResendVerification.ResendVerificationCommand(request.Email);
+            var result = await _mediator.Send(command);
             
-            return Ok(new { message = "Verification email resent." });
+            if (!result.IsSuccess)
+                return BadRequest(new { message = result.Error });
+            
+            return Ok(new { message = result.Message });
+        }
+
+        [AllowAnonymous]
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
+        {
+            var command = new BeachRehberi.Application.Features.Auth.Commands.RefreshToken.RefreshTokenCommand(request.AccessToken, request.RefreshToken);
+            var result = await _mediator.Send(command);
+
+            if (!result.IsSuccess)
+                return BadRequest(new AuthResult { Success = false, Message = result.Error });
+
+            var response = result.Value;
+
+            Response.Cookies.Append("refreshToken", response.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = !_env.IsDevelopment(),
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTime.UtcNow.AddDays(7)
+            });
+
+            return Ok(new AuthResult
+            {
+                Success = true,
+                Message = "Token yenilendi.",
+                Token = response.AccessToken,
+                RefreshToken = response.RefreshToken
+            });
         }
 
         // ===================== LOGOUT =====================
@@ -216,9 +253,13 @@ namespace BeachRehberi.API.Controllers
         [Authorize]
         public async Task<IActionResult> Revoke([FromBody] RevokeRequest request)
         {
-            var result = await _authService.RevokeTokenAsync(request.RefreshToken, GetIpAddress(), "manual_revoke");
-            if (result.Success) return Ok(new AuthResult { Success = true, Message = result.Message });
-            return BadRequest(new AuthResult { Success = false, Message = result.Message });
+            var command = new BeachRehberi.Application.Features.Auth.Commands.RevokeToken.RevokeTokenCommand(request.RefreshToken);
+            var result = await _mediator.Send(command);
+            
+            if (result.IsSuccess) 
+                return Ok(new AuthResult { Success = true, Message = result.Message });
+            
+            return BadRequest(new AuthResult { Success = false, Message = result.Error });
         }
 
         private string GetIpAddress()

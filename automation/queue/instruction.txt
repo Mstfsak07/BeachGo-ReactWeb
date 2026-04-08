@@ -1,0 +1,1 @@
+﻿Read executor-prompt.txt content directly and complete the pending refactoring tasks for AuthController and CQRS pattern.

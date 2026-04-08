@@ -1,0 +1,151 @@
+FAZ_LISTESI_BASLANGIC
+FAZ 1: API Global Exception Middleware Standardizasyonu
+SCOPE: api
+DOSYALAR: Middlewares/GlobalExceptionMiddleware.cs, Models/ApiResponse.cs, Models/ServiceResult.cs
+GöREV: GlobalExceptionMiddleware içinde tüm exception tipleri (ValidationException, DomainException, UnauthorizedAccessException, NotFoundException, genel Exception) için tutarlı ApiResponse<T> formatında JSON dönüşü sağla. Her hata tipi için doğru HTTP status code ata (400, 401, 403, 404, 409, 429, 500). Stack trace sadece Development ortamında göster.
+TEST: Swagger üzerinden kasıtlı hatalı istek gönder (eksik field, geçersiz token, var olmayan endpoint). Her durumda {"success": false, "message": "...", "errors": [...]} formatında yanıt döndüğünü doğrula.
+---
+FAZ 2: JWT Refresh Token Endpoint ve Frontend Entegrasyonu
+SCOPE: api
+DOSYALAR: Controllers/AuthController.cs, Services/TokenService.cs, Services/AuthService.cs, Models/RefreshToken.cs
+GöREV: AuthController'da POST /api/auth/refresh-token endpoint'i ekle. RefreshToken modelini kullanarak süresi dolmuş access token'ı yenile. Eski refresh token'ı iptal et (rotation), yeni çift döndür. Token süresi: access=15dk, refresh=7gün. HttpOnly cookie veya body response seçeneği ekle.
+TEST: Postman'de login → access token al → bekle/manipüle et → /refresh-token çağır → yeni geçerli token ile korumalı endpoint'e istek at ve 200 dön.
+---
+FAZ 3: Frontend API Interceptor - Otomatik Token Yenileme
+SCOPE: web
+DOSYALAR: src/services/api.js, src/context/AuthContext.jsx
+GöREV: axios instance'ına response interceptor ekle. 401 geldiğinde /api/auth/refresh-token çağır, yeni token ile orijinal isteği tekrarla. Refresh da başarısız olursa kullanıcıyı logout et ve /login'e yönlendir. Race condition için isRefreshing flag ve kuyruk mekanizması ekle.
+TEST: Network tab'da access token'ı sil, sayfa işlemi yap → otomatik refresh görünmeli → kullanıcı oturumu kesilmemeli. Token geçersizse /login'e gitmeli.
+---
+FAZ 4: BeachesController Pagination ve Filtreleme Standardizasyonu
+SCOPE: api
+DOSYALAR: Controllers/BeachesController.cs, Services/BeachService.cs, Models/PagedResponse.cs, Models/BeachModels.cs
+GöREV: GET /api/beaches endpoint'ine query parametreleri ekle: page (default:1), pageSize (max:50, default:12), search (isim/konum), features (HasSunbeds, HasWifi vb. çoklu), minRating, sortBy (rating|price|distance), lat/lng (yakınlık sıralaması için). PagedResponse<BeachSummaryDto> döndür. BeachService'de IQueryable üzerinde filtrele, son adımda AsNoTracking ile çek.
+TEST: GET /api/beaches?page=1&pageSize=6&search=antalya&minRating=4.0 → 200, data dizisi, totalCount, currentPage, totalPages dolu döner. pageSize=200 gönder → 50 ile kapanır.
+---
+FAZ 5: Beaches.js Frontend Arama ve Filtre UI
+SCOPE: web
+DOSYALAR: src/pages/Beaches.js, src/services/reservationService.js
+GöREV: Beaches sayfasına arama input'u ekle (300ms debounce), özellik filtre checkboxları (HasSunbeds, HasWifi, HasParking, HasBar, HasRestaurant, IsChildFriendly), rating slider (min 0-5), sıralama dropdown'ı (rating/fiyat/mesafe) ekle. URL query params ile senkronize et (useSearchParams). Sayfalama için "Daha Fazla Yükle" infinite scroll veya numbered pagination ekle. Filtre değişince API'ye yeni istek at.
+TEST: "Antalya" yaz → liste filtreler. HasWifi seç → sadece wifi'li plajlar gelir. Sayfayı yenile → filtreler URL'den restore edilir.
+---
+FAZ 6: BeachDetail Sayfası Eksik Veri ve Review Sistemi
+SCOPE: web|api
+DOSYALAR: src/pages/BeachDetail.js, Controllers/ReviewsController.cs, Services/ReviewService.cs, Models/Review.cs
+GöREV: ReviewsController'a GET /api/reviews/beach/{beachId} (sayfalı), POST /api/reviews (auth required, bir kullanıcı bir plaja bir yorum), DELETE /api/reviews/{id} (kendi yorumu veya Admin) endpoint'leri ekle. ReviewService'de ortalama rating'i güncelle (Beach.UpdateRating çağır). Frontend'de BeachDetail'a yorum listesi (yıldız + metin), yorum formu (giriş yapılmışsa görünür), puan dağılımı (5â4â...) ekle.
+TEST: Giriş yap → BeachDetail'da yorum yaz → yorum listede görünür, beach rating güncellenir. Aynı plaja ikinci yorum gönder → 409 Conflict. Admin farklı yorumu silebilir.
+---
+FAZ 7: Rezervasyon Flow Validasyonu ve Hata Yönetimi
+SCOPE: api|web
+DOSYALAR: Controllers/ReservationsController.cs, Controllers/GuestReservationsController.cs, Services/ReservationService.cs, Services/GuestReservationService.cs, src/pages/StepDateType.js, src/pages/StepPayment.js, src/pages/StepPersonalInfo.js
+GöREV: Backend'de rezervasyon isteğinde: kapasite kontrolü (race condition için pessimistic lock veya rowversion), tarih/saat geçerlilik kontrolü (geçmiş tarih reddet), aynı kullanıcı aynı gün aynı plaj çift rezervasyon engeli ekle. ReservationCommandHandler'da bu validasyonları DomainException ile fırlat. Frontend step'lerde her adımda API hata mesajlarını kullanıcıya toast + inline göster. StepPayment'da mock ödeme simülasyonu için 2 saniyelik loading ekle.
+TEST: Dolu kapasiteli plaja rezervasyon dene → 409 + "Kapasite dolu" mesajı. Geçmiş tarihe rezervasyon → 400. Aynı kullanıcı aynı gün aynı plaja → 409.
+---
+FAZ 8: Dashboard istatistikleri API ve Frontend Bağlantısı
+SCOPE: api|web
+DOSYALAR: Controllers/BusinessController.cs, Services/BusinessService.cs, src/pages/Dashboard.jsx, src/pages/DashboardStats.jsx, src/pages/DashboardReservations.jsx
+GöREV: BusinessController'a GET /api/business/stats endpoint'i ekle: bugünkü rezervasyon sayısı, toplam gelir (bu ay/geçen ay), doluluk oranı, en popüler saat dilimleri, günlük rezervasyon grafiği için son 30 gün verisi (tarih+sayı dizisi). DashboardStats.jsx'te recharts veya Chart.js ile çizgi/bar grafik göster. DashboardReservations.jsx'te rezervasyonları duruma göre filtrele (Pending/Confirmed/Cancelled), arama ve tarih aralığı filtresi ekle.
+TEST: Business hesabıyla giriş → Dashboard'da bugünün rezervasyon sayısı doğru. Stats sayfasında grafik render olur. Reservations'da "Pending" filtresi sadece bekleyen rezervasyonları listeler.
+---
+FAZ 9: BeachSettings - Plaj Düzenleme Formu Tamamlama
+SCOPE: web|api
+DOSYALAR: src/pages/BeachSettings.jsx, Controllers/BusinessController.cs, Services/BusinessService.cs
+GöREV: BeachSettings sayfasında eksiksiz form: temel bilgiler (isim, açıklama, konum, koordinatlar), çalışma saatleri (gün bazlı açık/kapalı toggle + saat picker), özellik checkbox'ları (tüm HasX alanları), fiyatlandırma (SunbedPrice, EntryFee, HasEntryFee), kapasite. PUT /api/business/beach endpoint'i ekle, sadece plajın sahibi güncelleyebilir. Frontend'de form validation (required alanlar, koordinat formatı), kayıt sonrası toast göster.
+TEST: Business girişi → BeachSettings'de çalışma saatlerini güncelle → kaydet → BeachDetail sayfasında güncellenen saat yansır. Başka business'ın plajını güncellemeye çalış → 403.
+---
+FAZ 10: Fotoğraf Yükleme Sistemi (BeachGallery)
+SCOPE: api|web
+DOSYALAR: Controllers/BeachesController.cs, Models/BeachPhoto.cs, src/components/BeachGallery.jsx, src/components/BeachGalleryLightbox.jsx, src/pages/BeachSettings.jsx
+GöREV: POST /api/beaches/{id}/photos endpoint'i: multipart/form-data, max 5MB, sadece jpg/png/webp kabul et, dosyayı wwwroot/uploads/beaches/{id}/ klasörüne kaydet, BeachPhoto kaydı oluştur. GET /api/beaches/{id}/photos ile fotoğraf listesi döndür. DELETE /api/beaches/{id}/photos/{photoId} (sahip veya Admin). BeachSettings'de sürükle-bırak fotoğraf yükleme alanı (react-dropzone). BeachGallery'de grid görünüm, BeachGalleryLightbox'da tam ekran göster.
+TEST: BeachSettings'de fotoğraf yükle → yükleniyor spinner → başarı toast → galeri'de görünür. 6MB dosya yükle → 400 "Dosya çok büyük". BeachDetail galerisinde fotoğrafa tıkla → lightbox açılır, ok tuşlarıyla geçiş.
+---
+FAZ 11: Kullanıcı Profil Sayfası Tamamlama
+SCOPE: web|api
+DOSYALAR: src/pages/Profile.jsx, Controllers/UsersController.cs, Services/userService.js
+GöREV: Profile sayfasına: ad-soyad-telefon düzenleme formu, şifre değiştirme formu (mevcut şifre + yeni şifre + confirm, min 8 karakter), hesap silme butonu (confirm modal), kullanıcının rezervasyon özeti (son 5 rezervasyon linki), favori sayısı göstergesi ekle. UsersController'da PUT /api/users/profile, PUT /api/users/change-password, DELETE /api/users/account endpoint'leri ekle. şifre değiştirmede BCrypt verify + hash uygula.
+TEST: Profile'da ad güncelle → kaydet → Navbar'da isim güncellenir. Yanlış mevcut şifre gir → 400 "Mevcut şifre hatalı". şifreyi doğru değiştir → otomatik logout → login sayfası.
+---
+FAZ 12: Favoriler Sistemi Backend ve Frontend Senkronizasyonu
+SCOPE: api|web
+DOSYALAR: Controllers/UsersController.cs, src/pages/Favorites.jsx, src/services/favoriteService.js, src/components/BeachCard.js
+GöREV: POST /api/users/favorites/{beachId} ve DELETE /api/users/favorites/{beachId} endpoint'leri ekle (toggle mantığıyla tek endpoint yapılabilir). GET /api/users/favorites sayfalı BeachSummaryDto listesi döndür. BeachCard.js'te kalp ikonu: giriş yapılmamışsa login'e yönlendir, yapılmışsa optimistic UI ile toggle (hemen UI güncelle, hata olursa geri al). Favorites.jsx'te boş durum göster (görselli), plaj kartları grid'de listele.
+TEST: BeachCard'da kalp ikonuna tıkla → ikon dolar → Favorites sayfasında listelenir. Tekrar tıkla → kaldırılır. Giriş yapılmamışken tıkla → /login'e yönlendirir. Favorites sayfası boşken "Henüz favori eklemediniz" görseli çıkar.
+---
+FAZ 13: E-posta Doğrulama ve şifre Sıfırlama Flow Tamamlama
+SCOPE: api|web
+DOSYALAR: Controllers/AuthController.cs, Services/AuthService.cs, Services/ResendEmailService.cs, src/pages/VerifyEmail.jsx, src/pages/ForgotPassword.jsx, src/pages/ResetPassword.jsx
+GöREV: Kayıt sonrası e-posta doğrulama linki gönder (token 24 saat geçerli). GET /api/auth/verify-email?token=xxx endpoint'i: token doğrula, kullanıcıyı aktif et. Doğrulanmamış kullanıcı login olmaya çalışırsa 403 + "E-postanızı doğrulayın" mesajı döndür. şifre sıfırlama: POST /api/auth/forgot-password → link gönder (15dk token), POST /api/auth/reset-password → token+yenişifre al, şifreyi güncelle, token'ı iptal et. Her iki sayfa için başarı/hata durumu UI göster. ResendEmailService'de gerçek e-posta şablonları (HTML) oluştur.
+TEST: Yeni kayıt → gelen kutusu kontrolü → linke tıkla → "E-posta doğrulandı" sayfası. şifreyi unut → mail al → link aç → yeni şifre gir → login ol. Aynı reset linkini tekrar kullan → 400 "Link geçersiz".
+---
+FAZ 14: Admin Panel Eksiklerini Tamamlama
+SCOPE: web|api
+DOSYALAR: src/pages/AdminPanel.jsx, Controllers/AdminController.cs
+GöREV: AdminPanel.jsx'te sekmeli yapı: Plajlar (listeleme, onay/red, silme), Kullanıcılar (listeleme, role değiştirme, ban/unban), işletmeler (Business kayıt onaylama), Raporlar (toplam rezervasyon, gelir, aktif kullanıcı sayısı). AdminController'da GET /api/admin/users (sayfalı, rolle filtreli), PUT /api/admin/users/{id}/role, PUT /api/admin/users/{id}/status (active/banned), GET /api/admin/stats, GET /api/admin/beaches (onay bekleyenler dahil), PUT /api/admin/beaches/{id}/approve endpoint'leri ekle. Her işlem için "AdminOnly" policy uygula.
+TEST: Admin girişi → AdminPanel'de kullanıcı listesi yüklenir. Kullanıcıya "Business" rolü ver → o kullanıcı çıkış/giriş yapınca dashboard erişir. Ban'lı kullanıcı login olmaya çalışır → 403. Onay bekleyen plajı onayla → IsApproved=true → Beaches listesinde görünür.
+---
+FAZ 15: Bildirim Sistemi - Backend Queue ve Frontend Göstergesi
+SCOPE: api|web
+DOSYALAR: Services/NotificationService.cs, Controllers/UsersController.cs, src/components/Navbar.jsx, src/services/notificationService.js
+GöREV: Bildirim modeli: Id, UserId, Type (ReservationConfirmed/Cancelled/Reminder), Message, IsRead, CreatedAt. GET /api/users/notifications (son 20, okunmamış önce), PUT /api/users/notifications/{id}/read, PUT /api/users/notifications/read-all endpoint'leri ekle. Rezervasyon oluştururken/iptal ederken NotificationService.CreateAsync çağır. Navbar'da çan ikonu: okunmamış sayısı badge, tıklayınca dropdown liste, "Tümünü okundu işaretle" butonu. 30 saniyede bir polling ile güncelle (WebSocket değil, basit interval).
+TEST: Rezervasyon yap → Navbar'da çan üzerinde "1" badge görünür. Ãana tıkla → dropdown'da rezervasyon bildirimi. "Okundu işaretle" → badge kaybolur. Sayfa yenilemede badge hÃ¢lÃ¢ 0 (persist).
+---
+FAZ 16: Stories Sistemi Tamamlama ve Görüntüleme
+SCOPE: api|web
+DOSYALAR: Controllers/StoriesController.cs, Services/StoryService.cs, Models/BeachStory.cs, src/components/BeachStoryBar.jsx, src/components/BeachStoryViewer.jsx
+GöREV: StoriesController: POST /api/stories (Business/Admin, görsel+süre+metin), GET /api/stories/active (süresi dolmamış, plaja göre gruplu), DELETE /api/stories/{id} (sahip veya Admin). Story süresi: 24 saat. StoryService'de süresi dolmuş story'leri IsActive=false yap (background job yerine GET sırasında filtrele). BeachStoryBar'da Instagram tarzı dairesel avatarlar: görüntülenmemiş→renkli halka, görüntülenmiş→gri. BeachStoryViewer'da tam ekran, otomatik ilerleme (5sn), dokunma/tıklama ile sonraki, X ile kapat, progress bar animasyonu.
+TEST: Business girişi → story yükle → ana sayfada BeachStoryBar'da görünür. Story'ye tıkla → viewer açılır → 5 saniye sonra otomatik kapanır/sonrakine geçer. 24 saat sonra (veya CreatedAt manipüle edilerek) story artık listede çıkmaz.
+---
+FAZ 17: Hata Sayfaları ve UX iyileştirmeleri
+SCOPE: web
+DOSYALAR: src/components/ErrorBoundary.jsx, src/pages/Unauthorized.jsx, src/components/Skeleton.js, src/components/LoadingSpinner.jsx
+GöREV: ErrorBoundary'ye kullanıcı dostu hata UI ekle (emoji + mesaj + "Ana Sayfaya Dön" butonu, hata detayı sadece dev'de). Unauthorized.jsx'e rol bazlı mesaj ekle (giriş gerekiyor mu, yetki yok mu ayrıştır). Skeleton.js'te BeachCard, BeachDetail, Dashboard için ayrı skeleton varyantları oluştur. Tüm veri yükleme durumlarında (Beaches, BeachDetail, Dashboard, Favorites, Reservations) gerçek skeleton bileşenleri kullan. 404 için ayrı sayfa oluştur, * route'unu oraya yönlendir. LoadingSpinner'a size prop'u ekle (sm/md/lg).
+TEST: Kasten hata fırlatan component → ErrorBoundary yakalar → kullanıcı dostu ekran. Yavaş ağda Beaches sayfası → skeleton kartlar görünür, data gelince yerini alır. /herhangi-yanlis-url → 404 sayfası.
+---
+FAZ 18: Form Validasyonu - FluentValidation Genişletme
+SCOPE: api
+DOSYALAR: Validators/ (tüm validator dosyaları), Controllers/ReservationsController.cs, Controllers/AuthController.cs, Controllers/ReviewsController.cs
+GöREV: Eksik validator'lar yaz: CreateReservationValidator (tarih geçmişte değil, kişi sayısı 1-20, telefon regex TR formatı), CreateReviewValidator (rating 1-5, yorum 10-500 karakter), UpdateProfileValidator (isim max 50 karakter, telefon opsiyonel ama geçerliyse TR formatı), ResetPasswordValidator (min 8 karakter, büyük+küçük+rakam içermeli). FluentValidation hataları GlobalExceptionMiddleware'den ApiResponse.errors dizisine düzgün map'lendiğini doğrula.
+TEST: POST /api/reservations body'de PersonCount=0 gönder → 400 + "Kişi sayısı en az 1 olmalı". POST /api/reviews rating=6 → 400. Geçersiz telefon formatı → 400 + regex hatası. Tüm hatalar errors[] dizisinde field adıyla birlikte gelir.
+---
+FAZ 19: Performans - API Response Caching ve N+1 Sorgu Düzeltme
+SCOPE: api
+DOSYALAR: Services/BeachService.cs, Services/ReservationService.cs, Services/ReviewService.cs, Controllers/BeachesController.cs
+GöREV: BeachService.GetAllAsync'te tek sorguda ilişkili verileri (Photos, Reviews sayısı, ActiveStories) Include ile çek, ayrı sorgu atmayı önle. IMemoryCache ile GET /api/beaches listesini 2 dakika, GET /api/beaches/{id}'yi 5 dakika cache'le. Beach güncelleme/review yazıldığında ilgili cache entry'yi invalidate et. BeachesController'da [ResponseCache] attribute ekle. ReviewService'de rating update'i ayrı sorgu yerine UPDATE...SET ile tek sorguda yap.
+TEST: /api/beaches'e ilk istek → DB sorgusu. Hemen ardından ikinci istek → cache'ten gelir (response header'da X-Cache: HIT). Yorum yazıldıktan sonra /api/beaches/{id} → güncel rating döner (cache invalidate edilmiş).
+---
+FAZ 20: Environment Konfigürasyonu ve Production Hazırlığı
+SCOPE: api|web
+DOSYALAR: appsettings.json, appsettings.Production.json, .env.example, Program.cs, src/services/api.js
+GöREV: appsettings.Production.json oluştur: SQLite→PostgreSQL geçiş için ConnectionStrings hazırla (env var'dan okur), Logging level'ları ayarla (Warning+), Sms:Provider ve Payment:Provider env'dan oku. .env.example dosyası oluştur (BEACHGO_JWT_SECRET, ADMIN_PASSWORD, RESEND_API_KEY, DB_CONNECTION_STRING, PAYMENT_PROVIDER, SMS_PROVIDER). Frontend'de api.js'te REACT_APP_API_URL env var'ından base URL oku, fallback localhost. Program.cs'te startup'ta tüm kritik env var'ların varlığını kontrol et, eksikse başlamayı reddet. PostgreSQL migration script hazırla (SQLite'tan veri taşıma notları).
+TEST: BEACHGO_JWT_SECRET env olmadan uygulamayı başlat → anlamlı hata mesajıyla crash. Farklı REACT_APP_API_URL ile build al → network istekleri o URL'e gider. appsettings.Production.json'da hassas veri yok (hepsi env var referansı).
+---
+FAZ 21: Güvenlik Sertleştirme - Rate Limiting ve Input Sanitizasyon
+SCOPE: api
+DOSYALAR: Program.cs, Middlewares/GlobalExceptionMiddleware.cs, Controllers/AuthController.cs, Controllers/ReservationsController.cs
+GöREV: Auth endpoint'lerine IP bazlı rate limiting uygula (mevcut "auth" policy): login için dakikada 5, register için dakikada 3, forgot-password için saatte 3. Tüm string input'lara HTML encode (XSS önlemi) - özellikle Review.Comment, Beach.Description. AuthController'da başarısız login sayacı ekle (3 başarısız → 15 dakika hesap kilidi, MemoryCache ile). JWT'de unnecessary claim'leri kaldır, sadece sub/role/email/jti bırak. Swagger production'da tamamen kapat (mevcut IsDevelopment check yeterli değil, explicit production check ekle).
+TEST: Aynı IP'den 6 kez yanlış login → 429 Too Many Requests. 15 dakika geç → tekrar deneyebilir. Review comment'e <script>alert(1)</script> yaz → kayıt edilir ama GET'te encode edilmiş gelir. Production modda /swagger → 404.
+---
+FAZ 22: Frontend State Management - Context Optimizasyonu
+SCOPE: web
+DOSYALAR: src/context/AuthContext.jsx, src/services/api.js, src/services/favoriteService.js, src/services/reservationService.js
+GöREV: AuthContext'te gereksiz re-render'ları önle: user ve loading'i useMemo ile wrap'le, sadece değişen değeri yayınla. favoriteService.js'te favori ID'lerini local Set'te tut, BeachCard her mount'ta API çağrısı yapmasın (Context'ten oku). reservationService.js'te aktif rezervasyonları SessionStorage'da cache'le (sayfa yenileme arası). api.js axios instance'ına request interceptor ekle: her istekte güncel token'ı header'a ekle (closure bug'ını önle). Tüm servis fonksiyonlarına AbortController ile istek iptal desteği ekle (component unmount'ta iptal).
+TEST: React DevTools Profiler ile Beaches sayfasında filtre değiştir → sadece etkilenen component'ler render olur, Navbar/Footer render almaz. Hızlıca birden fazla sayfaya git → network tab'da önceki sayfalara ait iptal edilmiş istekler görünür (canceled).
+---
+FAZ 23: E-posta şablonları ve Bildirim içerikleri
+SCOPE: api
+DOSYALAR: Services/ResendEmailService.cs, Templates/ (yeni klasör - HTML şablonlar)
+GöREV: Templates/ klasörü oluştur. 4 HTML e-posta şablonu yaz: (1) Hoş geldin + e-posta doğrulama linki, (2) şifre sıfırlama, (3) Rezervasyon onay özeti (plaj adı, tarih, saat, kişi, tutar, QR/kod), (4) Rezervasyon iptal bildirimi. ResendEmailService'de şablonları oku, Handlebars-benzeri basit string interpolation ile değişkenleri doldur ({{name}}, {{link}} vb.). Tüm e-postalar: BeachGo logosu, mobil uyumlu tek sütun layout, CTA butonu, footer (iletişim + unsubscribe notu). ReservationService'de onay/iptal sonrası ilgili e-postayı tetikle.
+TEST: Rezervasyon oluştur → e-posta gönderildi logu görünür, Resend dashboard'da delivery kaydı oluşur. şifre sıfırlama isteği → link içeren e-posta gelir, link çalışır. Rezervasyon iptal → iptal e-postası gelir. şablonlarda Türkçe karakter bozulması yok.
+---
+FAZ 24: SEO ve Web Performans Optimizasyonu
+SCOPE: web
+DOSYALAR: public/index.html, src/pages/Home.js, src/pages/Beaches.js, src/pages/BeachDetail.js, src/pages/Events.js
+GöREV: react-helmet-async ekle, her sayfaya dinamik title+description+og:image meta tag'ı ekle. BeachDetail'de plaj adı + konum title'da (örn. "Konyaaltı Plajı - Antalya | BeachGo"). Beaches.js'te görünür alandaki kartları önce yükle (IntersectionObserver ile lazy load). Fotoğraflara loading="lazy" ve srcset/webp desteği ekle. Home.js hero bölümü için kritik CSS inline ekle. public/index.html'de: canonical URL, robots meta, Open Graph tagleri, manifest.json, favicon set. Lighthouse skoru hedefi: Performance 80+, SEO 90+.
+TEST: BeachDetail sayfasında sağ klik → "Kaynağı Görüntüle" → title ve og:image doğru plaj verisi içeriyor. Lighthouse audit çalıştır → Performance ve SEO skorlarını kaydet. Facebook/Twitter link önizlemesinde doğru görsel ve başlık çıkar.
+---
+FAZ 25: Son Entegrasyon Testi ve Hata Düzeltme
+SCOPE: web|api
+DOSYALAR: Tüm değiştirilmiş dosyalar
+GöREV: Uçtan uca kullanıcı akışı testleri çalıştır: (1) Yeni kullanıcı kaydı → e-posta doğrulama → giriş → plaj ara → filtrele → favori ekle → rezervasyon yap → profil güncelle, (2) Business kullanıcısı → plaj oluştur/güncelle → story ekle → rezervasyonları yönet → istatistiklere bak, (3) Admin → kullanıcı yönet → plaj onayla → panel istatistikleri. Tüm 401/403/404/409/429 senaryolarını test et. Console'da hata/warning olmadığını doğrula. API response sürelerini ölç (p95 < 500ms hedefi). package.json'a entegrasyon test script'i ekle.
+TEST: Tüm akışlar hatasız tamamlanır. Network tab'da 4xx/5xx olan istek yok (beklenen validasyon hataları hariç). React console temiz. API health endpoint (GET /api/health) 200 döner. Build (npm run build) hatasız tamamlanır.
+FAZ_LISTESI_BITIS

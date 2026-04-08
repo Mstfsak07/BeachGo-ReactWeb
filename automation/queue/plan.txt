@@ -1,0 +1,4 @@
+Sadece gerçekten kullanılmayan geçici/log/cache/history dosyalarını sil.
+.cs, .csproj, Domain, Application, API, Infrastructure klasörlerindeki kaynak kod dosyalarını silme.
+Service/CQRS yapısını düzelt ama mevcut dosyaları kaldırma veya yeniden adlandırma.
+Eksik kalan işleri küçük adımlarla tamamla.

@@ -33,7 +33,7 @@ export const getBeachEvents = async (beachId) => {
 
 // Reviews
 export const getBeachReviews = async (beachId) => {
-  const res = await api.get(`/Beaches/${beachId}/Reviews`);
+  const res = await api.get(`/Reviews/beach/${beachId}`);
   return unwrapArrayResponse(res.data);
 };
 

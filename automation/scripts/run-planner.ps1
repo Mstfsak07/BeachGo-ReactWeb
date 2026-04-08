@@ -57,7 +57,14 @@ function Invoke-ClaudeAPI {
         -Headers $headers `
         -Body    $bodyBytes
 
-    return $response.content[0].text
+    if ($response.content -and $response.content[0].text) {
+        return $response.content[0].text
+    } elseif ($response.text) {
+        return $response.text
+    } else {
+        Write-Log "HATA: API beklenmedik format dondu. Yanit: $($response | ConvertTo-Json -Compress)"
+        return $null
+    }
 }
 
 $lockFile = Join-Path $queueDir "planner.lock"
@@ -181,17 +188,23 @@ $historySnippet
     Remove-Item Env:MSYSTEM -ErrorAction SilentlyContinue
     Remove-Item Env:MSYS    -ErrorAction SilentlyContinue
 
-    $maxRetries    = 10
+    $maxRetries    = 5
     $retryCount    = 0
     $success       = $false
     $plannerOutput = ""
 
     while ($retryCount -lt $maxRetries -and -not $success) {
         $retryCount++
-        if ($retryCount -gt 1) { Write-Log "Yeniden deneniyor ($retryCount / $maxRetries)..." }
+        if ($retryCount -gt 1) {
+            Write-Log "Yeniden deneniyor ($retryCount / $maxRetries)..."
+            Write-Log "30 saniye bekleniyor..."
+            Start-Sleep -Seconds 30
+        }
 
         try {
             $plannerOutput = Invoke-ClaudeAPI -Prompt $fullPrompt -SystemPrompt $systemPrompt
+            Write-Log "Claude API yaniti (deneme $retryCount): $plannerOutput"
+            Write-Host "=== CLAUDE YANITI (deneme $retryCount) ===`n$plannerOutput`n================================" -ForegroundColor Cyan
             if (-not [string]::IsNullOrWhiteSpace($plannerOutput)) {
                 $success = $true
             } else {
@@ -199,11 +212,13 @@ $historySnippet
             }
         } catch {
             Write-Log "API hatasi: $_ (Deneme $retryCount / $maxRetries)"
+            Write-Host "=== CLAUDE HATA (deneme $retryCount) ===`n$_`n================================" -ForegroundColor Red
         }
     }
 
     if (-not $success) {
-        throw "Planner Claude API hatasi ($maxRetries deneme basarisiz oldu)."
+        Write-Log "KRITIK HATA: Claude API $maxRetries deneme sonrasinda yanit vermedi. Otomasyon durduruluyor."
+        throw "Planner Claude API hatasi ($maxRetries deneme basarisiz oldu). Otomasyon durduruluyor."
     }
 
     $plannerOutput | Set-Content $instructionPath    -Encoding UTF8

@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 $ErrorActionPreference = "Continue"
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -35,14 +35,14 @@ function Write-History($msg) {
     Add-Content -Path $historyFile -Value $line -Encoding UTF8
 }
 
-# ─── CLEANUP: Tüm child process'leri öldür ──────────────────────
+# ─── CLEANUP: TÃ¼m child process'leri Ã¶ldÃ¼r ──────────────────────
 function Invoke-Cleanup {
     Write-Log "Cleanup baslatiliyor (orphan process temizleme)..."
 
     # Backend process
     if ($script:BackendProcess -and -not $script:BackendProcess.HasExited) {
         try {
-            $script:BackendProcess.Kill($true)   # recursive = true → child'ları da öldür
+            $script:BackendProcess.Kill($true)   # recursive = true â†’ child'ları da Ã¶ldÃ¼r
             Write-Log "Backend process durduruldu (PID=$($script:BackendProcess.Id))."
         } catch {
             Write-Log "Backend process durdurulamadi: $_"
@@ -88,7 +88,7 @@ try {
     Write-Log "Ctrl+C handler atanamadi (non-interactive shell), devam ediliyor."
 }
 
-# ─── BACKEND YÖNETİMİ ───────────────────────────────────────────
+# ─── BACKEND YÃ–NETÄ°MÄ° ───────────────────────────────────────────
 function Stop-Backend {
     if ($script:BackendProcess -and -not $script:BackendProcess.HasExited) {
         try {
@@ -105,7 +105,7 @@ function Stop-Backend {
 function Start-Backend {
     param([string]$RepoRoot)
 
-    # Varsa önce durdur
+    # Varsa Ã¶nce durdur
     Stop-Backend
 
     # API projesini bul
@@ -145,7 +145,7 @@ function Set-SP {
     else { $Obj | Add-Member -NotePropertyName $Name -NotePropertyValue $Value -Force }
 }
 
-# ─── BUILD HATA KONTROLÜ ────────────────────────────────────────
+# ─── BUILD HATA KONTROLÃœ ────────────────────────────────────────
 function Test-BuildSuccess {
     param([string]$ResultText)
     if ([string]::IsNullOrWhiteSpace($ResultText)) { return $false }
@@ -204,12 +204,12 @@ function Get-ErrorHash($text) {
 function Invoke-Analyzer {
     Write-Log "Analyzer baslatiliyor ($ANALYZER_MODEL)..."
 
-    # Dosya içeriklerini oku ve prompt'a göm — API call'un tool erişimi yok
+    # Dosya içeriklerini oku ve prompt'a gÃ¶m ─ API call'un tool erişimi yok
     $resultContent = if (Test-Path $resultPath)    { Get-Content $resultPath -Raw -Encoding UTF8 } else { "(empty)" }
     $stateContent  = if (Test-Path $statePath)     { Get-Content $statePath  -Raw -Encoding UTF8 } else { "(empty)" }
     $instrContent  = if (Test-Path $instructionFile) { Get-Content $instructionFile -Raw -Encoding UTF8 } else { "(empty)" }
 
-    # Çok uzun sonuçları kırp (token limiti aşmasın)
+    # Ã‡ok uzun sonuçları kırp (token limiti aşmasın)
     if ($resultContent.Length -gt 3000) { $resultContent = $resultContent.Substring(0, 3000) + "`n...(truncated)" }
 
     $prompt = @"
@@ -327,11 +327,11 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
     Set-SP $state "status" "running"
     Save-State $state
 
-    # 1) Backend'i durdur — Executor kod yazarken restart etmesin
+    # 1) Backend'i durdur ─ Executor kod yazarken restart etmesin
     Write-Log "Backend durduruluyor (Executor calisacak)..."
     Stop-Backend
 
-    # 2) Executor'i calistir (try/catch ile — executor hatasi loop'u kirmaz)
+    # 2) Executor'i calistir (try/catch ile ─ executor hatasi loop'u kirmaz)
     $executorFailed = $false
     try {
         & (Join-Path $scriptsDir "run-executor.ps1")
@@ -362,7 +362,7 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
         Write-Log "Build hatasi var. Backend baslatilmadi."
     }
 
-    # 4) Analyzer calistir — sadece SYSTEM_COMPLETE donerse dur
+    # 4) Analyzer calistir ─ sadece SYSTEM_COMPLETE donerse dur
     #    Verify/iterate pattern: Analyzer hem ilerleme karari hem de kalite kontrolu yapar
     Write-Host "ANALYZER BASLIYOR"
     $analysis = Invoke-Analyzer

@@ -51,7 +51,14 @@ function Invoke-ClaudeAPI {
         -Headers $headers `
         -Body    $bodyBytes
 
-    return $response.content[0].text
+    if ($response.content -and $response.content[0].text) {
+        return $response.content[0].text
+    } elseif ($response.text) {
+        return $response.text
+    } else {
+        Write-Log "HATA: API beklenmedik format dondu. Yanit: $($response | ConvertTo-Json -Compress)"
+        return $null
+    }
 }
 
 Write-Log "Initializer baslatiliyor - proje analizi yapilacak..."
@@ -59,7 +66,7 @@ Write-Log "Initializer baslatiliyor - proje analizi yapilacak..."
 $env:ANTHROPIC_API_KEY  = $env:BEACHGO_ANTHROPIC_KEY
 $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:8045"
 
-# Proje dosya yapısını topla
+# Proje dosya yap�s�n� topla
 $frontendPages = try {
     (Get-ChildItem -Path (Join-Path $repoRoot "beach-ui\src\pages") -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { $_.Name }) -join ", "
 } catch { "(alinamadi)" }
@@ -107,31 +114,31 @@ $taskPath = Join-Path $queueDir "task.txt"
 $userGoal = if (Test-Path $taskPath) { Get-Content $taskPath -Raw -Encoding UTF8 } else { "BeachGo projesini mobil oncesi hazir hale getir." }
 
 $systemPrompt = @"
-Sen BeachGo projesinin kıdemli mimarısın. Projeyi derinlemesine analiz edecek ve öncelikli bir geliştirme planı çıkaracaksın.
+Sen BeachGo projesinin k�demli mimar�s�n. Projeyi derinlemesine analiz edecek ve �ncelikli bir geliştirme plan� ç�karacaks�n.
 
 Kurallar:
 1. Sadece projeye ait bilgilere dayanarak karar ver.
-2. Her faz bağımsız, test edilebilir ve net olsun.
+2. Her faz bağ�ms�z, test edilebilir ve net olsun.
 3. Fazlar küçük ve somut olsun — Gemini CLI'nin uygulayabileceği büyüklükte.
-4. Her fazda: hangi dosyalar değişecek, ne yapılacak, nasıl test edilecek yaz.
-5. Toplam faz sayısı 15-25 arasında olsun.
-6. Mobil fazları en sona koy, önce web/api eksiliklerini gider.
-7. Çıktını SADECE aşağıdaki formatta yaz, başka hiçbir şey yazma:
+4. Her fazda: hangi dosyalar değişecek, ne yap�lacak, nas�l test edilecek yaz.
+5. Toplam faz say�s� 15-25 aras�nda olsun.
+6. Mobil fazlar� en sona koy, �nce web/api eksiliklerini gider.
+7. Ç�kt�n� SADECE aşağ�daki formatta yaz, başka hiçbir şey yazma:
 
 FAZ_LISTESI_BASLANGIC
-FAZ 1: [Başlık]
+FAZ 1: [Başl�k]
 SCOPE: web|api|mobile
 DOSYALAR: [etkilenecek dosyalar]
-GÖREV: [net, uygulanabilir görev açıklaması]
-TEST: [nasıl doğrulanacak]
+GÖREV: [net, uygulanabilir g�rev aç�klamas�]
+TEST: [nas�l doğrulanacak]
 ---
-FAZ 2: [Başlık]
+FAZ 2: [Başl�k]
 ...
 FAZ_LISTESI_BITIS
 "@
 
 $analysisPrompt = @"
-Kullanıcının isteği: $userGoal
+Kullan�c�n�n isteği: $userGoal
 
 PROJE YAPISI:
 
@@ -146,7 +153,7 @@ Services: $backendServices
 Models: $backendModels
 Son Migration: $lastMigration
 
-## App.js Route Yapısı:
+## App.js Route Yap�s�:
 $appJs
 
 ## Program.cs Middleware/DI:
@@ -158,19 +165,27 @@ Bu bilgilere göre öncelikli faz listesini çıkar.
 Write-Log "Claude API cagrisi yapiliyor - proje analizi..."
 
 $phases = $null
-$retries = 3
+$retries = 5
 for ($i = 1; $i -le $retries; $i++) {
     try {
+        Write-Log "Claude API cagrisi yapiliyor (deneme $i / $retries)..."
         $phases = Invoke-ClaudeAPI -Prompt $analysisPrompt -SystemPrompt $systemPrompt
+        Write-Log "Claude API yaniti (deneme $i): $phases"
+        Write-Host "=== CLAUDE YANITI (deneme $i) ===`n$phases`n================================" -ForegroundColor Cyan
         if (-not [string]::IsNullOrWhiteSpace($phases)) { break }
+        Write-Log "Deneme $i bos cikti dondu."
     } catch {
         Write-Log "Deneme $i basarisiz: $_"
-        Start-Sleep -Seconds 3
+        Write-Host "=== CLAUDE HATA (deneme $i) ===`n$_`n================================" -ForegroundColor Red
+        if ($i -lt $retries) {
+            Write-Log "30 saniye bekleniyor..."
+            Start-Sleep -Seconds 30
+        }
     }
 }
 
 if ([string]::IsNullOrWhiteSpace($phases)) {
-    Write-Log "HATA: Claude analiz yapamiadi."
+    Write-Log "KRITIK HATA: Claude API $retries deneme sonrasinda yanit vermedi. Otomasyon durduruluyor."
     exit 1
 }
 

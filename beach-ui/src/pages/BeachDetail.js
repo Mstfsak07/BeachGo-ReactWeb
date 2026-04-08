@@ -20,7 +20,7 @@ import {
   ShieldCheck,
   ChevronRight
 } from 'lucide-react';
-import GoogleReviewsPlaceholder from '../components/GoogleReviewsPlaceholder';
+import ReviewSection from '../components/ReviewSection';
 import BeachStoryBar from '../components/beach/BeachStoryBar';
 import BeachGallery from '../components/beach/BeachGallery';
 import { getBeachSocialProvider } from '../lib/social/getBeachSocialProvider';
@@ -264,7 +264,7 @@ const BeachDetail = () => {
               </div>
             )}
 
-            <GoogleReviewsPlaceholder />
+            <ReviewSection beachId={beach.id} beachName={beach.name} />
           </motion.div>
 
           {/* Reservation Card */}

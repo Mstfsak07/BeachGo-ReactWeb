@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getBeachById } from '../services/api';
+import { getBeachById, getBeachWeather } from '../services/api';
 import reservationService from '../services/reservationService';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -18,7 +18,11 @@ import {
   Clock,
   TrendingUp,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Thermometer,
+  Wind,
+  Waves,
+  Droplets
 } from 'lucide-react';
 import ReviewSection from '../components/ReviewSection';
 import BeachStoryBar from '../components/beach/BeachStoryBar';
@@ -40,6 +44,7 @@ const BeachDetail = () => {
   const [sunbedCount, setSunbedCount] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [socialContent, setSocialContent] = useState({ stories: [], gallery: [] });
+  const [weather, setWeather] = useState(null);
 
   const fetchBeach = useCallback(async () => {
     try {
@@ -65,6 +70,12 @@ const BeachDetail = () => {
     const stored = JSON.parse(localStorage.getItem('beach_favorites') || '[]');
     setIsFavorite(stored.some(f => f.id === parseInt(id)));
   }, [fetchBeach, id]);
+
+  useEffect(() => {
+    if (id) {
+      getBeachWeather(id).then(data => setWeather(data)).catch(() => {});
+    }
+  }, [id]);
 
   const toggleFavorite = () => {
     const stored = JSON.parse(localStorage.getItem('beach_favorites') || '[]');
@@ -195,6 +206,84 @@ const BeachDetail = () => {
                 </motion.div>
               ))}
             </div>
+
+            {/* Weather Widget */}
+            {weather?.weather && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-400 rounded-3xl p-6 sm:p-8 shadow-xl text-white overflow-hidden relative"
+              >
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
+                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+                <div className="relative z-10">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-white/70 mb-4">Hava Durumu</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 sm:gap-6">
+                    {/* Temperature */}
+                    {(weather.weather?.temperature ?? weather.weather?.temp) != null && (
+                      <div className="flex items-center gap-3">
+                        <div className="bg-white/20 backdrop-blur-sm p-2.5 rounded-xl">
+                          <Thermometer size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Sıcaklık</p>
+                          <p className="text-xl font-black">{weather.weather?.temperature ?? weather.weather?.temp}°C</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* Condition */}
+                    {(weather.weather?.description || weather.weather?.condition) && (
+                      <div className="flex items-center gap-3">
+                        <div className="bg-white/20 backdrop-blur-sm p-2.5 rounded-xl">
+                          <Umbrella size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Durum</p>
+                          <p className="text-sm font-black leading-tight">{weather.weather?.description || weather.weather?.condition}</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* Wind */}
+                    {weather.weather?.windSpeed != null && (
+                      <div className="flex items-center gap-3">
+                        <div className="bg-white/20 backdrop-blur-sm p-2.5 rounded-xl">
+                          <Wind size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Rüzgar</p>
+                          <p className="text-xl font-black">{weather.weather.windSpeed} km/s</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* Sea Temperature */}
+                    {(weather.sea?.seaTemperature ?? weather.sea?.temperature) != null && (
+                      <div className="flex items-center gap-3">
+                        <div className="bg-white/20 backdrop-blur-sm p-2.5 rounded-xl">
+                          <Droplets size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Deniz</p>
+                          <p className="text-xl font-black">{weather.sea?.seaTemperature ?? weather.sea?.temperature}°C</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* Wave Height */}
+                    {weather.sea?.waveHeight != null && (
+                      <div className="flex items-center gap-3">
+                        <div className="bg-white/20 backdrop-blur-sm p-2.5 rounded-xl">
+                          <Waves size={20} />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Dalga</p>
+                          <p className="text-xl font-black">{weather.sea.waveHeight} m</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             {beach.description && (
               <div className="border-b border-slate-100 pb-12">

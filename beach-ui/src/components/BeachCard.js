@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, MapPin, TrendingUp } from 'lucide-react';
+import { Star, MapPin, TrendingUp, Wine, Waves, Wifi, Car, UtensilsCrossed, Sailboat, Baby, Umbrella, Droplets, Music } from 'lucide-react';
 
 const BeachCard = React.memo(({ beach }) => {
   const navigate = useNavigate();
@@ -39,6 +39,16 @@ const BeachCard = React.memo(({ beach }) => {
             ) : (
               <span className="bg-emerald-500/90 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg w-fit">
                 Ucretsiz
+              </span>
+            )}
+            {beach.isOpen === true && (
+              <span className="bg-emerald-500/90 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg w-fit">
+                Açık
+              </span>
+            )}
+            {beach.isOpen === false && (
+              <span className="bg-rose-500/90 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg w-fit">
+                Kapalı
               </span>
             )}
           </div>
@@ -89,6 +99,31 @@ const BeachCard = React.memo(({ beach }) => {
             {beach.description}
           </p>
         )}
+
+        {/* Facility Icons */}
+        {(() => {
+          const facilityList = [
+            { key: 'hasBar', icon: Wine, color: 'text-purple-500' },
+            { key: 'hasPool', icon: Waves, color: 'text-blue-500' },
+            { key: 'hasWifi', icon: Wifi, color: 'text-cyan-500' },
+            { key: 'hasParking', icon: Car, color: 'text-slate-500' },
+            { key: 'hasRestaurant', icon: UtensilsCrossed, color: 'text-orange-500' },
+            { key: 'hasWaterSports', icon: Sailboat, color: 'text-teal-500' },
+            { key: 'isChildFriendly', icon: Baby, color: 'text-pink-500' },
+            { key: 'hasSunbeds', icon: Umbrella, color: 'text-amber-500' },
+            { key: 'hasShower', icon: Droplets, color: 'text-sky-500' },
+            { key: 'hasDJ', icon: Music, color: 'text-indigo-500' },
+          ];
+          const active = facilityList.filter(f => beach[f.key]);
+          if (active.length === 0) return null;
+          return (
+            <div className="flex flex-wrap items-center gap-2">
+              {active.map(({ key, icon: Icon, color }) => (
+                <Icon key={key} size={16} className={`${color} opacity-70`} />
+              ))}
+            </div>
+          );
+        })()}
 
         <div className="pt-4 flex items-center justify-between border-t border-slate-100">
           <div className="flex items-center gap-2 text-xs text-slate-400 font-bold">

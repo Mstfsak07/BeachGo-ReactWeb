@@ -79,6 +79,26 @@ builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IWeatherService, WeatherService>();
 
+// Auth support services (OTP + Email)
+builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<BeachRehberi.Application.Common.Interfaces.IOtpService, OtpService>();
+// Email service: use NoOp in dev (no Resend API key), ResendEmailService in production
+var resendApiKey = builder.Configuration["Resend:ApiKey"];
+if (!string.IsNullOrWhiteSpace(resendApiKey))
+{
+    builder.Services.Configure<ResendClientOptions>(o => o.ApiToken = resendApiKey);
+    builder.Services.AddHttpClient<IResend, ResendClient>();
+    builder.Services.AddScoped<IEmailService, ResendEmailService>();
+    builder.Services.AddScoped<BeachRehberi.Application.Common.Interfaces.IEmailService, ResendEmailService>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailService, NoOpEmailService>();
+    builder.Services.AddScoped<BeachRehberi.Application.Common.Interfaces.IEmailService, NoOpEmailService>();
+}
+builder.Services.AddScoped<IGuestReservationService, GuestReservationService>();
+builder.Services.AddScoped<IPaymentService, MockPaymentService>();
+
 // Provider Configurations
 // ...
 // (rest of DI)

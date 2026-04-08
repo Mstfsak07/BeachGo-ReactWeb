@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getBeaches, searchBeaches, filterBeaches } from '../services/api';
 import BeachCard from '../components/BeachCard';
@@ -15,16 +16,51 @@ const defaultFilters = {
   sortBy: 'rating',
 };
 
+const categoryFilterMap = {
+  'Popüler': { sortBy: 'rating' },
+  'Sakin': {},
+  'Aile': { isChildFriendly: true },
+  'Parti': { hasBar: true },
+  'Lüks': { hasPool: true },
+  'Restoran': { hasRestaurant: true },
+};
+
 const Beaches = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [beaches, setBeaches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [showFilter, setShowFilter] = useState(false);
   const [filters, setFilters] = useState({ ...defaultFilters });
+  const [activeCategory, setActiveCategory] = useState(null);
 
   useEffect(() => {
-    fetchData();
+    const qParam = searchParams.get('q');
+    const categoryParam = searchParams.get('category');
+
+    if (qParam) {
+      setQuery(qParam);
+      setLoading(true);
+      setError('');
+      searchBeaches(qParam)
+        .then((list) => setBeaches(list))
+        .catch(() => { setError('Arama yapılırken bir hata oluştu'); setBeaches([]); })
+        .finally(() => setLoading(false));
+    } else if (categoryParam && categoryFilterMap[categoryParam]) {
+      setActiveCategory(categoryParam);
+      const catFilters = categoryFilterMap[categoryParam];
+      const newFilters = { ...defaultFilters, ...catFilters };
+      setFilters(newFilters);
+      setLoading(true);
+      setError('');
+      filterBeaches(newFilters)
+        .then((list) => setBeaches(list))
+        .catch(() => { setError('Filtreleme yapılırken bir hata oluştu'); setBeaches([]); })
+        .finally(() => setLoading(false));
+    } else {
+      fetchData();
+    }
   }, []);
 
   const activeFilterCount = useMemo(() => {
@@ -106,6 +142,14 @@ const Beaches = () => {
       ...prev,
       [key]: prev[key] === true ? null : true,
     }));
+  };
+
+  const clearCategory = () => {
+    setActiveCategory(null);
+    setFilters({ ...defaultFilters });
+    searchParams.delete('category');
+    setSearchParams(searchParams);
+    fetchData();
   };
 
   const containerVariants = {
@@ -200,6 +244,22 @@ const Beaches = () => {
                </button>
             </div>
           </motion.div>
+
+          {/* Active Category Badge */}
+          {activeCategory && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-2"
+            >
+              <span className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-widest">
+                Kategori: {activeCategory}
+                <button onClick={clearCategory} className="ml-1 hover:bg-blue-200 rounded-full p-0.5 transition-colors">
+                  <X size={14} />
+                </button>
+              </span>
+            </motion.div>
+          )}
 
           {/* Filter Panel */}
           <AnimatePresence>

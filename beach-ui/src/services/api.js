@@ -48,6 +48,12 @@ export const createReview = async (data) => {
   return unwrapResponse(res.data);
 };
 
+// Weather
+export const getBeachWeather = async (beachId) => {
+  const res = await api.get(`/Beaches/${beachId}/weather`);
+  return unwrapResponse(res.data);
+};
+
 // Business
 export const getBusinessDashboard = async () => {
   const res = await api.get('/Business/dashboard');

@@ -23,6 +23,7 @@ using BeachRehberi.API.Models;
 using Resend;
 
 using BeachRehberi.Domain.Interfaces;
+using BeachRehberi.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -112,6 +113,8 @@ builder.Services.AddTransient<IResend, ResendClient>();
 builder.Services.AddScoped<IEmailService, ResendEmailService>();
 builder.Services.AddScoped<IGuestReservationService, GuestReservationService>();
 builder.Services.AddScoped<IStoryService, StoryService>();
+
+builder.Services.AddApplication();
 
 // ─────────────────────────────────────────
 // 5. MAPSTER – IMapper DI

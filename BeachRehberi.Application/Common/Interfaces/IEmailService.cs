@@ -21,9 +21,16 @@ public interface IEmailService
         string status,
         CancellationToken cancellationToken = default);
 
+    Task SendEmailVerificationAsync(
+        string toEmail,
+        string fullName,
+        string token,
+        CancellationToken cancellationToken = default);
+
     Task SendPasswordResetAsync(
         string toEmail,
-        string resetToken,
+        string fullName,
+        string token,
         CancellationToken cancellationToken = default);
 
     Task SendEmailAsync(

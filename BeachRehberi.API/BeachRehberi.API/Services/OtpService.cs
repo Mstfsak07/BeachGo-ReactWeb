@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 
 namespace BeachRehberi.API.Services;
 
-public class OtpService : IOtpService
+public class OtpService : BeachRehberi.Application.Common.Interfaces.IOtpService, IOtpService
 {
     private readonly BeachDbContext _db;
     private readonly ILogger<OtpService> _logger;
@@ -19,7 +19,7 @@ public class OtpService : IOtpService
         _logger = logger;
     }
 
-    public async Task<string> GenerateTokenAsync(string email, string purpose)
+    public async Task<string> GenerateTokenAsync(string email, string purpose, CancellationToken cancellationToken = default)
     {
         if (!Enum.TryParse<OtpPurpose>(purpose, out var purposeEnum))
         {
@@ -28,7 +28,7 @@ public class OtpService : IOtpService
 
         var oldCodes = await _db.VerificationCodes
             .Where(x => x.Email == email && x.Purpose == purposeEnum && !x.IsUsed)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
             
         foreach(var c in oldCodes)
             c.IsUsed = true;
@@ -50,21 +50,25 @@ public class OtpService : IOtpService
         };
 
         _db.VerificationCodes.Add(verificationCode);
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation("Token generated for {Email}, Purpose: {Purpose}, Token: {Token}", email, purpose, token);
         
         return token;
     }
 
-    public async Task<bool> ValidateTokenAsync(string email, string purpose, string token)
+    // Explicit implementation for API interface
+    Task<string> IOtpService.GenerateTokenAsync(string email, string purpose) 
+        => GenerateTokenAsync(email, purpose);
+
+    public async Task<bool> ValidateTokenAsync(string email, string purpose, string token, CancellationToken cancellationToken = default)
     {
         var tokenHash = ComputeSha256Hash(token);
         if (!Enum.TryParse<OtpPurpose>(purpose, out var purposeEnum)) return false;
 
         var verificationCode = await _db.VerificationCodes
             .Where(x => x.Email == email && x.CodeHash == tokenHash && x.Purpose == purposeEnum && !x.IsUsed)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (verificationCode == null || verificationCode.ExpiresAt <= DateTime.UtcNow)
             return false;
@@ -72,20 +76,26 @@ public class OtpService : IOtpService
         return true;
     }
 
-    public async Task InvalidateTokenAsync(string email, string purpose)
+    Task<bool> IOtpService.ValidateTokenAsync(string email, string purpose, string token)
+        => ValidateTokenAsync(email, purpose, token);
+
+    public async Task InvalidateTokenAsync(string email, string purpose, CancellationToken cancellationToken = default)
     {
         if (!Enum.TryParse<OtpPurpose>(purpose, out var purposeEnum)) return;
 
         var codes = await _db.VerificationCodes
             .Where(x => x.Email == email && x.Purpose == purposeEnum && !x.IsUsed)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
         
         foreach(var code in codes)
         {
             code.IsUsed = true;
         }
-        await _db.SaveChangesAsync();
+        await _db.SaveChangesAsync(cancellationToken);
     }
+
+    Task IOtpService.InvalidateTokenAsync(string email, string purpose)
+        => InvalidateTokenAsync(email, purpose);
 
     public async Task<string> GenerateOtpAsync(string email, OtpPurpose purpose)
     {

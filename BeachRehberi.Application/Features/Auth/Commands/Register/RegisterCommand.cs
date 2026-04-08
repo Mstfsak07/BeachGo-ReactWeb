@@ -34,17 +34,20 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Re
     private readonly IJwtService _jwtService;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IEmailService _emailService;
+    private readonly IOtpService _otpService;
 
     public RegisterCommandHandler(
         IUnitOfWork unitOfWork,
         IJwtService jwtService,
         IPasswordHasher passwordHasher,
-        IEmailService emailService)
+        IEmailService emailService,
+        IOtpService otpService)
     {
         _unitOfWork = unitOfWork;
         _jwtService = jwtService;
         _passwordHasher = passwordHasher;
         _emailService = emailService;
+        _otpService = otpService;
     }
 
     public async Task<Result<RegisterResponse>> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -70,18 +73,21 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Re
         await _unitOfWork.Users.AddAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        // Token üret
+        // Verification Token üret
+        var verificationToken = await _otpService.GenerateTokenAsync(user.Email, "EmailVerification", cancellationToken);
+
+        // Token üret (JWT)
         var accessToken = _jwtService.GenerateAccessToken(user);
         var refreshToken = _jwtService.GenerateRefreshToken();
 
         user.SetRefreshToken(refreshToken, DateTime.UtcNow.AddDays(7));
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        // Hoşgeldin e-postası (hata olursa kaydı engelleme)
+        // E-posta gönderimi (hata olursa kaydı engelleme)
         try
         {
-            await _emailService.SendWelcomeEmailAsync(
-                user.Email, user.FullName, cancellationToken);
+            await _emailService.SendEmailVerificationAsync(
+                user.Email, user.FullName, verificationToken, cancellationToken);
         }
         catch
         {

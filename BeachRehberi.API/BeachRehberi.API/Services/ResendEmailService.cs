@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace BeachRehberi.API.Services;
 
-public class ResendEmailService : IEmailService
+public class ResendEmailService : BeachRehberi.Application.Common.Interfaces.IEmailService, IEmailService
 {
     private readonly IResend _resend;
     private readonly IConfiguration _config;
@@ -21,7 +21,7 @@ public class ResendEmailService : IEmailService
         _env = env;
     }
 
-    public async Task SendEmailVerificationAsync(string toEmail, string toName, string token)
+    public async Task SendEmailVerificationAsync(string toEmail, string toName, string token, CancellationToken cancellationToken = default)
     {
         var appUrl = _config["App:Url"] ?? "http://localhost:5173";
         var verifyLink = $"{appUrl}/verify-email?token={Uri.EscapeDataString(token)}";
@@ -44,7 +44,7 @@ public class ResendEmailService : IEmailService
 
         try
         {
-            await _resend.EmailSendAsync(message);
+            await _resend.EmailSendAsync(message, cancellationToken);
             _logger.LogInformation("Verification email sent to {Email}", toEmail);
         }
         catch (Exception ex)
@@ -53,7 +53,11 @@ public class ResendEmailService : IEmailService
         }
     }
 
-    public async Task SendPasswordResetAsync(string toEmail, string toName, string token)
+    // Explicit implementation for API interface if needed, or just let the one above handle it if signatures match
+    Task IEmailService.SendEmailVerificationAsync(string toEmail, string toName, string token) 
+        => SendEmailVerificationAsync(toEmail, toName, token);
+
+    public async Task SendPasswordResetAsync(string toEmail, string toName, string token, CancellationToken cancellationToken = default)
     {
         var appUrl = _config["App:Url"] ?? "http://localhost:5173";
         var resetLink = $"{appUrl}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(toEmail)}";
@@ -76,12 +80,51 @@ public class ResendEmailService : IEmailService
 
         try
         {
-            await _resend.EmailSendAsync(message);
+            await _resend.EmailSendAsync(message, cancellationToken);
             _logger.LogInformation("Password reset email sent to {Email}", toEmail);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send password reset email to {Email}", toEmail);
+        }
+    }
+
+    Task IEmailService.SendPasswordResetAsync(string toEmail, string toName, string token)
+        => SendPasswordResetAsync(toEmail, toName, token);
+
+    public Task SendWelcomeEmailAsync(string toEmail, string fullName, CancellationToken cancellationToken = default)
+    {
+        // For now, reuse verification or send a simple welcome
+        return SendEmailAsync(toEmail, "BeachGo'ya Hoş Geldiniz!", $"Merhaba {fullName}, BeachGo'ya hoş geldiniz!", cancellationToken);
+    }
+
+    public Task SendReservationConfirmationAsync(string toEmail, string fullName, string beachName, DateTime reservationDate, CancellationToken cancellationToken = default)
+    {
+        return SendEmailAsync(toEmail, "Rezervasyon Onayı", $"Merhaba {fullName}, {beachName} plajı için {reservationDate:dd.MM.yyyy HH:mm} tarihindeki rezervasyonunuz onaylanmıştır.", cancellationToken);
+    }
+
+    public Task SendReservationStatusUpdateAsync(string toEmail, string fullName, string beachName, string status, CancellationToken cancellationToken = default)
+    {
+        return SendEmailAsync(toEmail, "Rezervasyon Durum Güncellemesi", $"Merhaba {fullName}, {beachName} plajı için rezervasyon durumunuz '{status}' olarak güncellenmiştir.", cancellationToken);
+    }
+
+    public async Task SendEmailAsync(string toEmail, string subject, string body, CancellationToken cancellationToken = default)
+    {
+        var message = new EmailMessage
+        {
+            From = FromAddress,
+            To = { toEmail },
+            Subject = subject,
+            HtmlBody = body // Should ideally wrap in a layout
+        };
+
+        try
+        {
+            await _resend.EmailSendAsync(message, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send email to {Email}", toEmail);
         }
     }
 

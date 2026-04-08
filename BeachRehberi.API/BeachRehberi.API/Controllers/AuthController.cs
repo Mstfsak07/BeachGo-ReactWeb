@@ -26,17 +26,49 @@ namespace BeachRehberi.API.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly ITokenService _tokenService;
         private readonly BeachRehberi.API.Data.BeachDbContext _db;
+        private readonly MediatR.IMediator _mediator;
 
-                public AuthController(IAuthService authService, IConfiguration configuration, IWebHostEnvironment env, ITokenService tokenService, BeachRehberi.API.Data.BeachDbContext db) { _authService = authService; _configuration = configuration; _env = env; _tokenService = tokenService; _db = db; }
+        public AuthController(IAuthService authService, IConfiguration configuration, IWebHostEnvironment env, ITokenService tokenService, BeachRehberi.API.Data.BeachDbContext db, MediatR.IMediator mediator)
+        {
+            _authService = authService;
+            _configuration = configuration;
+            _env = env;
+            _tokenService = tokenService;
+            _db = db;
+            _mediator = mediator;
+        }
 
         [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            var result = await _authService.RegisterAsync(request);
-            if (result.Success)
-                return Ok(result);
-            return BadRequest(result);
+            var command = new BeachRehberi.Application.Features.Auth.Commands.Register.RegisterCommand(
+                request.FirstName, request.LastName, request.Email, request.Password, request.Password, request.PhoneNumber);
+            
+            var result = await _mediator.Send(command);
+
+            if (result.IsSuccess)
+            {
+                var response = result.Value;
+                return Ok(new AuthResult
+                {
+                    Success = true,
+                    Message = "Kayıt başarılı. Lütfen email adresinize gönderilen doğrulamayı kontrol edin.",
+                    Token = response.AccessToken,
+                    RefreshToken = response.RefreshToken,
+                    User = new UserDto
+                    {
+                        Id = response.UserId,
+                        Email = response.Email,
+                        FirstName = request.FirstName,
+                        LastName = request.LastName,
+                        PhoneNumber = request.PhoneNumber,
+                        IsEmailVerified = false
+                    }
+                });
+            }
+
+            return BadRequest(new AuthResult { Success = false, Message = result.Error });
         }
 
         [AllowAnonymous]
@@ -45,8 +77,14 @@ namespace BeachRehberi.API.Controllers
         {
             try
             {
-                var response = await _authService.LoginAsync(request);
-                
+                var command = new BeachRehberi.Application.Features.Auth.Commands.Login.LoginCommand(request.Email, request.Password);
+                var result = await _mediator.Send(command);
+
+                if (!result.IsSuccess)
+                    return BadRequest(new AuthResult { Success = false, Message = result.Error });
+
+                var response = result.Value;
+
                 Response.Cookies.Append("refreshToken", response.RefreshToken, new CookieOptions
                 {
                     HttpOnly = true,
@@ -54,10 +92,26 @@ namespace BeachRehberi.API.Controllers
                     SameSite = SameSiteMode.Lax,
                     Expires = DateTime.UtcNow.AddDays(7)
                 });
-                
-                return Ok(response);
+
+                return Ok(new AuthResult
+                {
+                    Success = true,
+                    Message = "Giriş başarılı.",
+                    Token = response.AccessToken,
+                    RefreshToken = response.RefreshToken,
+                    ExpiresAt = response.AccessTokenExpiry,
+                    User = new UserDto
+                    {
+                        Id = response.UserId,
+                        Email = response.Email,
+                        FirstName = response.FullName.Split(' ')[0],
+                        LastName = response.FullName.Contains(' ') ? response.FullName.Split(' ', 2)[1] : "",
+                        PhoneNumber = "",
+                        IsEmailVerified = true
+                    }
+                });
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 return BadRequest(new AuthResult { Success = false, Message = ex.Message });
             }
@@ -166,8 +220,13 @@ namespace BeachRehberi.API.Controllers
         [Authorize]
         public async Task<IActionResult> Logout()
         {
-            var refreshToken = Request.Cookies["refreshToken"];
-            await _authService.LogoutAsync(null, refreshToken);
+            var userIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(userIdStr, out var userId))
+            {
+                var command = new BeachRehberi.Application.Features.Auth.Commands.Logout.LogoutCommand(userId);
+                await _mediator.Send(command);
+            }
+
             Response.Cookies.Delete("refreshToken");
             return Ok(new AuthResult { Success = true, Message = "Çıkış başarılı." });
         }

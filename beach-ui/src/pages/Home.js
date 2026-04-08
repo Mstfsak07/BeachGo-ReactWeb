@@ -171,6 +171,7 @@ const Home = () => {
               key={i}
               variants={itemVariants}
               whileHover={{ y: -8, scale: 1.1 }}
+              onClick={() => navigate('/beaches?category=' + encodeURIComponent(cat.name))}
               className="group flex flex-col items-center gap-4 min-w-[100px] md:min-w-[120px]"
             >
               <div className={`${cat.bg} ${cat.color} p-6 rounded-[2.5rem] shadow-sm group-hover:shadow-xl group-hover:rotate-6 transition-all duration-500`}>

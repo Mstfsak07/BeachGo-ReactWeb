@@ -60,8 +60,10 @@ function startProcess(name, cmd, args, cwd) {
     console.log(`[EXIT] ${name} (${code})`);
     delete processes[name];
 
-    // ❌ AGENT restart etmesin (zaten ayrı window)
-    if (name === "AGENT") return;
+    if (name === "AGENT") {
+      console.log(`[AGENT] Loop surecini tamamladi (code=${code}). Yeniden baslatilmayacak.`);
+      return;
+    }
 
     setTimeout(() => {
       console.log(`[RESTART] ${name}`);

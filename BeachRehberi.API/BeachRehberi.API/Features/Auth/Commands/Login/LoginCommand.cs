@@ -30,7 +30,7 @@ public class LoginHandler : IRequestHandler<LoginCommand, AuthResult>
             .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive, cancellationToken);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            throw new Exception("Geçersiz kullanıcı bilgileri.");
+            return new AuthResult { Success = false, Message = "Geçersiz kullanıcı bilgileri." };
 
         await InvalidateAllSessionsAsync(user.Id, "new_login", cancellationToken);
 

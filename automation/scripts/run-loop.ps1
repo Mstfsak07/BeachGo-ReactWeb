@@ -19,6 +19,7 @@ $instructionFile = Join-Path $queueDir "instruction.txt"
 $MAX_ITERATIONS      = 50
 $MAX_CONSECUTIVE_ERR = 3
 $MAX_ANALYZER_ERR    = 3
+$ANALYZER_MODEL      = if ($env:BEACHGO_ANALYZER_MODEL) { $env:BEACHGO_ANALYZER_MODEL } else { "claude-sonnet-4-6" }
 
 # ─── GLOBAL PROCESS TRACKING ────────────────────────────────────
 $script:BackendProcess = $null
@@ -59,10 +60,9 @@ function Invoke-Cleanup {
     }
 
     # dotnet run ile başlatılan backend'ler
-    Get-Process -Name "dotnet" -ErrorAction SilentlyContinue | Where-Object {
-        $_.MainWindowTitle -eq "" -and $_.CommandLine -match "run" 2>$null
-    } | ForEach-Object {
-        try { $_.Kill(); Write-Log "Orphan dotnet process durduruldu (PID=$($_.Id))." } catch {}
+    Get-CimInstance Win32_Process -Filter "Name = 'dotnet.exe'" -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -match "run" } | ForEach-Object {
+        try { Stop-Process -Id $_.ProcessId -Force; Write-Log "Orphan dotnet process durduruldu (PID=$($_.ProcessId))." } catch {}
     }
 
     # executor.lock temizle
@@ -77,11 +77,15 @@ Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
 } | Out-Null
 
 # Ctrl+C handler
-[Console]::TreatControlCAsInput = $false
-$null = Register-ObjectEvent -InputObject ([Console]) -EventName CancelKeyPress -Action {
-    Write-Host "`n[LOOP] Ctrl+C alindi. Cleanup yapiliyor..." -ForegroundColor Yellow
-    Invoke-Cleanup
-    exit 0
+try {
+    [Console]::TreatControlCAsInput = $false
+    $null = Register-ObjectEvent -InputObject ([Console]) -EventName CancelKeyPress -Action {
+        Write-Host "`n[LOOP] Ctrl+C alindi. Cleanup yapiliyor..." -ForegroundColor Yellow
+        Invoke-Cleanup
+        exit 0
+    }
+} catch {
+    Write-Log "Ctrl+C handler atanamadi (non-interactive shell), devam ediliyor."
 }
 
 # ─── BACKEND YÖNETİMİ ───────────────────────────────────────────
@@ -198,7 +202,7 @@ function Get-ErrorHash($text) {
 }
 
 function Invoke-Analyzer {
-    Write-Log "Analyzer baslatiliyor (Claude Sonnet 4.6)..."
+    Write-Log "Analyzer baslatiliyor ($ANALYZER_MODEL)..."
 
     # Dosya içeriklerini oku ve prompt'a göm — API call'un tool erişimi yok
     $resultContent = if (Test-Path $resultPath)    { Get-Content $resultPath -Raw -Encoding UTF8 } else { "(empty)" }
@@ -209,7 +213,8 @@ function Invoke-Analyzer {
     if ($resultContent.Length -gt 3000) { $resultContent = $resultContent.Substring(0, 3000) + "`n...(truncated)" }
 
     $prompt = @"
-You are an automation loop analyzer. Evaluate the last executor result and decide what to do next.
+You are an automation loop analyzer with code quality verification capabilities.
+Evaluate the last executor result and decide what to do next.
 
 === queue/state.json ===
 $stateContent
@@ -220,9 +225,16 @@ $resultContent
 === queue/instruction.txt (what was attempted) ===
 $instrContent
 
+VERIFICATION CHECKLIST:
+- Were all requested files written successfully?
+- Did the build succeed?
+- Are there any security issues in the changes (input validation, auth, data exposure)?
+- Are there any obvious performance problems (N+1 queries, missing pagination)?
+- Were edge cases considered?
+
 RULES:
-- Return CONTINUE if: any write_file failed, build failed, files were missing, workspace errors occurred, or any step is incomplete.
-- Return SYSTEM_COMPLETE only if all files were written successfully AND there are no errors.
+- Return CONTINUE if: any write_file failed, build failed, files were missing, workspace errors occurred, any step is incomplete, or verification found issues.
+- Return SYSTEM_COMPLETE only if all files were written successfully AND there are no errors AND verification passes.
 - If returning CONTINUE, next_steps must be ONE SHORT SENTENCE (max 120 chars) describing only the immediate next action.
 - Do NOT write paragraphs, steps, or lists in next_steps. One line only.
 
@@ -237,7 +249,7 @@ or
 
     try {
         $body = @{
-            model      = "claude-sonnet-4-6"
+            model      = $ANALYZER_MODEL
             max_tokens = 200
             messages   = @(@{ role = "user"; content = $prompt })
         } | ConvertTo-Json -Depth 10
@@ -347,6 +359,7 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
     }
 
     # 4) Analyzer calistir — sadece SYSTEM_COMPLETE donerse dur
+    #    Verify/iterate pattern: Analyzer hem ilerleme karari hem de kalite kontrolu yapar
     Write-Host "ANALYZER BASLIYOR"
     $analysis = Invoke-Analyzer
     Write-Host "ANALYZER BITTI"

@@ -1,3 +1,7 @@
+# DEPRECATED: Bu script artik kullanilmiyor.
+# run-executor.ps1 kendi icinde context-enriched coder-prompt.txt uretiyor.
+# Sadece loop.bat geriye uyumluluk icin cagiriyor.
+
 $instructionFile = "automation\queue\instruction.txt"
 $planFile = "automation\queue\plan.txt"
 $outputFile = "automation\queue\coder-prompt.txt"

@@ -1,2 +1,2 @@
 @echo off
-powershell -ExecutionPolicy Bypass -File automation\scripts\run-coder.ps1
+powershell -ExecutionPolicy Bypass -File automation\scripts\run-executor.ps1

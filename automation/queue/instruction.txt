@@ -1,1 +1,0 @@
-﻿Read executor-prompt.txt using read_file tool and complete AuthController CQRS refactoring tasks.

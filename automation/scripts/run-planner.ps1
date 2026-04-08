@@ -11,6 +11,8 @@ $queueDir      = Join-Path $automationDir "queue"
 $promptsDir    = Join-Path $automationDir "prompts"
 $logFile       = Join-Path $queueDir "automation.log"
 
+$PLANNER_MODEL = if ($env:BEACHGO_PLANNER_MODEL) { $env:BEACHGO_PLANNER_MODEL } else { "claude-sonnet-4-6" }
+
 function Write-Log($msg) {
     $line = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [PLANNER] $msg"
     Write-Host $line
@@ -30,8 +32,8 @@ function Invoke-ClaudeAPI {
     $baseUrl = if ($env:ANTHROPIC_BASE_URL) { $env:ANTHROPIC_BASE_URL.TrimEnd('/') } else { "https://api.anthropic.com" }
 
     $bodyObj = [ordered]@{
-        model      = "claude-sonnet-4-6"
-        max_tokens = 8096
+        model      = $PLANNER_MODEL
+        max_tokens = 8192
         messages   = @(@{ role = "user"; content = [string]$Prompt })
     }
     if (-not [string]::IsNullOrWhiteSpace($SystemPrompt)) {
@@ -47,7 +49,7 @@ function Invoke-ClaudeAPI {
         "content-type"      = "application/json"
     }
 
-    Write-Log "Anthropic API cagrisi: $baseUrl/v1/messages (model=claude-sonnet-4-6)"
+    Write-Log "Anthropic API cagrisi: $baseUrl/v1/messages (model=$PLANNER_MODEL)"
 
     $response = Invoke-RestMethod `
         -Uri     "$baseUrl/v1/messages" `
@@ -118,12 +120,11 @@ try {
         Set-SP $stateObj "status" "done"
         $stateObj | ConvertTo-Json -Depth 10 | Set-Content $statePath -Encoding UTF8
         "SYSTEM_COMPLETE" | Set-Content $instructionPath -Encoding UTF8
-        "SYSTEM_COMPLETE" | Set-Content $instructPath -Encoding UTF8
         exit 0
     }
 
     # Diger verileri oku
-    
+    $resultText = if (Test-Path $resultPath) { Get-Content $resultPath -Raw -Encoding UTF8 } else { "(bos)" }
 
     $gitDiff = try {
         $d = & git -C $repoRoot diff --stat HEAD 2>&1 | Out-String

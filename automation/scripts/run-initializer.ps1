@@ -13,6 +13,8 @@ $logFile       = Join-Path $queueDir "automation.log"
 $phasesFile    = Join-Path $queueDir "phases.txt"
 $repoRoot      = Split-Path $automationDir -Parent
 
+$INITIALIZER_MODEL = if ($env:BEACHGO_INITIALIZER_MODEL) { $env:BEACHGO_INITIALIZER_MODEL } else { "claude-sonnet-4-6" }
+
 function Write-Log($msg) {
     $line = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [INITIALIZER] $msg"
     Write-Host $line
@@ -26,8 +28,8 @@ function Invoke-ClaudeAPI {
     $baseUrl = if ($env:ANTHROPIC_BASE_URL) { $env:ANTHROPIC_BASE_URL.TrimEnd('/') } else { "https://api.anthropic.com" }
 
     $bodyObj = [ordered]@{
-        model      = "claude-sonnet-4-6"
-        max_tokens = 8096
+        model      = $INITIALIZER_MODEL
+        max_tokens = 8192
         messages   = @(@{ role = "user"; content = [string]$Prompt })
     }
     if (-not [string]::IsNullOrWhiteSpace($SystemPrompt)) {

@@ -45,8 +45,8 @@ try {
     $resultPath      = Join-Path $queueDir "result.txt"
     $outputPath      = Join-Path $queueDir "executor-output.txt"
 
-   if (-not (Test-Path $instructionPath)) { Write-Log "HATA: instruction.txt bulunamadi."; return }
-if (-not (Test-Path $statePath)) { Write-Log "HATA: state.json bulunamadi."; return }
+    if (-not (Test-Path $instructionPath)) { Write-Log "HATA: instruction.txt bulunamadi."; return }
+    if (-not (Test-Path $statePath)) { Write-Log "HATA: state.json bulunamadi."; return }
 
     try { $stateObj = Get-Content $statePath -Raw -Encoding UTF8 | ConvertFrom-Json }
     catch { Write-Log "HATA: state.json okunamadi."; return }
@@ -61,9 +61,32 @@ if (-not (Test-Path $statePath)) { Write-Log "HATA: state.json bulunamadi."; ret
     $instructionText = Get-Content $instructionPath -Raw -Encoding UTF8
 $planText = $instructionText
 
+    $geminiModel = if ($env:BEACHGO_GEMINI_MODEL) { $env:BEACHGO_GEMINI_MODEL } else { "gemini-3-flash" }
+    if ($instructionText -imatch "\[SECURITY\]|\[REFACTOR\]|guvenlik|security|audit|mimari|architecture|refactor") {
+        $geminiModel = if ($env:BEACHGO_GEMINI_PRO_MODEL) { $env:BEACHGO_GEMINI_PRO_MODEL } else { "gemini-2.5-pro" }
+        Write-Log "Karmasik gorev tespit edildi, PRO model kullaniliyor: $geminiModel"
+    } else {
+        Write-Log "Standart gorev, FLASH model kullaniliyor: $geminiModel"
+    }
+
     $coderSystemPath = Join-Path $promptsDir "coder-system.txt"
     if (-not (Test-Path $coderSystemPath)) { Write-Log "HATA: coder-system.txt bulunamadi."; return }
+
+    $workflowPromptPath = $null
+    if ($instructionText -imatch "\[SECURITY\]|guvenlik|security|audit") {
+        $workflowPromptPath = Join-Path $promptsDir "security-audit-system.txt"
+    } elseif ($instructionText -imatch "\[BUGFIX\]|hata|bug|fix-cycle|fix") {
+        $workflowPromptPath = Join-Path $promptsDir "fix-cycle-system.txt"
+    } elseif ($instructionText -imatch "\[FEATURE\]|ozellik|feature|build-cycle") {
+        $workflowPromptPath = Join-Path $promptsDir "build-cycle-system.txt"
+    }
+
     $coderSystem = Get-Content $coderSystemPath -Raw -Encoding UTF8
+    if ($workflowPromptPath -and (Test-Path $workflowPromptPath)) {
+        $workflowSystem = Get-Content $workflowPromptPath -Raw -Encoding UTF8
+        $coderSystem = $coderSystem + "`n`n=== EK WORKFLOW TALIMATLARI ===`n" + $workflowSystem
+        Write-Log "Workflow prompt eklendi: $workflowPromptPath"
+    }
 
     # ── CONTEXT ENRICHMENT ──────────────────────────────────────────
     # Plan'daki [API_ROOT] / [WEB_ROOT] placeholder'larini gercek path'e coz
@@ -192,7 +215,7 @@ set CI=true
 set NO_COLOR=1
 set TERM=dumb
 cd /d "$repoRoot"
-gemini --approval-mode yolo --model gemini-3-flash -p "@$tempPrompt" > "$tempOutput" 2>&1
+gemini --approval-mode yolo --model $geminiModel -p "@$tempPrompt" > "$tempOutput" 2>&1
 exit /b %ERRORLEVEL%
 "@
             $batContent | Set-Content $tempBat -Encoding ASCII

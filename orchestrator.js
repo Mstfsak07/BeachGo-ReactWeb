@@ -1,13 +1,59 @@
-import { spawn } from "child_process";
+import { spawn, execSync } from "child_process";
 import net from "net";
 import fs from "fs";
-import path from "path"; // 👈 EKLE
+import path from "path";
 
 const processes = {};
+const restartCounts = {};
+const MAX_RESTARTS = 5;
 let agentStarted = false;
+let isTestRunning = false;
+let isShuttingDown = false;
 
+const FRONTEND_DIR = path.join(process.cwd(), "beach-ui");
 const backendDir = path.join(process.cwd(), "BeachRehberi.API", "BeachRehberi.API");
+const AGENT_SCRIPT = path.join(process.cwd(), "automation", "scripts", "run-loop.ps1");
 console.log("Backend dir:", backendDir);
+
+function killProcessTree(pid) {
+  try {
+    if (process.platform === "win32") {
+      execSync(`taskkill /PID ${pid} /T /F`, { stdio: "ignore" });
+    } else {
+      process.kill(-pid, "SIGKILL");
+    }
+  } catch {}
+}
+
+function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log(`\n[SHUTDOWN] ${signal} received. Killing all child processes...`);
+
+  for (const [name, proc] of Object.entries(processes)) {
+    console.log(`[SHUTDOWN] Killing ${name} (PID=${proc.pid})...`);
+    killProcessTree(proc.pid);
+  }
+
+  try {
+    if (process.platform === "win32") {
+      execSync('taskkill /IM "gemini.exe" /F', { stdio: "ignore" });
+    }
+  } catch {}
+
+  console.log("[SHUTDOWN] All processes killed. Exiting.");
+  process.exit(0);
+}
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGHUP", () => gracefulShutdown("SIGHUP"));
+if (process.platform === "win32") {
+  process.on("message", (msg) => {
+    if (msg === "shutdown") gracefulShutdown("shutdown");
+  });
+}
+
 // 🔍 PORT KONTROL
 function isRunning(port) {
   return new Promise((resolve) => {
@@ -40,7 +86,8 @@ function startProcess(name, cmd, args, cwd) {
 
   console.log(`[START] ${name}`);
 
-  const proc = spawn(cmd, args, {
+  const fullCmd = [cmd, ...args].join(" ");
+  const proc = spawn(fullCmd, [], {
     cwd,
     shell: true,
     env: process.env,
@@ -56,7 +103,7 @@ function startProcess(name, cmd, args, cwd) {
     process.stderr.write(`[${name} ERROR] ${data}`);
   });
 
-  proc.on("exit", (code) => {
+  proc.on("close", (code) => {
     console.log(`[EXIT] ${name} (${code})`);
     delete processes[name];
 
@@ -65,10 +112,19 @@ function startProcess(name, cmd, args, cwd) {
       return;
     }
 
+    if (isShuttingDown) return;
+
+    restartCounts[name] = (restartCounts[name] || 0) + 1;
+    if (restartCounts[name] > MAX_RESTARTS) {
+      console.log(`[STOP] ${name} reached max restart limit (${MAX_RESTARTS}). Giving up.`);
+      return;
+    }
+
+    const delay = Math.min(5000 * restartCounts[name], 30000);
     setTimeout(() => {
-      console.log(`[RESTART] ${name}`);
+      console.log(`[RESTART] ${name} (attempt ${restartCounts[name]}/${MAX_RESTARTS})`);
       startProcess(name, cmd, args, cwd);
-    }, 5000);
+    }, delay);
   });
 }
 
@@ -92,7 +148,7 @@ async function startAll() {
       "FRONTEND",
       "npm",
       ["start"],
-      "./beach-ui"
+      FRONTEND_DIR
     );
   } else {
     console.log("[OK] Frontend already running");
@@ -100,20 +156,23 @@ async function startAll() {
 
   // AGENT (tek instance)
   if (!agentStarted) {
-    agentStarted = true;
+    if (!fs.existsSync(AGENT_SCRIPT)) {
+      console.log(`[ERROR] Agent script not found: ${AGENT_SCRIPT}`);
+    } else {
+      agentStarted = true;
 
-    startProcess(
-  "AGENT",
-  "powershell",
-  [
-    "-ExecutionPolicy",
-    "Bypass",
-    "-File",
-    "automation/scripts/run-loop.ps1",
-  ],
-  process.cwd()
-);
-
+      startProcess(
+        "AGENT",
+        "powershell",
+        [
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          AGENT_SCRIPT,
+        ],
+        process.cwd()
+      );
+    }
   }
 }
 
@@ -123,31 +182,41 @@ async function runTests() {
 
   const run = (cmd, cwd) =>
     new Promise((resolve) => {
-      const p = spawn(cmd, { shell: true, cwd });
+      const p = spawn(cmd, [], { shell: true, cwd });
 
       let output = "";
 
       p.stdout.on("data", (d) => (output += d));
       p.stderr.on("data", (d) => (output += d));
 
-      p.on("close", () => resolve(output));
+      p.on("close", (code) => resolve({ output, code }));
     });
 
   const backend = await run("dotnet build", "./BeachRehberi.API");
   const frontend = await run("npm run build", "./beach-ui");
 
-  const result = `BACKEND:\n${backend}\n\nFRONTEND:\n${frontend}`;
+  const result = `BACKEND (exit ${backend.code}):\n${backend.output}\n\nFRONTEND (exit ${frontend.code}):\n${frontend.output}`;
 
   fs.writeFileSync("test-result.txt", result);
+
+  if (backend.code !== 0 || frontend.code !== 0) {
+    console.log("[TEST] FAILED - check test-result.txt for details");
+  }
 
   console.log("=== TEST DONE ===\n");
 }
 
 // 🔔 TEST TETİKLEYİCİ
 setInterval(async () => {
+  if (isTestRunning) return;
   if (fs.existsSync("run-tests.txt")) {
     fs.unlinkSync("run-tests.txt");
-    await runTests();
+    isTestRunning = true;
+    try {
+      await runTests();
+    } finally {
+      isTestRunning = false;
+    }
   }
 }, 3000);
 

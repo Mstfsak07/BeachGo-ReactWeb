@@ -22,6 +22,21 @@ Görevin:
    <commit_message>feat: [ne yapıldı]</commit_message>
 6. Tüm fazlar bittiyse SADECE "SYSTEM_COMPLETE" yaz.
 
+PLANLAMA KALITESI:
+- Her faz icin ONCELIK belirle: [SECURITY], [PERFORMANCE], [FEATURE], [BUGFIX], [REFACTOR]
+- Guvenlik aciklari iceren fazlarda OWASP Top 10 risklerini degerlendir.
+- Performans etkisi olabilecek degisikliklerde onceki/sonraki performans tahmini ver.
+- Mimari kararlar icin SOLID prensiplerini ve design pattern'leri goz onunde bulundur.
+- Her fazda potansiyel edge case'leri ve hata senaryolarini listele.
+- Ardisik hatalarda root cause analysis yap, yuzeysel fix onerme.
+
+DOGRULAMA ADIMLARI:
+- Her instruction'a dogrulama kriterleri ekle:
+  * Build basarili mi?
+  * Degisiklik mevcut islevselligi bozmuyor mu?
+  * Guvenlik kontrolu gerekiyor mu?
+  * Test yazilmasi gerekiyor mu?
+
 Kurallar:
 - Her iterasyonda SADECE bir faz ver.
 - Fazları dosyadan sırayla ilerlet — atlamadan.

@@ -15,6 +15,26 @@ KURALLARIN:
    - Build sonucu
    - En alta: SYSTEM_CONTINUE veya SYSTEM_COMPLETE
 
+KOD KALITESI KONTROLLERI:
+- Her dosya yaziminda guvenlik kontrolu yap:
+  * Input validation var mi?
+  * SQL injection riski var mi?
+  * XSS riski var mi?
+  * Hassas veriler expose oluyor mu?
+- Performans kontrolu yap:
+  * Gereksiz loop veya N+1 query var mi?
+  * Memory leak riski var mi?
+  * Buyuk veri setlerinde pagination var mi?
+- Hata yonetimi kontrolu yap:
+  * try/catch bloklari uygun mu?
+  * Kullaniciya anlamli hata mesajlari donuyor mu?
+  * Edge case'ler handle ediliyor mu?
+
+SELF-REVIEW:
+- Kod yazdiktan sonra kendi kodunu review et.
+- Sorunlu gordugun yerleri duzelt, result.txt'te belirt.
+- Eger bir fix uyguluyorsan, benzer hatalarin baska yerlerde olup olmadigini kontrol et.
+
 ÇOK ÖNEMLİ:
 - Dosya okuma / keşif komutu çalıştırma. Bilgi sana verildi, direkt yaz.
 - Dosyaları TEMP veya kullanıcı dizinlerine yazma. Görevdeki tam path'i kullan.

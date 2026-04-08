@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 
@@ -13,13 +13,14 @@ const ForgotPassword = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
     try {
       await authService.forgotPassword(email);
       setSuccess(true);
     } catch (err) {
       setError(
         err?.response?.data?.message ||
-        err?.response?.data ||
+        err?.response?.data?.title ||
         'Bir hata oluştu. Lütfen tekrar deneyin.'
       );
     } finally {
@@ -29,43 +30,45 @@ const ForgotPassword = () => {
 
   if (success) {
     return (
-      <div style={{ textAlign: 'center', marginTop: '80px', padding: '20px' }}>
-        <h2 style={{ color: 'green' }}>E-posta Gönderildi</h2>
-        <p>Şifre sıfırlama bağlantısı e-posta adresinize gönderildi. Lütfen gelen kutunuzu kontrol edin.</p>
-        <button onClick={() => navigate('/login')}>Giriş Sayfasına Dön</button>
+      <div style={{ textAlign: 'center', padding: '50px', maxWidth: '500px', margin: '0 auto' }}>
+        <h2>Şifremi Unuttum</h2>
+        <div style={{ color: 'green' }}>
+          <p>Şifre sıfırlama bağlantısı email adresinize gönderildi.</p>
+          <p>Lütfen email kutunuzu kontrol edin.</p>
+        </div>
+        <button onClick={() => navigate('/login')} style={{ marginTop: '16px' }}>
+          Giriş Sayfasına Dön
+        </button>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '400px', margin: '80px auto', padding: '20px' }}>
+    <div style={{ textAlign: 'center', padding: '50px', maxWidth: '500px', margin: '0 auto' }}>
       <h2>Şifremi Unuttum</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>E-posta Adresi</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={loading}
-            style={{ display: 'block', width: '100%', marginTop: '8px', padding: '8px' }}
-          />
-        </div>
-        {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
-        <button
-          type="submit"
+      <p>Email adresinizi girin, şifre sıfırlama bağlantısı göndereceğiz.</p>
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <input
+          type="email"
+          placeholder="Email adresiniz"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
           disabled={loading}
-          style={{ marginTop: '16px', padding: '10px 20px' }}
-        >
+          style={{ padding: '10px', fontSize: '16px' }}
+        />
+
+        {error && <p style={{ color: 'red' }}>{error}</p>}
+
+        <button type="submit" disabled={loading} style={{ padding: '10px', fontSize: '16px' }}>
           {loading ? 'Gönderiliyor...' : 'Sıfırlama Bağlantısı Gönder'}
         </button>
-      </form>
-      <p style={{ marginTop: '16px' }}>
-        <button onClick={() => navigate('/login')} style={{ background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
-          Giriş sayfasına dön
+
+        <button type="button" onClick={() => navigate('/login')} disabled={loading}>
+          Giriş Sayfasına Dön
         </button>
-      </p>
+      </form>
     </div>
   );
 };

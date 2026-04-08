@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 
@@ -10,42 +10,54 @@ const VerifyEmail = () => {
 
   useEffect(() => {
     const token = searchParams.get('token');
+
     if (!token) {
       setStatus('error');
       setMessage('Geçersiz doğrulama bağlantısı. Token bulunamadı.');
       return;
     }
 
-    authService.verifyEmail(token)
-      .then(() => {
+    const verifyToken = async () => {
+      try {
+        await authService.verifyEmail(token);
         setStatus('success');
-        setMessage('E-posta adresiniz başarıyla doğrulandı!');
+        setMessage('Email adresiniz başarıyla doğrulandı! Giriş sayfasına yönlendiriliyorsunuz...');
         setTimeout(() => navigate('/login'), 3000);
-      })
-      .catch((err) => {
+      } catch (error) {
         setStatus('error');
         setMessage(
-          err?.response?.data?.message ||
-          err?.response?.data ||
-          'E-posta doğrulama başarısız. Token geçersiz veya süresi dolmuş olabilir.'
+          error?.response?.data?.message ||
+          error?.response?.data?.title ||
+          'Email doğrulama başarısız. Token geçersiz veya süresi dolmuş olabilir.'
         );
-      });
-  }, []);
+      }
+    };
+
+    verifyToken();
+  }, [searchParams, navigate]);
 
   return (
-    <div style={{ textAlign: 'center', marginTop: '80px', padding: '20px' }}>
-      {status === 'loading' && <p>E-posta doğrulanıyor, lütfen bekleyin...</p>}
-      {status === 'success' && (
+    <div style={{ textAlign: 'center', padding: '50px', maxWidth: '500px', margin: '0 auto' }}>
+      <h2>Email Doğrulama</h2>
+
+      {status === 'loading' && (
         <div>
-          <h2 style={{ color: 'green' }}>✓ {message}</h2>
-          <p>Giriş sayfasına yönlendiriliyorsunuz...</p>
+          <p>Email adresiniz doğrulanıyor, lütfen bekleyin...</p>
         </div>
       )}
-      {status === 'error' && (
-        <div>
-          <h2 style={{ color: 'red' }}>✗ Doğrulama Başarısız</h2>
+
+      {status === 'success' && (
+        <div style={{ color: 'green' }}>
           <p>{message}</p>
-          <button onClick={() => navigate('/login')}>Giriş Sayfasına Dön</button>
+        </div>
+      )}
+
+      {status === 'error' && (
+        <div style={{ color: 'red' }}>
+          <p>{message}</p>
+          <button onClick={() => navigate('/login')} style={{ marginTop: '16px' }}>
+            Giriş Sayfasına Git
+          </button>
         </div>
       )}
     </div>

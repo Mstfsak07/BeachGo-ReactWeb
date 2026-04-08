@@ -10,13 +10,15 @@ $automationDir = Split-Path $scriptsDir -Parent
 $queueDir      = Join-Path $automationDir "queue"
 $logFile       = Join-Path $queueDir "automation.log"
 $historyFile   = Join-Path $queueDir "history.log"
-$statePath     = Join-Path $queueDir "state.json"
-$resultPath    = Join-Path $queueDir "result.txt"
-$planPath      = Join-Path $queueDir "plan.txt"
-$phasesFile    = Join-Path $queueDir "phases.txt"
+$statePath       = Join-Path $queueDir "state.json"
+$resultPath      = Join-Path $queueDir "result.txt"
+$planPath        = Join-Path $queueDir "plan.txt"
+$phasesFile      = Join-Path $queueDir "phases.txt"
+$instructionFile = Join-Path $queueDir "instruction.txt"
 
 $MAX_ITERATIONS      = 50
 $MAX_CONSECUTIVE_ERR = 3
+$MAX_ANALYZER_ERR    = 3
 
 # ─── GLOBAL PROCESS TRACKING ────────────────────────────────────
 $script:BackendProcess = $null
@@ -195,38 +197,48 @@ function Get-ErrorHash($text) {
     return [BitConverter]::ToString($hash) -replace '-', ''
 }
 
-function Invoke-Analyzer($resultText, $planText) {
+function Invoke-Analyzer {
     Write-Log "Analyzer baslatiliyor (Claude Sonnet 4.6)..."
 
+    # Dosya içeriklerini oku ve prompt'a göm — API call'un tool erişimi yok
+    $resultContent = if (Test-Path $resultPath)    { Get-Content $resultPath -Raw -Encoding UTF8 } else { "(empty)" }
+    $stateContent  = if (Test-Path $statePath)     { Get-Content $statePath  -Raw -Encoding UTF8 } else { "(empty)" }
+    $instrContent  = if (Test-Path $instructionFile) { Get-Content $instructionFile -Raw -Encoding UTF8 } else { "(empty)" }
+
+    # Çok uzun sonuçları kırp (token limiti aşmasın)
+    if ($resultContent.Length -gt 3000) { $resultContent = $resultContent.Substring(0, 3000) + "`n...(truncated)" }
+
     $prompt = @"
-Sen bir kod analiz uzmanısın. Gemini'nin yaptığı işi değerlendiriyorsun.
+You are an automation loop analyzer. Evaluate the last executor result and decide what to do next.
 
-PLAN:
-$planText
+=== queue/state.json ===
+$stateContent
 
-SONUC:
-$resultText
+=== queue/result.txt (last executor output) ===
+$resultContent
 
-Karar kuralları:
-1. PHASE_COMPLETE: Bu faz başarıyla tamamlandı, bir sonraki faza geç.
-   - Gemini görevi yaptı, build başarılı, hata yok
-2. RETRY: Aynı fazı tekrar dene.
-   - Build hatası var, eksik iş var, hata mesajı var
-3. SYSTEM_COMPLETE: Tüm sistem tamamlandı.
-   - Sadece tüm fazlar bittiyse
+=== queue/instruction.txt (what was attempted) ===
+$instrContent
 
-Sadece JSON döndür:
-{
-  "status": "PHASE_COMPLETE" veya "RETRY" veya "SYSTEM_COMPLETE",
-  "reason": "Kısa neden",
-  "issues": ["varsa sorun 1", "varsa sorun 2"]
-}
+RULES:
+- Return CONTINUE if: any write_file failed, build failed, files were missing, workspace errors occurred, or any step is incomplete.
+- Return SYSTEM_COMPLETE only if all files were written successfully AND there are no errors.
+- If returning CONTINUE, next_steps must be ONE SHORT SENTENCE (max 120 chars) describing only the immediate next action.
+- Do NOT write paragraphs, steps, or lists in next_steps. One line only.
+
+Return ONLY valid JSON, nothing else:
+
+{"decision":"CONTINUE","next_steps":"<one short sentence, max 120 chars>"}
+
+or
+
+{"decision":"SYSTEM_COMPLETE"}
 "@
 
     try {
         $body = @{
             model      = "claude-sonnet-4-6"
-            max_tokens = 500
+            max_tokens = 200
             messages   = @(@{ role = "user"; content = $prompt })
         } | ConvertTo-Json -Depth 10
 
@@ -242,16 +254,17 @@ Sadece JSON döndür:
 
         $raw = $response.content[0].text
         if ($raw -match '(?s)\{.*\}') {
-            return ($Matches[0] | ConvertFrom-Json)
+            $parsed = $Matches[0] | ConvertFrom-Json
+            # Sadece gecerli decision degerlerini kabul et
+            if ($parsed.decision -eq "SYSTEM_COMPLETE" -or $parsed.decision -eq "CONTINUE") {
+                return $parsed
+            }
         }
-        return ($raw | ConvertFrom-Json)
+        Write-Log "Analyzer gecersiz JSON dondu: $raw"
+        return $null
     } catch {
         Write-Log "Analyzer hatasi: $_"
-        return [PSCustomObject]@{
-            status = "RETRY"
-            reason = "Analyzer hatasi"
-            issues = @("Analyzer cagirilirken hata olustu")
-        }
+        return $null
     }
 }
 
@@ -270,100 +283,85 @@ if (-not (Test-Path $phasesFile)) {
 $state    = Read-State
 $repoRoot = Split-Path $automationDir -Parent
 
+# phases.txt'ten toplam faz sayısını oku ve state'e yaz
+$phaseCount = 0
+if (Test-Path $phasesFile) {
+    $phaseCount = (Select-String -Path $phasesFile -Pattern "^FAZ \d+:" -SimpleMatch).Count
+}
+if ($phaseCount -lt 1) { $phaseCount = 1 }
+Set-SP $state "total_phases" $phaseCount
+Save-State $state
+Write-Log "Toplam faz sayisi: $phaseCount (phases.txt'ten okundu)"
+
 # ─── ANA DONGU ──────────────────────────────────────────────────
+$analyzerErrorCount = 0
+
 for ($i = 1; $i -le $MAX_ITERATIONS; $i++) {
-    Write-Log "===== ITERATION $i (Faz $($state.current_phase)/$($state.total_phases)) ====="
+    Write-Log "===== ITERATION $i ====="
 
     Set-SP $state "current_iteration" $i
     Set-SP $state "status" "running"
     Save-State $state
 
-    # 1) Planla
-    & (Join-Path $scriptsDir "run-planner.ps1")
-
-    $planText = if (Test-Path $planPath) { Get-Content $planPath -Raw -Encoding UTF8 } else { "" }
-    if ($planText -imatch "SYSTEM_COMPLETE") {
-        Write-Log "SYSTEM_COMPLETE (planner). Dongu bitiyor."
-        Set-SP $state "is_complete" $true
-        Set-SP $state "status" "done"
-        Save-State $state
-        break
-    }
-
-    # 2) Backend'i durdur — Gemini kod yazarken restart etmesin
-    Write-Log "Backend durduruluyor (Gemini calisacak)..."
+    # 1) Backend'i durdur — Executor kod yazarken restart etmesin
+    Write-Log "Backend durduruluyor (Executor calisacak)..."
     Stop-Backend
 
-    # 3) Gemini'yi calistir
+    # 2) Executor'i calistir
     & (Join-Path $scriptsDir "run-executor.ps1")
 
     $resultText = if (Test-Path $resultPath) { Get-Content $resultPath -Raw -Encoding UTF8 } else { "" }
 
-    # 4) Build basariliysa backend'i yeniden baslat; basarisizsa Gemini'ye geri don
+    # 3) Build basariliysa backend'i yeniden baslat
     $buildOk = Test-BuildSuccess -ResultText $resultText
     if ($buildOk) {
         Write-Log "Build basarili. Backend yeniden baslatiliyor..."
         Start-Backend -RepoRoot $repoRoot | Out-Null
     } else {
-        Write-Log "Build hatasi var. Backend baslatilmadi, RETRY yapilacak."
+        Write-Log "Build hatasi var. Backend baslatilmadi."
     }
 
-    $state = Read-State
+    # 4) Analyzer calistir — sadece SYSTEM_COMPLETE donerse dur
+    $analysis = Invoke-Analyzer
+    Write-Log "Analyzer raw response: $($analysis | ConvertTo-Json -Compress)"
+    Write-History "Iteration $i => Analyzer: $($analysis.decision)"
 
-    # Tum fazlar bittiyse dur
-    if ($state.is_complete -eq $true) {
-        Write-Log "is_complete=true. Dongu bitiyor."
-        Set-SP $state "status" "done"
-        Save-State $state
-        break
-    }
-
-    $analysis = Invoke-Analyzer -resultText $resultText -planText $planText
-    Write-Log "Analyzer: $($analysis.status) - $($analysis.reason)"
-    Write-History "Iteration $i | Faz $($state.current_phase) => $($analysis.status) : $($analysis.reason)"
-
-    if ($analysis.status -eq "PHASE_COMPLETE") {
-        $nextPhase = [int]$state.current_phase + 1
-        Set-SP $state "current_phase" $nextPhase
-        Set-SP $state "consecutive_errors" 0
-        Set-SP $state "last_error" $null
-        Set-SP $state "last_error_hash" $null
-        Write-Log "Faz $($nextPhase - 1) tamamlandi. Faz $nextPhase basliyor."
-        Write-History "Faz $($nextPhase - 1) TAMAMLANDI => Faz $nextPhase basliyor"
-
-        if ($nextPhase -gt [int]$state.total_phases) {
-            Write-Log "Tum fazlar tamamlandi!"
-            Set-SP $state "is_complete" $true
-            Set-SP $state "status" "done"
-            Save-State $state
+    if ($analysis -eq $null) {
+        $analyzerErrorCount++
+        Write-Log "Analyzer gecersiz/bos yanit ($analyzerErrorCount/$MAX_ANALYZER_ERR). Onceki instruction korunuyor, devam ediliyor."
+        if ($analyzerErrorCount -ge $MAX_ANALYZER_ERR) {
+            Write-Log "$MAX_ANALYZER_ERR analyzer hatasi. Dongu durduruluyor."
             break
         }
-    } elseif ($analysis.status -eq "SYSTEM_COMPLETE") {
-        Write-Log "SYSTEM_COMPLETE. Dongu bitiyor."
+        Save-State $state
+        Start-Sleep -Seconds 2
+        continue
+    }
+
+    $analyzerErrorCount = 0
+
+    if ($analysis.decision -eq "SYSTEM_COMPLETE") {
+        Write-Log "[ANALYZER] SYSTEM_COMPLETE. Dongu bitiyor."
         Set-SP $state "is_complete" $true
         Set-SP $state "status" "done"
         Save-State $state
         break
-    } else {
-        # RETRY - ayni fazda kal
-        $errHash = Get-ErrorHash $resultText
-        if ($errHash -and $errHash -eq $state.last_error_hash) {
-            $state.consecutive_errors = [int]$state.consecutive_errors + 1
-        } else {
-            $state.consecutive_errors = 1
-        }
-        Set-SP $state "last_error_hash" $errHash
-        Write-Log "Faz $($state.current_phase) tekrar deneniyor (ardisik hata: $($state.consecutive_errors))"
-
-        if ([int]$state.consecutive_errors -ge $MAX_CONSECUTIVE_ERR) {
-            Write-Log "$MAX_CONSECUTIVE_ERR kez ayni hata. Sonraki faza geciliyor."
-            $nextPhase = [int]$state.current_phase + 1
-            Set-SP $state "current_phase" $nextPhase
-            Set-SP $state "consecutive_errors" 0
-            Write-History "Faz $($nextPhase-1) ATLANDI (max hata) => Faz $nextPhase"
-        }
     }
 
+    if ($analysis.decision -eq "CONTINUE") {
+        Write-Log "[ANALYZER] CONTINUE"
+        if (-not [string]::IsNullOrWhiteSpace($analysis.next_steps)) {
+            $analysis.next_steps | Set-Content $instructionFile -Encoding UTF8
+            Write-Log "[ANALYZER] instruction guncellendi"
+        }
+        Set-SP $state "status" "running"
+        Save-State $state
+        Write-Log "[LOOP] Sonraki iteration basliyor"
+        Start-Sleep -Seconds 2
+        continue
+    }
+
+    Write-Log "Analyzer tanimsiz decision='$($analysis.decision)'. Onceki instruction korunuyor, devam ediliyor."
     Save-State $state
     Start-Sleep -Seconds 2
 }

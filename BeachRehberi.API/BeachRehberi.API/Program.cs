@@ -20,7 +20,7 @@ using System.Threading.RateLimiting;
 using BCrypt.Net;
 using System.Security.Claims;
 using BeachRehberi.API.Models;
-
+using Resend;
 
 using BeachRehberi.Domain.Interfaces;
 
@@ -98,6 +98,18 @@ if (paymentProvider == "Iyzipay" || paymentProvider == "PayTR") {
 }
 
 builder.Services.AddScoped<IOtpService, OtpService>();
+
+// ─────────────────────────────────────────
+// EMAIL SERVICE (Resend)
+// ─────────────────────────────────────────
+var resendApiKey = Environment.GetEnvironmentVariable("RESEND_API_KEY")
+                   ?? builder.Configuration["Resend:ApiKey"]
+                   ?? string.Empty;
+builder.Services.AddOptions<ResendClientOptions>()
+    .Configure(o => o.ApiToken = resendApiKey);
+builder.Services.AddHttpClient<ResendClient>();
+builder.Services.AddTransient<IResend, ResendClient>();
+builder.Services.AddScoped<IEmailService, ResendEmailService>();
 builder.Services.AddScoped<IGuestReservationService, GuestReservationService>();
 builder.Services.AddScoped<IStoryService, StoryService>();
 

@@ -13,13 +13,15 @@ public class AuthService : IAuthService
     private readonly BeachDbContext _db;
     private readonly ITokenService _tokenService;
     private readonly IOtpService _otpService;
+    private readonly IEmailService _emailService;
     private readonly ILogger<AuthService> _logger;
 
-    public AuthService(BeachDbContext db, ITokenService tokenService, IOtpService otpService, ILogger<AuthService> logger)
+    public AuthService(BeachDbContext db, ITokenService tokenService, IOtpService otpService, IEmailService emailService, ILogger<AuthService> logger)
     {
         _db = db;
         _tokenService = tokenService;
         _otpService = otpService;
+        _emailService = emailService;
         _logger = logger;
     }
 
@@ -38,10 +40,11 @@ public class AuthService : IAuthService
         _db.BusinessUsers.Add(user);
         await _db.SaveChangesAsync();
 
-        // New token verification logic
-        await _otpService.GenerateTokenAsync(user.Email, "EmailVerification");
+        var token = await _otpService.GenerateTokenAsync(user.Email, "EmailVerification");
+        var displayName = $"{request.FirstName} {request.LastName}".Trim();
+        await _emailService.SendEmailVerificationAsync(user.Email, displayName, token);
 
-        return new AuthResult { Success = true, Message = "Kayıt başarılı. Lütfen email adresinize gönderilen kod ile hesabınızı doğrulayın." };
+        return new AuthResult { Success = true, Message = "Kayıt başarılı. Lütfen email adresinize gönderilen doğrulama linkine tıklayın." };
     }
 
     public async Task<AuthResult> LoginAsync(LoginRequest request)
@@ -88,9 +91,10 @@ public class AuthService : IAuthService
         if (user != null)
         {
             var token = await _otpService.GenerateTokenAsync(email, "PasswordReset");
-            _logger.LogInformation("Mock Email/SMS sent. Password reset token for {Email} is: {Token}", email, token);
+            var displayName = $"{user.FirstName} {user.LastName}".Trim();
+            await _emailService.SendPasswordResetAsync(email, displayName, token);
         }
-        
+
         return new AuthResult { Success = true };
     }
 
@@ -138,7 +142,8 @@ public class AuthService : IAuthService
             return new AuthResult { Success = false, Message = "Already verified" };
 
         var token = await _otpService.GenerateTokenAsync(email, "EmailVerification");
-        _logger.LogInformation("Mock Email/SMS sent. Email verification token for {Email} is: {Token}", email, token);
+        var displayName = $"{user.FirstName} {user.LastName}".Trim();
+        await _emailService.SendEmailVerificationAsync(email, displayName, token);
 
         return new AuthResult { Success = true };
     }

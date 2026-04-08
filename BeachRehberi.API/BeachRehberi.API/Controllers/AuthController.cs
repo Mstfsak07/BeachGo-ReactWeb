@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
+using Microsoft.EntityFrameworkCore;
 
 namespace BeachRehberi.API.Controllers
 {
@@ -94,7 +95,34 @@ namespace BeachRehberi.API.Controllers
             return Ok(new { message = "Password has been reset successfully." });
         }
 
-                [HttpPost("verify-email")]
+                // GET: /api/auth/verify-email?token=...  (frontend link-click flow)
+        [HttpGet("verify-email")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyEmailGet([FromQuery] string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+                return BadRequest(new { message = "Token gereklidir." });
+
+            // Token hash'i ile DB'den email'i bul
+            var tokenHash = ComputeSha256(token);
+            var code = await _db.VerificationCodes
+                .Where(c => c.CodeHash == tokenHash
+                         && c.Purpose == BeachRehberi.API.Models.OtpPurpose.EmailVerification
+                         && !c.IsUsed)
+                .FirstOrDefaultAsync();
+
+            if (code == null || code.ExpiresAt <= DateTime.UtcNow)
+                return BadRequest(new { message = "Doğrulama bağlantısı geçersiz veya süresi dolmuş." });
+
+            var result = await _authService.VerifyEmailAsync(code.Email, token);
+            if (!result.Success)
+                return BadRequest(new { message = result.Message });
+
+            return Ok(new { message = "E-posta başarıyla doğrulandı." });
+        }
+
+        // POST: /api/auth/verify-email  (body flow — backward compat)
+        [HttpPost("verify-email")]
         [AllowAnonymous]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]
@@ -102,12 +130,19 @@ namespace BeachRehberi.API.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-            
+
             var result = await _authService.VerifyEmailAsync(request.Email, request.Token);
             if (!result.Success)
                 return BadRequest(new { message = result.Message });
-            
+
             return Ok(new { message = "Email verified successfully." });
+        }
+
+        private static string ComputeSha256(string raw)
+        {
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(raw));
+            return string.Concat(bytes.Select(b => b.ToString("x2")));
         }
 
                 [HttpPost("resend-verification")]

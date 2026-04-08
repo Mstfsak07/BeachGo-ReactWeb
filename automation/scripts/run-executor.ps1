@@ -157,9 +157,11 @@ Final response requirements:
     $coderPrompt | Set-Content $coderPromptPath -Encoding UTF8
     Write-Log "coder-prompt.txt olusturuldu (context enriched, $($resolvedFiles.Count) dosya eklendi)."
 
-    $tempPrompt = Join-Path $env:TEMP "executor-prompt-$iteration.txt"
-    $tempOutput = Join-Path $env:TEMP "gemini-out-$iteration.txt"
-    $tempBat    = Join-Path $env:TEMP "run-gemini-$iteration.bat"
+    $tmpDir = Join-Path $automationDir "tmp"
+    if (-not (Test-Path $tmpDir)) { New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null }
+    $tempPrompt = Join-Path $tmpDir "executor-prompt-$iteration.txt"
+    $tempOutput = Join-Path $tmpDir "gemini-out-$iteration.txt"
+    $tempBat    = Join-Path $tmpDir "run-gemini-$iteration.bat"
 
     $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
 
@@ -188,7 +190,7 @@ set BEACHGO_ANTHROPIC_KEY=$($env:BEACHGO_ANTHROPIC_KEY)
 set CI=true
 set NO_COLOR=1
 set TERM=dumb
-cd /d "$automationDir"
+cd /d "$repoRoot"
 gemini --approval-mode yolo --model gemini-3-pro -p "@$tempPrompt" > "$tempOutput" 2>&1
 exit /b %ERRORLEVEL%
 "@
@@ -272,31 +274,18 @@ exit /b %ERRORLEVEL%
         throw "Executor result.txt uretmedi."
     }
 
-    $failPatterns = @(
-        '"status"\s*:\s*"failed"',
-        '"phase"\s*:\s*"failed"',
-        'CRITICAL ERROR',
-        'FATAL'
-    )
-    $isFailed = $false
-    foreach ($p in $failPatterns) {
-        if ($resultText -imatch $p) { $isFailed = $true; break }
-    }
+    # Degisen dosyalari yakala (satir basinda mutlak path veya relative path)
+    $changedFiles = [regex]::Matches($resultText, '(?m)^[-+]\s*(.+\.(cs|ts|tsx|json|csproj|txt))') |
+        ForEach-Object { $_.Groups[1].Value.Trim() } | Select-Object -Unique
 
-    if ($isFailed) {
-        Set-SP $stateObj "status"     "failed"
-        Set-SP $stateObj "last_error" ($resultText.Substring(0, [Math]::Min(500, $resultText.Length)))
-        Write-Log "Executor basarisiz sonuc dondu."
-    } else {
-        Set-SP $stateObj "status"     "completed"
-        Set-SP $stateObj "last_error" $null
-        Write-Log "Executor tamamlandi."
-    }
-
-    $summary = if ($resultText.Length -gt 400) { $resultText.Substring(0, 400) + "..." } else { $resultText }
-    Set-SP $stateObj "last_result_summary" $summary
-    Set-SP $stateObj "lastUpdated" (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")
+    # Sadece 3 alan guncelle — is_complete'e dokunma
+    Set-SP $stateObj "last_result"        ($resultText.Substring(0, [Math]::Min(800, $resultText.Length)))
+    Set-SP $stateObj "last_exit_code"     $exitCode
+    Set-SP $stateObj "last_files_changed" ($changedFiles -join ", ")
+    Set-SP $stateObj "lastUpdated"        (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")
     $stateObj | ConvertTo-Json -Depth 10 | Set-Content $statePath -Encoding UTF8
+
+    Write-Log "Executor tamamlandi. ExitCode=$exitCode"
 }
 catch {
     $err = $_ | Out-String

@@ -27,6 +27,7 @@ const Navbar = () => {
   const navLinks = [
     { name: "Ana Sayfa", path: "/" },
     { name: "Plajlar", path: "/beaches" },
+    { name: "Etkinlikler", path: "/events" },
   ];
 
   const authLinks = [

@@ -114,7 +114,7 @@ builder.Services.AddScoped<IEmailService, ResendEmailService>();
 builder.Services.AddScoped<IGuestReservationService, GuestReservationService>();
 builder.Services.AddScoped<IStoryService, StoryService>();
 
-builder.Services.AddApplication();
+// MediatR handlers from Application layer registered below in section 6
 
 // ─────────────────────────────────────────
 // 5. MAPSTER – IMapper DI

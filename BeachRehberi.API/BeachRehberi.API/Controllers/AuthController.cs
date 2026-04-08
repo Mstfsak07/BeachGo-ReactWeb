@@ -25,16 +25,14 @@ namespace BeachRehberi.API.Controllers
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _env;
         private readonly ITokenService _tokenService;
-        private readonly BeachRehberi.API.Data.BeachDbContext _db;
         private readonly MediatR.IMediator _mediator;
 
-        public AuthController(IAuthService authService, IConfiguration configuration, IWebHostEnvironment env, ITokenService tokenService, BeachRehberi.API.Data.BeachDbContext db, MediatR.IMediator mediator)
+        public AuthController(IAuthService authService, IConfiguration configuration, IWebHostEnvironment env, ITokenService tokenService, MediatR.IMediator mediator)
         {
             _authService = authService;
             _configuration = configuration;
             _env = env;
             _tokenService = tokenService;
-            _db = db;
             _mediator = mediator;
         }
 
@@ -149,7 +147,7 @@ namespace BeachRehberi.API.Controllers
             return Ok(new { message = "Password has been reset successfully." });
         }
 
-                // GET: /api/auth/verify-email?token=...  (frontend link-click flow)
+        // GET: /api/auth/verify-email?token=... (frontend link-click flow)
         [HttpGet("verify-email")]
         [AllowAnonymous]
         public async Task<IActionResult> VerifyEmailGet([FromQuery] string token)
@@ -157,25 +155,14 @@ namespace BeachRehberi.API.Controllers
             if (string.IsNullOrWhiteSpace(token))
                 return BadRequest(new { message = "Token gereklidir." });
 
-            // Token hash'i ile DB'den email'i bul
-            var tokenHash = ComputeSha256(token);
-            var code = await _db.VerificationCodes
-                .Where(c => c.CodeHash == tokenHash
-                         && c.Purpose == BeachRehberi.API.Models.OtpPurpose.EmailVerification
-                         && !c.IsUsed)
-                .FirstOrDefaultAsync();
-
-            if (code == null || code.ExpiresAt <= DateTime.UtcNow)
-                return BadRequest(new { message = "Doğrulama bağlantısı geçersiz veya süresi dolmuş." });
-
-            var result = await _authService.VerifyEmailAsync(code.Email, token);
+            var result = await _authService.VerifyEmailByTokenAsync(token);
             if (!result.Success)
                 return BadRequest(new { message = result.Message });
 
             return Ok(new { message = "E-posta başarıyla doğrulandı." });
         }
 
-        // POST: /api/auth/verify-email  (body flow — backward compat)
+        // POST: /api/auth/verify-email (body flow — backward compat)
         [HttpPost("verify-email")]
         [AllowAnonymous]
         [ProducesResponseType(200)]
@@ -192,14 +179,7 @@ namespace BeachRehberi.API.Controllers
             return Ok(new { message = "Email verified successfully." });
         }
 
-        private static string ComputeSha256(string raw)
-        {
-            using var sha = System.Security.Cryptography.SHA256.Create();
-            var bytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(raw));
-            return string.Concat(bytes.Select(b => b.ToString("x2")));
-        }
-
-                [HttpPost("resend-verification")]
+        [HttpPost("resend-verification")]
         [AllowAnonymous]
         [ProducesResponseType(200)]
         [ProducesResponseType(400)]

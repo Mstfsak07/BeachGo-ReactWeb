@@ -10,6 +10,7 @@ public interface IAuthService
     Task<AuthResult> ForgotPasswordAsync(string email);
     Task<AuthResult> ResetPasswordAsync(string email, string token, string newPassword);
     Task<AuthResult> VerifyEmailAsync(string email, string token);
+    Task<AuthResult> VerifyEmailByTokenAsync(string token);
     Task<AuthResult> ResendVerificationAsync(string email);
     
     // Kept for backward compatibility

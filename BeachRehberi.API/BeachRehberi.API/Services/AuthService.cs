@@ -1,6 +1,8 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
+using System.Text;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +25,31 @@ public class AuthService : IAuthService
         _otpService = otpService;
         _emailService = emailService;
         _logger = logger;
+    }
+
+    private static string ComputeSha256(string raw)
+    {
+        using var sha = SHA256.Create();
+        var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(raw));
+        return string.Concat(bytes.Select(b => b.ToString("x2")));
+    }
+
+    public async Task<AuthResult> VerifyEmailByTokenAsync(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return new AuthResult { Success = false, Message = "Token gereklidir." };
+
+        var tokenHash = ComputeSha256(token);
+        var code = await _db.VerificationCodes
+            .Where(c => c.CodeHash == tokenHash
+                     && c.Purpose == OtpPurpose.EmailVerification
+                     && !c.IsUsed)
+            .FirstOrDefaultAsync();
+
+        if (code == null || code.ExpiresAt <= DateTime.UtcNow)
+            return new AuthResult { Success = false, Message = "Doğrulama bağlantısı geçersiz veya süresi dolmuş." };
+
+        return await VerifyEmailAsync(code.Email, token);
     }
 
     public async Task<AuthResult> RegisterAsync(RegisterRequest request)

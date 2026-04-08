@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getBeachById } from '../services/api';
+import { getBeachById, getBeachWeather } from '../services/api';
 import reservationService from '../services/reservationService';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -18,7 +18,11 @@ import {
   Clock,
   TrendingUp,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Thermometer,
+  Wind,
+  Droplets,
+  Waves
 } from 'lucide-react';
 import ReviewSection from '../components/ReviewSection';
 import BeachStoryBar from '../components/beach/BeachStoryBar';
@@ -40,6 +44,7 @@ const BeachDetail = () => {
   const [sunbedCount, setSunbedCount] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [socialContent, setSocialContent] = useState({ stories: [], gallery: [] });
+  const [weather, setWeather] = useState(null);
 
   const fetchBeach = useCallback(async () => {
     try {
@@ -61,6 +66,8 @@ const BeachDetail = () => {
 
   useEffect(() => {
     fetchBeach();
+    // Fetch weather data
+    getBeachWeather(id).then(data => setWeather(data)).catch(() => {});
     // Check if beach is in favorites
     const stored = JSON.parse(localStorage.getItem('beach_favorites') || '[]');
     setIsFavorite(stored.some(f => f.id === parseInt(id)));
@@ -262,6 +269,57 @@ const BeachDetail = () => {
                   )}
                 </div>
               </div>
+            )}
+
+            {/* Weather Widget */}
+            {weather && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-8 bg-gradient-to-br from-sky-500 to-blue-600 rounded-3xl p-6 text-white shadow-xl shadow-blue-200"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="bg-white/20 p-2 rounded-xl">
+                    <Thermometer size={20} className="text-white" />
+                  </div>
+                  <h3 className="text-lg font-black tracking-tight">Anlık Hava Durumu</h3>
+                  {weather.weather?.beachCondition && (
+                    <span className="ml-auto bg-white/20 backdrop-blur-sm text-white text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full">
+                      {weather.weather.beachCondition}
+                    </span>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 text-center">
+                    <p className="text-3xl font-black">{weather.weather?.temperature ?? '--'}°</p>
+                    <p className="text-xs font-bold text-white/70 mt-1">Sıcaklık</p>
+                    <p className="text-xs text-white/60">Hissedilen: {weather.weather?.feelsLike ?? '--'}°</p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 text-center">
+                    <Wind size={24} className="mx-auto mb-1 text-white/80" />
+                    <p className="text-xl font-black">{weather.weather?.windSpeed ?? '--'}</p>
+                    <p className="text-xs font-bold text-white/70">km/s Rüzgar</p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 text-center">
+                    <Droplets size={24} className="mx-auto mb-1 text-white/80" />
+                    <p className="text-xl font-black">%{weather.weather?.humidity ?? '--'}</p>
+                    <p className="text-xs font-bold text-white/70">Nem</p>
+                  </div>
+                  <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 text-center">
+                    <Waves size={24} className="mx-auto mb-1 text-white/80" />
+                    <p className="text-xl font-black">{weather.sea?.waterTemperature ?? '--'}°</p>
+                    <p className="text-xs font-bold text-white/70">Deniz Sıcaklığı</p>
+                    <p className="text-xs text-white/60">{weather.sea?.condition ?? ''}</p>
+                  </div>
+                </div>
+                
+                {weather.weather?.description && (
+                  <p className="mt-3 text-sm text-white/80 font-medium capitalize text-center">
+                    {weather.weather.description}
+                  </p>
+                )}
+              </motion.div>
             )}
 
             <ReviewSection beachId={beach.id} beachName={beach.name} />

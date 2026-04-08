@@ -44,13 +44,17 @@ const Home = () => {
   }, []);
 
   const categories = [
-    { name: 'Popüler', icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-50' },
-    { name: 'Sakin', icon: Wind, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { name: 'Aile', icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-    { name: 'Parti', icon: Waves, color: 'text-purple-500', bg: 'bg-purple-50' },
-    { name: 'Lüks', icon: Palmtree, color: 'text-rose-500', bg: 'bg-rose-50' },
-    { name: 'Restoran', icon: Coffee, color: 'text-orange-500', bg: 'bg-orange-50' },
+    { name: 'Popüler', icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-50', filter: { sortBy: 'rating' } },
+    { name: 'Sakin', icon: Wind, color: 'text-blue-500', bg: 'bg-blue-50', filter: { hasWaterSports: false } },
+    { name: 'Aile', icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-50', filter: { isChildFriendly: true } },
+    { name: 'Parti', icon: Waves, color: 'text-purple-500', bg: 'bg-purple-50', filter: { hasBar: true } },
+    { name: 'Lüks', icon: Palmtree, color: 'text-rose-500', bg: 'bg-rose-50', filter: { sortBy: 'rating', minRating: 4 } },
+    { name: 'Restoran', icon: Coffee, color: 'text-orange-500', bg: 'bg-orange-50', filter: { hasRestaurant: true } },
   ];
+
+  const handleCategoryClick = (category) => {
+    navigate('/beaches', { state: { categoryFilter: category.filter, categoryName: category.name } });
+  };
 
   const containerVariants = {
     hidden: { opacity: 0, y: 30 },
@@ -171,7 +175,8 @@ const Home = () => {
               key={i}
               variants={itemVariants}
               whileHover={{ y: -8, scale: 1.1 }}
-              className="group flex flex-col items-center gap-4 min-w-[100px] md:min-w-[120px]"
+              onClick={() => handleCategoryClick(cat)}
+              className="group flex flex-col items-center gap-4 min-w-[100px] md:min-w-[120px] cursor-pointer hover:shadow-md hover:-translate-y-1 transition-all duration-300"
             >
               <div className={`${cat.bg} ${cat.color} p-6 rounded-[2.5rem] shadow-sm group-hover:shadow-xl group-hover:rotate-6 transition-all duration-500`}>
                 <cat.icon size={32} strokeWidth={2.5} />

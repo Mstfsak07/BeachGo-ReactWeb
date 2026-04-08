@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getBeaches, searchBeaches, filterBeaches } from '../services/api';
 import BeachCard from '../components/BeachCard';
@@ -16,6 +17,7 @@ const defaultFilters = {
 };
 
 const Beaches = () => {
+  const location = useLocation();
   const [beaches, setBeaches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -26,6 +28,25 @@ const Beaches = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (location.state?.categoryFilter) {
+      const catFilter = location.state.categoryFilter;
+      setFilters(prev => ({ ...prev, ...catFilter }));
+      const applyInitialFilter = async () => {
+        setLoading(true);
+        try {
+          const result = await filterBeaches({ ...defaultFilters, ...catFilter });
+          setBeaches(result);
+        } catch (err) {
+          setError('Filtreleme yapılırken bir hata oluştu');
+        } finally {
+          setLoading(false);
+        }
+      };
+      applyInitialFilter();
+    }
+  }, [location.state]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;

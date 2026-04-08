@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using System;
 using System.Threading.Tasks;
 using MediatR;
+using BeachRehberi.API.Services;
 using BeachRehberi.API.Features.Auth.Commands.Register;
 using BeachRehberi.API.Features.Auth.Commands.Login;
 using BeachRehberi.API.Features.Auth.Commands.ForgotPassword;
@@ -24,12 +25,12 @@ namespace BeachRehberi.API.Controllers
     [EnableRateLimiting("auth")]
     public class AuthController : ControllerBase
     {
-        private readonly IMediator _mediator;
+        private readonly IAuthService _authService;
         private readonly IWebHostEnvironment _env;
 
-        public AuthController(IMediator mediator, IWebHostEnvironment env)
+        public AuthController(IAuthService authService, IWebHostEnvironment env)
         {
-            _mediator = mediator;
+            _authService = authService;
             _env = env;
         }
 
@@ -37,7 +38,7 @@ namespace BeachRehberi.API.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            var result = await _mediator.Send(new RegisterCommand(request));
+            var result = await _authService.RegisterAsync(request);
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);
@@ -47,34 +48,27 @@ namespace BeachRehberi.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
-            try
+            var result = await _authService.LoginAsync(request);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            Response.Cookies.Append("refreshToken", result.RefreshToken ?? "", new CookieOptions
             {
-                var result = await _mediator.Send(new LoginCommand(request));
+                HttpOnly = true,
+                Secure = !_env.IsDevelopment(),
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTime.UtcNow.AddDays(7)
+            });
 
-                if (!result.Success)
-                    return BadRequest(result);
-
-                Response.Cookies.Append("refreshToken", result.RefreshToken ?? "", new CookieOptions
-                {
-                    HttpOnly = true,
-                    Secure = !_env.IsDevelopment(),
-                    SameSite = SameSiteMode.Lax,
-                    Expires = DateTime.UtcNow.AddDays(7)
-                });
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new AuthResult { Success = false, Message = ex.Message });
-            }
+            return Ok(result);
         }
 
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
-            var result = await _mediator.Send(new ForgotPasswordCommand(request.Email));
+            var result = await _authService.ForgotPasswordAsync(request.Email);
             if (!result.Success)
                 return BadRequest(new { message = result.Message });
             return Ok(new { message = "Şifre sıfırlama linki gönderildi." });
@@ -84,7 +78,7 @@ namespace BeachRehberi.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
         {
-            var result = await _mediator.Send(new ResetPasswordCommand(request.Email, request.Token, request.NewPassword));
+            var result = await _authService.ResetPasswordAsync(request.Email, request.Token, request.NewPassword);
             if (!result.Success)
                 return BadRequest(new { message = result.Message });
             return Ok(new { message = "Şifre başarıyla sıfırlandı." });
@@ -97,7 +91,7 @@ namespace BeachRehberi.API.Controllers
             if (string.IsNullOrWhiteSpace(token))
                 return BadRequest(new { message = "Token gereklidir." });
 
-            var result = await _mediator.Send(new VerifyEmailByTokenCommand(token));
+            var result = await _authService.VerifyEmailByTokenAsync(token);
             if (!result.Success)
                 return BadRequest(new { message = result.Message });
 
@@ -108,7 +102,7 @@ namespace BeachRehberi.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
         {
-            var result = await _mediator.Send(new VerifyEmailCommand(request.Email, request.Token));
+            var result = await _authService.VerifyEmailAsync(request.Email, request.Token);
             if (!result.Success)
                 return BadRequest(new { message = result.Message });
             return Ok(new { message = "E-posta başarıyla doğrulandı." });
@@ -118,7 +112,7 @@ namespace BeachRehberi.API.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
         {
-            var result = await _mediator.Send(new ResendVerificationCommand(request.Email));
+            var result = await _authService.ResendVerificationAsync(request.Email);
             if (!result.Success)
                 return BadRequest(new { message = result.Message });
             return Ok(new { message = "Doğrulama e-postası tekrar gönderildi." });
@@ -126,11 +120,12 @@ namespace BeachRehberi.API.Controllers
 
         [AllowAnonymous]
         [HttpPost("refresh")]
+        [HttpPost("refresh-token")]
         public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
         {
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             var userAgent = Request.Headers["User-Agent"].ToString();
-            var result = await _mediator.Send(new RefreshTokenCommand(request.RefreshToken, ipAddress, userAgent));
+            var result = await _authService.RefreshTokenAsync(request.RefreshToken, ipAddress, userAgent);
 
             if (!result.Success)
                 return BadRequest(new AuthResult { Success = false, Message = result.Message });
@@ -159,7 +154,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> Logout()
         {
             var refreshToken = Request.Cookies["refreshToken"];
-            await _mediator.Send(new LogoutCommand(refreshToken));
+            await _authService.LogoutAsync(null, refreshToken);
 
             Response.Cookies.Delete("refreshToken");
             return Ok(new AuthResult { Success = true, Message = "Çıkış başarılı." });
@@ -170,7 +165,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> Revoke([FromBody] RevokeRequest request)
         {
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var result = await _mediator.Send(new RevokeTokenCommand(request.RefreshToken, ipAddress));
+            var result = await _authService.RevokeTokenAsync(request.RefreshToken, ipAddress, request.Reason ?? "manual_revoke");
 
             if (result.Success)
                 return Ok(new AuthResult { Success = true, Message = result.Message });

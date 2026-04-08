@@ -104,6 +104,7 @@ public class UserDto
 public class RevokeRequest
 {
     public required string RefreshToken { get; set; }
+    public string? Reason { get; set; }
 }
 
 public class RefreshRequest

@@ -1,6 +1,6 @@
-﻿using BeachRehberi.API.Models;
-using BeachRehberi.API.Services;
+using BeachRehberi.API.Models;
 using Microsoft.AspNetCore.Mvc;
+using BeachRehberi.API.Services;
 
 namespace BeachRehberi.API.Controllers;
 

@@ -20,6 +20,12 @@ export const searchBeaches = async (query) => {
   return unwrapArrayResponse(res.data);
 };
 
+/** @returns {Promise<import('../types').BeachDto[]>} */
+export const filterBeaches = async (filters) => {
+  const res = await api.post('/Beaches/filter', filters);
+  return unwrapArrayResponse(res.data);
+};
+
 // Events
 export const getEvents = async () => {
   const res = await api.get('/Events');

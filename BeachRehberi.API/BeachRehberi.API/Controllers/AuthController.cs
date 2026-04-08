@@ -2,17 +2,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Services;
-using BeachRehberi.API.Extensions;
 using Microsoft.AspNetCore.RateLimiting;
-using FluentValidation;
-using Microsoft.Extensions.Configuration;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
-using Microsoft.EntityFrameworkCore;
+using System;
+using System.Threading.Tasks;
+using MediatR;
 
 namespace BeachRehberi.API.Controllers
 {
@@ -22,17 +18,13 @@ namespace BeachRehberi.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
-        private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _env;
-        private readonly ITokenService _tokenService;
-        private readonly MediatR.IMediator _mediator;
+        private readonly IMediator _mediator;
 
-        public AuthController(IAuthService authService, IConfiguration configuration, IWebHostEnvironment env, ITokenService tokenService, MediatR.IMediator mediator)
+        public AuthController(IAuthService authService, IWebHostEnvironment env, IMediator mediator)
         {
             _authService = authService;
-            _configuration = configuration;
             _env = env;
-            _tokenService = tokenService;
             _mediator = mediator;
         }
 
@@ -42,7 +34,7 @@ namespace BeachRehberi.API.Controllers
         {
             var command = new BeachRehberi.Application.Features.Auth.Commands.Register.RegisterCommand(
                 request.FirstName, request.LastName, request.Email, request.Password, request.Password, request.PhoneNumber);
-            
+
             var result = await _mediator.Send(command);
 
             if (result.IsSuccess)
@@ -115,43 +107,32 @@ namespace BeachRehberi.API.Controllers
             }
         }
 
-                [HttpPost("forgot-password")]
+        [HttpPost("forgot-password")]
         [AllowAnonymous]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-            
             var command = new BeachRehberi.Application.Features.Auth.Commands.ForgotPassword.ForgotPasswordCommand(request.Email);
             var result = await _mediator.Send(command);
-            
+
             if (!result.IsSuccess)
                 return BadRequest(new { message = result.Error });
-            
+
             return Ok(new { message = result.Message });
         }
 
         [HttpPost("reset-password")]
         [AllowAnonymous]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-            
             var command = new BeachRehberi.Application.Features.Auth.Commands.ResetPassword.ResetPasswordCommand(request.Email, request.Token, request.NewPassword);
             var result = await _mediator.Send(command);
-            
+
             if (!result.IsSuccess)
                 return BadRequest(new { message = result.Error });
-            
+
             return Ok(new { message = result.Message });
         }
 
-        // GET: /api/auth/verify-email?token=... (frontend link-click flow)
         [HttpGet("verify-email")]
         [AllowAnonymous]
         public async Task<IActionResult> VerifyEmailGet([FromQuery] string token)
@@ -166,19 +147,13 @@ namespace BeachRehberi.API.Controllers
             return Ok(new { message = "E-posta başarıyla doğrulandı." });
         }
 
-        // POST: /api/auth/verify-email (body flow — backward compat)
         [HttpPost("verify-email")]
         [AllowAnonymous]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
         public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequest request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
             var command = new BeachRehberi.Application.Features.Auth.Commands.VerifyEmail.VerifyEmailCommand(request.Email, request.Token);
             var result = await _mediator.Send(command);
-            
+
             if (!result.IsSuccess)
                 return BadRequest(new { message = result.Error });
 
@@ -187,19 +162,14 @@ namespace BeachRehberi.API.Controllers
 
         [HttpPost("resend-verification")]
         [AllowAnonymous]
-        [ProducesResponseType(200)]
-        [ProducesResponseType(400)]
         public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request)
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-            
             var command = new BeachRehberi.Application.Features.Auth.Commands.ResendVerification.ResendVerificationCommand(request.Email);
             var result = await _mediator.Send(command);
-            
+
             if (!result.IsSuccess)
                 return BadRequest(new { message = result.Error });
-            
+
             return Ok(new { message = result.Message });
         }
 
@@ -232,7 +202,6 @@ namespace BeachRehberi.API.Controllers
             });
         }
 
-        // ===================== LOGOUT =====================
         [HttpPost("logout")]
         [Authorize]
         public async Task<IActionResult> Logout()
@@ -248,27 +217,17 @@ namespace BeachRehberi.API.Controllers
             return Ok(new AuthResult { Success = true, Message = "Çıkış başarılı." });
         }
 
-        // ===================== REVOKE =====================
         [HttpPost("revoke")]
         [Authorize]
         public async Task<IActionResult> Revoke([FromBody] RevokeRequest request)
         {
             var command = new BeachRehberi.Application.Features.Auth.Commands.RevokeToken.RevokeTokenCommand(request.RefreshToken);
             var result = await _mediator.Send(command);
-            
-            if (result.IsSuccess) 
+
+            if (result.IsSuccess)
                 return Ok(new AuthResult { Success = true, Message = result.Message });
-            
+
             return BadRequest(new AuthResult { Success = false, Message = result.Error });
-        }
-
-        private string GetIpAddress()
-        {
-            if (Request.Headers.ContainsKey("X-Forwarded-For"))
-                return Request.Headers["X-Forwarded-For"].ToString();
-
-            return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
         }
     }
 }
-

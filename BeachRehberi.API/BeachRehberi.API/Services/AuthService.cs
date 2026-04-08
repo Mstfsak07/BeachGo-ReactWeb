@@ -80,7 +80,7 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            throw new Exception("Geçersiz kullanıcı bilgileri."); 
+            throw new Exception("Geçersiz kullanıcı bilgileri.");
 
         await InvalidateAllSessionsAsync(user.Id, "new_login");
 
@@ -193,7 +193,7 @@ public class AuthService : IAuthService
         var newRefreshTokenStr = _tokenService.GenerateRefreshToken();
 
         token.RevokeAndReplace(newRefreshTokenStr, "rotation");
-        
+
         var newRefreshToken = new RefreshToken(
             user.Id, newRefreshTokenStr,
             DateTime.UtcNow.AddDays(7), ipAddress, userAgent);

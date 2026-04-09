@@ -135,8 +135,34 @@ $planText = $instructionText
         }
     }
 
-    # Her zaman ekle: AuthController, AuthService, IAuthService, Program.cs (varsa)
-    $alwaysRead = @("AuthController.cs","AuthService.cs","IAuthService.cs","Program.cs","AuthModels.cs")
+    $isFrontendTask = $instructionText -imatch "login|register|dark mode|dark-mode|tema|theme|ui|navbar|react|frontend|css|tailwind"
+    $isBackendTask = $instructionText -imatch "api|backend|controller|service|auth|jwt|token|endpoint|program.cs|c#|dotnet"
+
+    # Gorev tipine gore otomatik baglam ekle
+    $alwaysRead = @()
+    if ($isFrontendTask) {
+        $alwaysRead += @(
+            "Login.jsx",
+            "Register.jsx",
+            "ThemeContext.jsx",
+            "Navbar.jsx",
+            "App.js",
+            "index.css",
+            "tailwind.config.js",
+            "package.json"
+        )
+    }
+    if ($isBackendTask -or -not $isFrontendTask) {
+        $alwaysRead += @(
+            "AuthController.cs",
+            "AuthService.cs",
+            "IAuthService.cs",
+            "Program.cs",
+            "AuthModels.cs"
+        )
+    }
+
+    $alwaysRead = $alwaysRead | Select-Object -Unique
     foreach ($fname in $alwaysRead) {
         $found = Get-ChildItem -Path $repoRoot -Recurse -Filter $fname -ErrorAction SilentlyContinue |
                  Where-Object { $_.FullName -notmatch "\\obj\\" -and $_.FullName -notmatch "\\bin\\" } |
@@ -160,8 +186,6 @@ $coderSystem
 
 $instructionText
 
-$planText
-
 $contextSection
 
 === TALIMATLAR ===
@@ -170,7 +194,8 @@ $contextSection
 - [WEB_ROOT] = $webRoot
 - Dosyalari DOGRUDAN bu tam path'lere yaz. Baska path deneme.
 - find, cat, ls gibi kesfetme komutlari calistirma - bilgi sana yukarida verildi.
-- Sadece kod yaz, dosyalara kaydet, build al, result.txt'e yaz.
+- Plan veya dusunce yazma. Hemen uygula, result.txt'e sonucu yaz ve prosesi kapat.
+- Son cikti sadece sonuc olsun; "I will", "once sunu kontrol edecegim" gibi ifadeler kullanma.
 
 Final response requirements:
 - Briefly list the files changed (full paths).
@@ -189,7 +214,8 @@ $tempBat    = Join-Path $tmpDir "run-gemini-$iteration.bat"
 
 $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
 
-    $maxRetries     = 5
+    $maxRetries     = 1
+    $maxRunSeconds  = if ($env:BEACHGO_GEMINI_TIMEOUT_SEC) { [int]$env:BEACHGO_GEMINI_TIMEOUT_SEC } else { 90 }
     $retryCount     = 0
     $exitCode       = 1
     $executorOutput = ""
@@ -225,7 +251,7 @@ set CI=true
 set NO_COLOR=1
 set TERM=dumb
 cd /d "$repoRoot"
-gemini --approval-mode yolo --model $geminiModel -p "@$tempPrompt" > "$tempOutput" 2>&1
+gemini --approval-mode yolo --allowed-mcp-server-names disabled --model $geminiModel -p "@$tempPrompt" > "$tempOutput" 2>&1
 exit /b %ERRORLEVEL%
 "@
             $batContent | Set-Content $tempBat -Encoding ASCII
@@ -241,17 +267,31 @@ exit /b %ERRORLEVEL%
             Start-Sleep -Seconds 30
 
             if (-not $proc.HasExited) {
-                Write-Log "30 saniye sonra Gemini hala calisiyor, tamamlanmasini bekliyoruz..."
-                $proc.WaitForExit()
+                Write-Log "30 saniye sonra Gemini hala calisiyor, en fazla $maxRunSeconds saniye beklenecek..."
+                $deadline = (Get-Date).AddSeconds($maxRunSeconds - 30)
+                while (-not $proc.HasExited -and (Get-Date) -lt $deadline) {
+                    Start-Sleep -Seconds 5
+                }
             }
 
-            $exitCode = $proc.ExitCode
+            if (-not $proc.HasExited) {
+                Write-Log "Gemini timeout oldu. Process tree sonlandiriliyor..."
+                try { & taskkill /PID $proc.Id /T /F | Out-Null } catch {}
+                Start-Sleep -Seconds 2
+                $exitCode = 124
+            } else {
+                $exitCode = $proc.ExitCode
+            }
 
             # Ciktiyi oku
             if (Test-Path $tempOutput) {
                 $executorOutput = Get-Content $tempOutput -Raw -Encoding UTF8
             } else {
                 $executorOutput = ""
+            }
+
+            if ($exitCode -eq 124 -and [string]::IsNullOrWhiteSpace($executorOutput)) {
+                $executorOutput = "Gemini timeout oldu ve cikti uretmeden sonlandirildi."
             }
 
             # Konsola yazdir
@@ -268,6 +308,14 @@ exit /b %ERRORLEVEL%
                 Write-Log "Kota hatasi alindi, 10 saniye bekleniyor..."
                 Start-Sleep -Seconds 10
                 continue
+            }
+
+            if ($executorOutput -match "I will|I'll|once .*kontrol|kontrol edecegim|searching for|read the|locate the") {
+                Write-Log "Gemini uygulama yerine plan/arama moduna girdi."
+            }
+
+            if ($executorOutput -match "Error executing tool read_file: File not found") {
+                Write-Log "Gemini verilen baglam yerine read_file aracina gitti ve dosya bulamadi."
             }
 
             # Basarili cikis

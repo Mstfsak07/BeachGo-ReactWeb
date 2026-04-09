@@ -8,5 +8,5 @@ set CI=true
 set NO_COLOR=1
 set TERM=dumb
 cd /d "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb"
-gemini --approval-mode yolo --model gemini-3-flash -p "@C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\queue\executor-prompt.txt" > "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\queue\gemini-out-9.txt" 2>&1
+gemini --approval-mode yolo --allowed-mcp-server-names disabled --model gemini-3-flash -p "@C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\queue\executor-prompt.txt" > "C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\automation\queue\gemini-out-9.txt" 2>&1
 exit /b %ERRORLEVEL%

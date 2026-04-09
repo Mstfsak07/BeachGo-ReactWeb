@@ -109,7 +109,7 @@ const Navbar = () => {
               shouldShowSolid ? "bg-slate-50/80 dark:bg-slate-800/80 border-slate-100 dark:border-slate-700" : "bg-white/10 border-white/20"
             }`}>
               <div className="flex flex-col items-end">
-                <span className={`text-[11px] font-black uppercase tracking-[0.2em] leading-none mb-1.5 ${
+                <span className={`text-[11px] font-black uppercase tracking-[0.2em] mb-1.5 ${
                   shouldShowSolid ? "text-slate-400 dark:text-slate-500" : "text-white/50"
                 }`}>Kullanıcı</span>
                 <span className={`text-sm font-bold leading-none truncate max-w-[120px] ${
@@ -229,4 +229,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-

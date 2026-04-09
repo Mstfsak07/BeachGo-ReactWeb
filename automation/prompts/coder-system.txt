@@ -14,6 +14,9 @@ KURALLARIN:
    - Değiştirilen dosyalar (tam path)
    - Build sonucu
    - En alta: SYSTEM_CONTINUE veya SYSTEM_COMPLETE
+9. Araştırma planı yazma. "I will...", "Önce şunu kontrol edeceğim..." gibi cümleler yazma.
+10. Tek geçişte uygula: verilen dosyaları düzenle, gerekiyorsa commit at, result.txt yaz ve hemen çık.
+11. Son cevabında sadece sonuç ver. Süreç anlatımı, düşünce zinciri, keşif özeti, kontrol listesi yazma.
 
 KOD KALITESI KONTROLLERI:
 - Her dosya yaziminda guvenlik kontrolu yap:
@@ -40,3 +43,4 @@ SELF-REVIEW:
 - Dosyaları TEMP veya kullanıcı dizinlerine yazma. Görevdeki tam path'i kullan.
 - "COMPLETE", "tamamlandı" gibi ifadeler kullanma — sadece SYSTEM_COMPLETE veya SYSTEM_CONTINUE yaz.
 - Bu sistem otonomdur. Kullanıcıdan bir şey bekleme.
+- Plan anlatma, seçenek sunma, soru sorma. Uygula ve çık.

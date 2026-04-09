@@ -1,1 +1,18 @@
+- Giriş sayfasına (Login.jsx) dark mode desteği eklendi.
+- Kayıt sayfasına (Register.jsx) dark mode desteği eklendi.
+- Navbar bileşenine tema değiştirme butonu eklendi.
+- ThemeContext oluşturularak tema yönetimi merkezi hale getirildi.
+- Tailwind config'de dark mode 'class' olarak ayarlandı.
+- App.js ThemeProvider ile sarmalandı.
 
+Değiştirilen Dosyalar:
+- C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Login.jsx
+- C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\pages\Register.jsx
+- C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\context\ThemeContext.jsx
+- C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\components\Navbar.jsx
+- C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\src\App.js
+- C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\beach-ui\tailwind.config.js
+
+Build Sonucu: Başarılı (Dosyalar yazıldı ve commit edildi)
+
+SYSTEM_COMPLETE

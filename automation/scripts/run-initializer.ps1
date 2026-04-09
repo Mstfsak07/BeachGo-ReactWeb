@@ -23,48 +23,48 @@ function Write-Log($msg) {
 
 function Invoke-ClaudeAPI {
     param([string]$Prompt, [string]$SystemPrompt = "")
-
+    
     $apiKey  = $env:ANTHROPIC_API_KEY
     $baseUrl = if ($env:ANTHROPIC_BASE_URL) { $env:ANTHROPIC_BASE_URL.TrimEnd('/') } else { "https://api.anthropic.com" }
-
-    $bodyObj = [ordered]@{
+    
+    $bodyObj = @{
         model      = $INITIALIZER_MODEL
         max_tokens = 8192
-        messages   = @(@{ role = "user"; content = [string]$Prompt })
+        messages   = @(@{ role = "user"; content = $Prompt })
     }
-    if (-not [string]::IsNullOrWhiteSpace($SystemPrompt)) {
-        $bodyObj["system"] = [string]$SystemPrompt
+    if ($SystemPrompt) { $bodyObj["system"] = $SystemPrompt }
+    
+    $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes(
+        ($bodyObj | ConvertTo-Json -Depth 10 -Compress)
+    )
+
+    try {
+        $response = Invoke-RestMethod `
+            -Uri "$baseUrl/v1/messages" `
+            -Method Post `
+            -Headers @{
+                "x-api-key"         = $apiKey
+                "anthropic-version" = "2023-06-01"
+                "Content-Type"      = "application/json"
+            } `
+            -Body $bodyBytes
+
+        if ($response.content -and $response.content.Count -gt 0) {
+            return $response.content[0].text
+        }
+    } catch {
+        Write-Log "HATA: API cagrisi basarisiz: $_"
     }
-
-    $bodyJson  = $bodyObj | ConvertTo-Json -Depth 10 -Compress
-    $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($bodyJson)
-
-    $headers = @{
-        "x-api-key"         = $apiKey
-        "anthropic-version" = "2023-06-01"
-        "content-type"      = "application/json"
-    }
-
-    $response = Invoke-RestMethod `
-        -Uri     "$baseUrl/v1/messages" `
-        -Method  POST `
-        -Headers $headers `
-        -Body    $bodyBytes
-
-    if ($response.content -and $response.content[0].text) {
-        return $response.content[0].text
-    } elseif ($response.text) {
-        return $response.text
-    } else {
-        Write-Log "HATA: API beklenmedik format dondu. Yanit: $($response | ConvertTo-Json -Compress)"
-        return $null
-    }
+    return $null
 }
-
-Write-Log "Initializer baslatiliyor - proje analizi yapilacak..."
-
+Write-Log "DEBUG - BEACHGO_KEY: $env:BEACHGO_ANTHROPIC_KEY"
+Write-Log "DEBUG - ANTHROPIC_KEY: $env:ANTHROPIC_API_KEY"
+Write-Log "DEBUG - BASE_URL: $env:ANTHROPIC_BASE_URL"
+# ENV degiskenlerini fonksiyon taninmadan ONCE set et
 $env:ANTHROPIC_API_KEY  = $env:BEACHGO_ANTHROPIC_KEY
 $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:8045"
+
+Write-Log "Initializer baslatiliyor - proje analizi yapilacak..."
 
 # Proje dosya yap�s�n� topla
 $frontendPages = try {
@@ -114,31 +114,31 @@ $taskPath = Join-Path $queueDir "task.txt"
 $userGoal = if (Test-Path $taskPath) { Get-Content $taskPath -Raw -Encoding UTF8 } else { "BeachGo projesini mobil oncesi hazir hale getir." }
 
 $systemPrompt = @"
-Sen BeachGo projesinin k�demli mimar�s�n. Projeyi derinlemesine analiz edecek ve �ncelikli bir geliştirme plan� ç�karacaks�n.
+Sen BeachGo projesinin kıdemli mimarısın. Projeyi derinlemesine analiz edecek ve �ncelikli bir geli�tirme plan� ��karacaks�n.
 
 Kurallar:
 1. Sadece projeye ait bilgilere dayanarak karar ver.
-2. Her faz bağ�ms�z, test edilebilir ve net olsun.
-3. Fazlar küçük ve somut olsun — Gemini CLI'nin uygulayabileceği büyüklükte.
-4. Her fazda: hangi dosyalar değişecek, ne yap�lacak, nas�l test edilecek yaz.
-5. Toplam faz say�s� 15-25 aras�nda olsun.
-6. Mobil fazlar� en sona koy, �nce web/api eksiliklerini gider.
-7. Ç�kt�n� SADECE aşağ�daki formatta yaz, başka hiçbir şey yazma:
+2. Her faz bağmsz, test edilebilir ve net olsun.
+3. Fazlar kk ve somut olsun - Gemini CLI'nin uygulayabilecei byklkte.
+4. Her fazda: hangi dosyalar deiecek, ne yaplacak, nasl test edilecek yaz.
+5. Toplam faz says 15-25 arasnda olsun.
+6. Mobil fazlar en sona koy,nce web/api eksikliklerini gider.
+7. Çktn SADECE aadaki formatta yaz, baka hibirey yazma:
 
 FAZ_LISTESI_BASLANGIC
-FAZ 1: [Başl�k]
+FAZ 1: [Başlık]
 SCOPE: web|api|mobile
 DOSYALAR: [etkilenecek dosyalar]
-GÖREV: [net, uygulanabilir g�rev aç�klamas�]
-TEST: [nas�l doğrulanacak]
+GÖREV: [net, uygulanabilir görev açıklaması]
+TEST: [nasıl doyranalanacak]
 ---
-FAZ 2: [Başl�k]
+FAZ 2: [Başlık]
 ...
 FAZ_LISTESI_BITIS
 "@
 
 $analysisPrompt = @"
-Kullan�c�n�n isteği: $userGoal
+Kullanıcının isteği: $userGoal
 
 PROJE YAPISI:
 
@@ -165,27 +165,19 @@ Bu bilgilere göre öncelikli faz listesini çıkar.
 Write-Log "Claude API cagrisi yapiliyor - proje analizi..."
 
 $phases = $null
-$retries = 5
+$retries = 3
 for ($i = 1; $i -le $retries; $i++) {
     try {
-        Write-Log "Claude API cagrisi yapiliyor (deneme $i / $retries)..."
         $phases = Invoke-ClaudeAPI -Prompt $analysisPrompt -SystemPrompt $systemPrompt
-        Write-Log "Claude API yaniti (deneme $i): $phases"
-        Write-Host "=== CLAUDE YANITI (deneme $i) ===`n$phases`n================================" -ForegroundColor Cyan
         if (-not [string]::IsNullOrWhiteSpace($phases)) { break }
-        Write-Log "Deneme $i bos cikti dondu."
     } catch {
         Write-Log "Deneme $i basarisiz: $_"
-        Write-Host "=== CLAUDE HATA (deneme $i) ===`n$_`n================================" -ForegroundColor Red
-        if ($i -lt $retries) {
-            Write-Log "30 saniye bekleniyor..."
-            Start-Sleep -Seconds 30
-        }
+        Start-Sleep -Seconds 10
     }
 }
 
 if ([string]::IsNullOrWhiteSpace($phases)) {
-    Write-Log "KRITIK HATA: Claude API $retries deneme sonrasinda yanit vermedi. Otomasyon durduruluyor."
+    Write-Log "HATA: Claude analiz yapamiadi."
     exit 1
 }
 

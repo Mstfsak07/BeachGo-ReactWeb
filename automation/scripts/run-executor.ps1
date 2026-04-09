@@ -63,7 +63,7 @@ $planText = $instructionText
 
     $geminiModel = if ($env:BEACHGO_GEMINI_MODEL) { $env:BEACHGO_GEMINI_MODEL } else { "gemini-3-flash" }
     if ($instructionText -imatch "\[SECURITY\]|\[REFACTOR\]|guvenlik|security|audit|mimari|architecture|refactor") {
-        $geminiModel = if ($env:BEACHGO_GEMINI_PRO_MODEL) { $env:BEACHGO_GEMINI_PRO_MODEL } else { "gemini-2.5-pro" }
+        $geminiModel = if ($env:BEACHGO_GEMINI_PRO_MODEL) { $env:BEACHGO_GEMINI_PRO_MODEL } else { "gemini-3-pro" }
         Write-Log "Karmasik gorev tespit edildi, PRO model kullaniliyor: $geminiModel"
     } else {
         Write-Log "Standart gorev, FLASH model kullaniliyor: $geminiModel"
@@ -88,7 +88,7 @@ $planText = $instructionText
         Write-Log "Workflow prompt eklendi: $workflowPromptPath"
     }
 
-    # ── CONTEXT ENRICHMENT ──────────────────────────────────────────
+    # -- CONTEXT ENRICHMENT ------------------------------------------
     # Plan'daki [API_ROOT] / [WEB_ROOT] placeholder'larini gercek path'e coz
     $repoRoot = Split-Path $automationDir -Parent
 
@@ -104,7 +104,7 @@ $planText = $instructionText
 
     Write-Log "Context: apiRoot=$apiRoot webRoot=$webRoot"
 
-    # Plan'daki referans dosyalari bul ve oku — [API_ROOT] ve gercek path'ler
+    # Plan'daki referans dosyalari bul ve oku - [API_ROOT] ve gercek path'ler
     $contextBlocks = [System.Text.StringBuilder]::new()
     [void]$contextBlocks.AppendLine("=== PROJE DOSYA ICERIKLERI (Claude tarafindan okundu) ===")
     [void]$contextBlocks.AppendLine("")
@@ -151,7 +151,7 @@ $planText = $instructionText
     }
 
     $contextSection = $contextBlocks.ToString()
-    # ── CONTEXT ENRICHMENT SONU ─────────────────────────────────────
+    # -- CONTEXT ENRICHMENT SONU -------------------------------------
 
     $coderPrompt = @"
 $coderSystem
@@ -169,7 +169,7 @@ $contextSection
 - [API_ROOT] = $apiRoot
 - [WEB_ROOT] = $webRoot
 - Dosyalari DOGRUDAN bu tam path'lere yaz. Baska path deneme.
-- find, cat, ls gibi kesfetme komutlari calistirma — bilgi sana yukarida verildi.
+- find, cat, ls gibi kesfetme komutlari calistirma - bilgi sana yukarida verildi.
 - Sadece kod yaz, dosyalara kaydet, build al, result.txt'e yaz.
 
 Final response requirements:
@@ -205,12 +205,22 @@ $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
         if (Test-Path $tempOutput) { Remove-Item $tempOutput -Force }
 
         try {
-            # CI=true ve NO_COLOR=1 → Gemini PTY açmaya çalışmaz, headless çalışır
+            Write-Log "Gemini baslatiliyor (iteration=$iteration, deneme=$retryCount)..."
+
+            # CI=true ve NO_COLOR=1 → Gemini PTY a�maya �al��maz, headless �al���r
+            $geminiBaseUrl = if ($env:GOOGLE_GEMINI_BASE_URL) { $env:GOOGLE_GEMINI_BASE_URL } else { "http://127.0.0.1:8045" }
+            $geminiApiKey = if ($env:GEMINI_API_KEY) { $env:GEMINI_API_KEY } elseif ($env:BEACHGO_GEMINI_API_KEY) { $env:BEACHGO_GEMINI_API_KEY } else { "" }
+            $anthropicApiKey = if ($env:BEACHGO_ANTHROPIC_KEY) { $env:BEACHGO_ANTHROPIC_KEY } else { "" }
+            $maskedGeminiApiKey = if ($geminiApiKey.Length -ge 6) { $geminiApiKey.Substring(0, 6) + "..." } elseif ($geminiApiKey) { "***" } else { "(empty)" }
+            Write-Log "Gemini env: baseUrl=$geminiBaseUrl apiKey=$maskedGeminiApiKey"
+
             $batContent = @"
 @echo off
-set GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8045
-set GEMINI_API_KEY=$($env:GEMINI_API_KEY)
-set BEACHGO_ANTHROPIC_KEY=$($env:BEACHGO_ANTHROPIC_KEY)
+set GOOGLE_GEMINI_BASE_URL=$geminiBaseUrl
+set GEMINI_API_KEY=$geminiApiKey
+set GOOGLE_API_KEY=$geminiApiKey
+set BEACHGO_ANTHROPIC_KEY=$anthropicApiKey
+set GEMINI_CLI_NO_RELAUNCH=true
 set CI=true
 set NO_COLOR=1
 set TERM=dumb
@@ -220,15 +230,20 @@ exit /b %ERRORLEVEL%
 "@
             $batContent | Set-Content $tempBat -Encoding ASCII
 
-            Write-Log "Gemini baslatiliyor (iteration=$iteration, deneme=$retryCount)..."
-
-            # WindowStyle Hidden: gercek console var ama gizli — PTY attach sorunu olmaz
+            # WindowStyle Hidden: gercek console var ama gizli - PTY attach sorunu olmaz
             $proc = Start-Process cmd.exe `
                 -ArgumentList "/c `"$tempBat`"" `
                 -WorkingDirectory $automationDir `
                 -WindowStyle Hidden `
-                -Wait `
                 -PassThru
+
+            Write-Log "Gemini PID=$($proc.Id) baslatildi. 30 saniye bekleniyor..."
+            Start-Sleep -Seconds 30
+
+            if (-not $proc.HasExited) {
+                Write-Log "30 saniye sonra Gemini hala calisiyor, tamamlanmasini bekliyoruz..."
+                $proc.WaitForExit()
+            }
 
             $exitCode = $proc.ExitCode
 
@@ -303,7 +318,7 @@ exit /b %ERRORLEVEL%
     $changedFiles = [regex]::Matches($resultText, '(?m)^[-+]\s*(.+\.(cs|ts|tsx|json|csproj|txt))') |
         ForEach-Object { $_.Groups[1].Value.Trim() } | Select-Object -Unique
 
-    # Sadece 3 alan guncelle — is_complete'e dokunma
+    # Sadece 3 alan guncelle - is_complete'e dokunma
     Set-SP $stateObj "last_result"        ($resultText.Substring(0, [Math]::Min(800, $resultText.Length)))
     Set-SP $stateObj "last_exit_code"     $exitCode
     Set-SP $stateObj "last_files_changed" ($changedFiles -join ", ")

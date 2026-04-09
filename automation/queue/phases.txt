@@ -1,0 +1,26 @@
+﻿FAZ_LISTESI_BASLANGIC
+FAZ 1: ThemeContext Dark Mode AltyapÄ±sÄ± Kurulumu
+SCOPE: web
+DOSYALAR: src/context/ThemeContext.js (veya .jsx)
+GÃREV: ThemeContext'in mevcut yapÄ±sÄ±nÄ± kontrol et. EÄer yoksa oluÅtur; varsa dark mode toggle fonksiyonu, localStorage persist, sistem tercihi (prefers-color-scheme) desteÄi ekle. `theme` state'i ('light'|'dark') ve `toggleTheme` fonksiyonunu export et.
+TEST: Browser console'da `localStorage.getItem('theme')` deÄerinin toggle sonrasÄ± deÄiÅtiÄini doÄrula. Sayfa yenilendiÄinde temanÄ±n korunduÄunu kontrol et.
+---
+FAZ 2: Tailwind Dark Mode KonfigÃ¼rasyonu
+SCOPE: web
+DOSYALAR: tailwind.config.js
+GÃREV: `darkMode: 'class'` ayarÄ±nÄ± ekle (veya mevcut olduÄunu doÄrula). ThemeContext'te theme deÄiÅtiÄinde `document.documentElement.classList.toggle('dark')` Ã§aÄrÄ±sÄ±nÄ±n yapÄ±ldÄ±ÄÄ±ndan emin ol. ThemeContext iÃ§ine bu DOM manipÃ¼lasyonunu ekle.
+TEST: Dark mode aktifken `<html>` elementinde `dark` class'Ä±nÄ±n gÃ¶rÃ¼ndÃ¼ÄÃ¼nÃ¼ DevTools Elements sekmesinden doÄrula.
+---
+FAZ 3: Login.jsx Dark Mode Stilleri
+SCOPE: web
+DOSYALAR: src/pages/Login.jsx
+GÃREV: Login sayfasÄ±ndaki tÃ¼m statik Tailwind class'larÄ±na `dark:` prefix'li karÅÄ±lÄ±klarÄ±nÄ± ekle. Ana container: `dark:bg-gray-900`, kart/form alanÄ±: `dark:bg-gray-800`, input'lar: `dark:bg-gray-700 dark:text-white dark:border-gray-600`, label'lar: `dark:text-gray-200`, buton: `dark:bg-blue-500 dark:hover:bg-blue-600`, link'ler: `dark:text-blue-400`, hata mesajlarÄ±: `dark:text-red-400`.
+TEST: Tailwind dark class toggle'Ä± aktifken Login sayfasÄ±nÄ± aÃ§, tÃ¼m elementlerin (input, buton, link, hata metni) dark temada okunabilir kontrasta sahip olduÄunu gÃ¶zle doÄrula.
+---
+FAZ 4: Login SayfasÄ±na Dark Mode Toggle Butonu
+SCOPE: web
+DOSYALAR: src/pages/Login.jsx
+GÃREV: Login sayfasÄ±nÄ±n saÄ Ã¼st kÃ¶Åesine (absolute positioned) gÃ¼neÅ/ay ikonu iÃ§eren bir toggle butonu ekle. `useTheme()` hook'u ile ThemeContext'e baÄla. Dark modda ay ikonu, light modda gÃ¼neÅ ikonu gÃ¶ster. Buton: `dark:bg-gray-700 dark:text-yellow-300` stilleriyle.
+TEST: Login sayfasÄ±nda butona tÄ±klandÄ±ÄÄ±nda sayfa arka planÄ±nÄ±n ve form elemanlarÄ±nÄ±n anlÄ±k olarak dark/light arasÄ±nda geÃ§iÅ yaptÄ±ÄÄ±nÄ± doÄrula. Sayfa yenilendiÄinde seÃ§ilen temanÄ±n korunduÄunu kontrol et.
+---
+FAZ_LISTESI_BITIS

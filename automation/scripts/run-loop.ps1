@@ -1,5 +1,10 @@
 ﻿#Requires -Version 5.1
 $ErrorActionPreference = "Continue"
+param([string]$ApiKey = "")
+if ($ApiKey) {
+    $env:BEACHGO_ANTHROPIC_KEY = $ApiKey
+    $env:ANTHROPIC_API_KEY     = $ApiKey
+}
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding  = [System.Text.Encoding]::UTF8
@@ -393,20 +398,20 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
     }
 
     if ($analysis.decision -eq "CONTINUE") {
-    Write-Log "[ANALYZER] CONTINUE"
-    Write-Log "[ANALYZER] next_steps = $($analysis.next_steps)"
+        Write-Log "[ANALYZER] CONTINUE"
+        Write-Log "[ANALYZER] next_steps = $($analysis.next_steps)"
 
-    if (-not [string]::IsNullOrWhiteSpace($analysis.next_steps)) {
-        $analysis.next_steps | Set-Content $instructionFile -Encoding UTF8
-        Write-Log "[ANALYZER] instruction guncellendi"
+        if (-not [string]::IsNullOrWhiteSpace($analysis.next_steps)) {
+            $analysis.next_steps | Set-Content $instructionFile -Encoding UTF8
+            Write-Log "[ANALYZER] instruction guncellendi"
+        }
+
+        Set-SP $state "status" "running"
+        Save-State $state
+        Write-Log "[LOOP] Sonraki iteration basliyor"
+        Start-Sleep -Seconds 2
+        continue
     }
-
-    Set-SP $state "status" "running"
-    Save-State $state
-    Write-Log "[LOOP] Sonraki iteration basliyor"
-    Start-Sleep -Seconds 2
-    continue
-}
 
     Write-Log "Analyzer tanimsiz decision='$($analysis.decision)'. Onceki instruction korunuyor, devam ediliyor."
     Save-State $state

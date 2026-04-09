@@ -1,0 +1,1 @@
+﻿Run gemini with only the -p flag: gemini -p 'Login sayfasÄ±na dark mode ekle'

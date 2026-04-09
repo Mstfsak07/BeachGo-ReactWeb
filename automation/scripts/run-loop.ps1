@@ -239,13 +239,19 @@ VERIFICATION CHECKLIST:
 
 RULES:
 - Return CONTINUE if: any write_file failed, build failed, files were missing, workspace errors occurred, any step is incomplete, or verification found issues.
-- Return SYSTEM_COMPLETE only if all files were written successfully AND there are no errors AND verification passes.
+- Return PHASE_COMPLETE if the current phase goals were completed successfully and the project should move to the next phase.
+- Return SYSTEM_COMPLETE only if the current phase goals were completed successfully AND this was the final phase.
 - If returning CONTINUE, next_steps must be ONE SHORT SENTENCE (max 120 chars) describing only the immediate next action.
+- If returning PHASE_COMPLETE, next_steps is optional and may be omitted.
 - Do NOT write paragraphs, steps, or lists in next_steps. One line only.
 
 Return ONLY valid JSON, nothing else:
 
 {"decision":"CONTINUE","next_steps":"<one short sentence, max 120 chars>"}
+
+or
+
+{"decision":"PHASE_COMPLETE"}
 
 or
 
@@ -277,7 +283,7 @@ or
         if ($raw -match '(?s)\{.*\}') {
             $parsed = $Matches[0] | ConvertFrom-Json
             # Sadece gecerli decision degerlerini kabul et
-            if ($parsed.decision -eq "SYSTEM_COMPLETE" -or $parsed.decision -eq "CONTINUE") {
+            if ($parsed.decision -eq "SYSTEM_COMPLETE" -or $parsed.decision -eq "CONTINUE" -or $parsed.decision -eq "PHASE_COMPLETE") {
                 return $parsed
             }
         }
@@ -287,6 +293,19 @@ or
         Write-Log "Analyzer hatasi: $_"
         return $null
     }
+}
+
+function Invoke-PlannerStep {
+    Write-Log "Planner step baslatiliyor..."
+    & (Join-Path $scriptsDir "run-planner.ps1")
+    if (-not (Test-Path $instructionFile)) {
+        throw "Planner instruction.txt uretmedi."
+    }
+    $plannedInstruction = Get-Content $instructionFile -Raw -Encoding UTF8
+    if ([string]::IsNullOrWhiteSpace($plannedInstruction)) {
+        throw "Planner bos instruction uretti."
+    }
+    Write-Log "Planner step tamamlandi."
 }
 
 # ─── INITIALIZER KONTROLU ───────────────────────────────────────
@@ -331,6 +350,13 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
     Set-SP $state "current_iteration" $i
     Set-SP $state "status" "running"
     Save-State $state
+
+    try {
+        Invoke-PlannerStep
+    } catch {
+        Write-Log "PLANNER HATASI: $_"
+        break
+    }
 
     # 1) Backend'i durdur ─ Executor kod yazarken restart etmesin
     Write-Log "Backend durduruluyor (Executor calisacak)..."
@@ -397,18 +423,36 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
         break
     }
 
+    if ($analysis.decision -eq "PHASE_COMPLETE") {
+        $nextPhase = [int]$state.current_phase + 1
+        Write-Log "[ANALYZER] PHASE_COMPLETE. Faz $($state.current_phase) tamamlandi."
+
+        if ($nextPhase -gt [int]$state.total_phases) {
+            Write-Log "[ANALYZER] Son faz tamamlandi. Dongu bitiyor."
+            Set-SP $state "is_complete" $true
+            Set-SP $state "status" "done"
+            Save-State $state
+            break
+        }
+
+        Set-SP $state "current_phase" $nextPhase
+        Set-SP $state "status" "running"
+        Save-State $state
+        Write-Log "[LOOP] Sonraki faza geciliyor: $nextPhase / $($state.total_phases)"
+        Start-Sleep -Seconds 2
+        continue
+    }
+
     if ($analysis.decision -eq "CONTINUE") {
         Write-Log "[ANALYZER] CONTINUE"
         Write-Log "[ANALYZER] next_steps = $($analysis.next_steps)"
 
-        if (-not [string]::IsNullOrWhiteSpace($analysis.next_steps)) {
-            $analysis.next_steps | Set-Content $instructionFile -Encoding UTF8
-            Write-Log "[ANALYZER] instruction guncellendi"
-        }
-
         Set-SP $state "status" "running"
+        if (-not [string]::IsNullOrWhiteSpace($analysis.next_steps)) {
+            Set-SP $state "last_error" $analysis.next_steps
+        }
         Save-State $state
-        Write-Log "[LOOP] Sonraki iteration basliyor"
+        Write-Log "[LOOP] Ayni faz icin planner yeni instruction uretecek"
         Start-Sleep -Seconds 2
         continue
     }

@@ -1,1 +1,1 @@
-﻿Run gemini with only the -p flag: gemini -p 'Login sayfasÄ±na dark mode ekle'
+﻿Write dark mode CSS classes to Login.jsx and Register.jsx files directly, then commit the changes.

@@ -1,1 +1,9 @@
-Login sayfasına dark mode ekle    
+BeachGo projesini once mobile-ready hale getir, sonra mobile tarafini bastan sona tamamla.
+
+Ana hedefler:
+- Web ve API tarafinda production/mobil oncesi eksikleri tespit et ve fazlara bol.
+- Auth, form akislari, hata yonetimi, validation, tema, responsive uyum, veri akislari, API tutarliligi, build ve release hazirligini tamamla.
+- Kritik teknik borclari ve kullanici akislarini kapatmadan mobile fazina gecme.
+- Mobile fazina gectiginde ekranlar, servis entegrasyonu, auth akislari, state yonetimi, offline/dayaniklilik, test/build/release hazirligini adim adim tamamla.
+- Claude projeyi eksiklere gore ilerletsin; her faz net, uygulanabilir ve dogrulanabilir olsun.
+- Fazlar sirali ilerlesin: once web/api tamamlansin, sonra mobile.

@@ -165,7 +165,11 @@ $planText = $instructionText
     $alwaysRead = $alwaysRead | Select-Object -Unique
     foreach ($fname in $alwaysRead) {
         $found = Get-ChildItem -Path $repoRoot -Recurse -Filter $fname -ErrorAction SilentlyContinue |
-                 Where-Object { $_.FullName -notmatch "\\obj\\" -and $_.FullName -notmatch "\\bin\\" } |
+                 Where-Object {
+                     $_.FullName -notmatch "\\obj\\" -and
+                     $_.FullName -notmatch "\\bin\\" -and
+                     $_.FullName -notmatch "\\node_modules\\"
+                 } |
                  Select-Object -First 1
         if ($found -and $resolvedFiles.Add($found.FullName)) {
             $content = Get-Content $found.FullName -Raw -Encoding UTF8 -ErrorAction SilentlyContinue

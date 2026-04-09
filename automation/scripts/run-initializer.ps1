@@ -123,6 +123,10 @@ Kurallar:
 4. Her fazda: hangi dosyalar deiecek, ne yaplacak, nasl test edilecek yaz.
 5. Toplam faz says 15-25 arasnda olsun.
 6. Mobil fazlar en sona koy,nce web/api eksikliklerini gider.
+7. Once web ve api tarafini mobile-ready hale getir: auth, form akislari, hata yonetimi, validation, API tutarliligi, build, deploy hazirligi, tema, responsive eksikleri, veri akislari ve kritik UX bosluklari kapatilsin.
+8. Mobile fazlarina sadece web/api tarafindaki kritik eksikler kapandiktan sonra gec. Mobile fazlarinda ekranlar, servis entegrasyonu, auth akislari, state yonetimi, offline/dayaniklilik, build ve release hazirligi olsun.
+9. Ilk fazlar analiz ve inventory degil, dogrudan uygulanabilir teknik gorevler olsun.
+10. Ayni problemi tekrar eden veya cok genis fazlar yazma. Her faz tek net ciktisi olan bir is olsun.
 7. Çktn SADECE aadaki formatta yaz, baka hibirey yazma:
 
 FAZ_LISTESI_BASLANGIC

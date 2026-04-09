@@ -170,7 +170,7 @@ const Register = () => {
                     <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700 text-center">
                         <p className="text-slate-400 dark:text-slate-500 text-sm italic font-medium">
                             Zaten hesabınız var mı?{' '}
-                            <Link to="/login" className="text-blue-500 font-bold hover:underline">
+                            <Link to="/login" className="text-blue-500 dark:text-blue-400 font-bold hover:underline">
                                 Giriş Yap
                             </Link>
                         </p>

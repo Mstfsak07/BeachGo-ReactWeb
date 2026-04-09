@@ -97,7 +97,7 @@ const Login = () => {
                         <div>
                             <div className="flex justify-between mb-1">
                                 <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Şifre</label>
-                                <Link to="/forgot-password" id="forgot-password" className="text-xs font-bold text-blue-500 hover:underline">Şifremi Unuttum</Link>
+                                <Link to="/forgot-password" id="forgot-password" className="text-xs font-bold text-blue-500 dark:text-blue-400 hover:underline">Şifremi Unuttum</Link>
                             </div>
                             <input
                                 type="password"
@@ -121,7 +121,7 @@ const Login = () => {
 
                     <div className="mt-10 pt-6 border-t border-slate-100 dark:border-slate-700 text-center">
                         <p className="text-slate-400 dark:text-slate-500 text-sm font-medium italic">
-                            Henüz bir hesabınız yok mu? <Link to="/register" className="text-blue-500 font-bold hover:underline">Şimdi Kaydolun</Link>
+                            Henüz bir hesabınız yok mu? <Link to="/register" className="text-blue-500 dark:text-blue-400 font-bold hover:underline">Şimdi Kaydolun</Link>
                         </p>
                     </div>
                 </div>

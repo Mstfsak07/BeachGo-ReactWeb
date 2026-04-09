@@ -190,7 +190,7 @@ $phases | Set-Content $phasesFile -Encoding UTF8
 Write-Log "phases.txt olusturuldu. Faz listesi hazir."
 
 # Kac faz oldugunu say
-$fazCount = ($phases | Select-String -Pattern "^FAZ \d+:" -AllMatches).Matches.Count
+$fazCount = ([regex]::Matches($phases, '(?m)^FAZ\s+\d+:')).Count
 Write-Log "Toplam $fazCount faz tespit edildi."
 
 # State'e yaz

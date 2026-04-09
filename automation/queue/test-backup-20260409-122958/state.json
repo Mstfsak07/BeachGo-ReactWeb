@@ -1,0 +1,17 @@
+﻿{
+    "current_iteration":  14,
+    "max_iterations":  50,
+    "status":  "executing",
+    "is_complete":  false,
+    "consecutive_errors":  0,
+    "last_error":  null,
+    "last_error_hash":  null,
+    "current_phase":  1,
+    "total_phases":  20,
+    "lastUpdated":  "2026-04-09T12:29:04",
+    "last_result":  "Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.\r\nBoth GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.\r\nBoth GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.\r\nBoth GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.\r\nUnable to determine encoding for windows code page 857.\r\nC:\\Users\\akMuratNET\\AppData\\Local\\nvm\\v24.14.1\\node_modules\\@google\\gemini-cli\\node_modules\\@lydell\\node-pty\\conpty_console_list_agent.js:11\r\nvar consoleProcessList = getConsoleProcessList(shellPid);\r\n                         ^\r\nError: AttachConsole failed\r\n    at Object.\u003canonymous\u003e (C:\\Users\\akMuratNET\\AppData\\Local\\nvm\\v24.14.1\\node_modules\\@google\\gemini-cli\\node_modules\\@lydell\\node-pty\\conpty_console_list_agent.js:11:26)\r\n    at Module._compile (node",
+    "last_exit_code":  124,
+    "last_files_changed":  "",
+    "scope":  "web",
+    "last_result_summary":  null
+}

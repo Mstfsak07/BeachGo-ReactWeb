@@ -1,1 +1,350 @@
-﻿Write dark mode CSS classes to Login.jsx and Register.jsx files directly, then commit the changes.
+﻿# FAZ 1: API Global Hata YÃ¶netimi ve TutarlÄ± Response FormatÄ±
+
+**ÃNCELÄ°K:** [BUGFIX] + [REFACTOR]
+**OWASP Risk:** A03 (Injection via error messages), A05 (Security Misconfiguration - stack trace exposure)
+
+---
+
+## DURUM ANALÄ°ZÄ°
+
+Ãnceki sonuÃ§ yarÄ±m kalmÄ±Å â `DomainException.cs` dosyasÄ± tamamlanmamÄ±Å, middleware ve controller temizliÄi yapÄ±lmamÄ±Å. Git diff alÄ±namadÄ±ÄÄ±ndan dosyalarÄ±n mevcut durumu belirsiz. **Tam dosya yazma** stratejisi uygulanacak.
+
+---
+
+## INSTRUCTION
+
+### AdÄ±m 1: Proje yapÄ±sÄ±nÄ± kontrol et
+
+```
+cat C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\BeachRehberi.API.csproj
+dir C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\
+dir C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Controllers\
+```
+
+---
+
+### AdÄ±m 2: DosyalarÄ± oluÅtur/gÃ¼ncelle (TAM Ä°ÃERÄ°K)
+
+**DOSYA 1:** `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Models\ApiResponse.cs`
+
+```csharp
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
+
+namespace BeachRehberi.API.Models
+{
+    public class ApiResponse<T>
+    {
+        [JsonPropertyName("success")]
+        public bool Success { get; set; }
+
+        [JsonPropertyName("message")]
+        public string Message { get; set; } = string.Empty;
+
+        [JsonPropertyName("data")]
+        public T? Data { get; set; }
+
+        [JsonPropertyName("errors")]
+        public List<string> Errors { get; set; } = new();
+
+        [JsonPropertyName("statusCode")]
+        public int StatusCode { get; set; }
+
+        public static ApiResponse<T> Ok(T data, string message = "Ä°Ålem baÅarÄ±lÄ±")
+            => new() { Success = true, Data = data, Message = message, StatusCode = 200, Errors = new() };
+
+        public static ApiResponse<T> Fail(string message, int statusCode = 400, List<string>? errors = null)
+            => new() { Success = false, Message = message, StatusCode = statusCode, Errors = errors ?? new() };
+    }
+
+    public class ApiResponse : ApiResponse<object>
+    {
+        public static ApiResponse OkNoData(string message = "Ä°Ålem baÅarÄ±lÄ±")
+            => new() { Success = true, Message = message, StatusCode = 200, Errors = new() };
+
+        public static ApiResponse FailNoData(string message, int statusCode = 400, List<string>? errors = null)
+            => new() { Success = false, Message = message, StatusCode = statusCode, Errors = errors ?? new() };
+    }
+}
+```
+
+---
+
+**DOSYA 2:** `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Models\ServiceResult.cs`
+
+```csharp
+using System.Collections.Generic;
+
+namespace BeachRehberi.API.Models
+{
+    public class ServiceResult<T>
+    {
+        public bool IsSuccess { get; set; }
+        public T? Data { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public List<string> Errors { get; set; } = new();
+        public int StatusCode { get; set; }
+
+        public static ServiceResult<T> Success(T data, string message = "BaÅarÄ±lÄ±", int statusCode = 200)
+            => new() { IsSuccess = true, Data = data, Message = message, StatusCode = statusCode, Errors = new() };
+
+        public static ServiceResult<T> Failure(string message, int statusCode = 400, List<string>? errors = null)
+            => new() { IsSuccess = false, Message = message, StatusCode = statusCode, Errors = errors ?? new() };
+    }
+
+    public class ServiceResult : ServiceResult<object>
+    {
+        public static ServiceResult SuccessNoData(string message = "BaÅarÄ±lÄ±")
+            => new() { IsSuccess = true, Message = message, StatusCode = 200, Errors = new() };
+
+        public static ServiceResult FailureNoData(string message, int statusCode = 400)
+            => new() { IsSuccess = false, Message = message, StatusCode = statusCode, Errors = new() };
+    }
+}
+```
+
+---
+
+**DOSYA 3:** `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Exceptions\DomainException.cs`
+
+> KlasÃ¶r yoksa oluÅtur: `mkdir C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Exceptions`
+
+```csharp
+using System;
+using System.Collections.Generic;
+
+namespace BeachRehberi.API.Exceptions
+{
+    public class DomainException : Exception
+    {
+        public int StatusCode { get; }
+        public List<string> Errors { get; }
+
+        public DomainException(string message, int statusCode = 400, List<string>? errors = null)
+            : base(message)
+        {
+            StatusCode = statusCode;
+            Errors = errors ?? new List<string>();
+        }
+    }
+
+    public class NotFoundException : DomainException
+    {
+        public NotFoundException(string message)
+            : base(message, 404) { }
+    }
+
+    public class ValidationException : DomainException
+    {
+        public ValidationException(string message, List<string>? errors = null)
+            : base(message, 422, errors) { }
+    }
+
+    public class UnauthorizedException : DomainException
+    {
+        public UnauthorizedException(string message = "Yetkisiz eriÅim")
+            : base(message, 401) { }
+    }
+
+    public class ForbiddenException : DomainException
+    {
+        public ForbiddenException(string message = "Bu iÅlem iÃ§in yetkiniz yok")
+            : base(message, 403) { }
+    }
+}
+```
+
+---
+
+**DOSYA 4:** `C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Middleware\GlobalExceptionMiddleware.cs`
+
+> KlasÃ¶r yoksa oluÅtur: `mkdir C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Middleware`
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Text.Json;
+using System.Threading.Tasks;
+using BeachRehberi.API.Exceptions;
+using BeachRehberi.API.Models;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+
+namespace BeachRehberi.API.Middleware
+{
+    public class GlobalExceptionMiddleware
+    {
+        private readonly RequestDelegate _next;
+        private readonly ILogger<GlobalExceptionMiddleware> _logger;
+        private static readonly JsonSerializerOptions _jsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false
+        };
+
+        public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
+        {
+            _next = next;
+            _logger = logger;
+        }
+
+        public async Task InvokeAsync(HttpContext context)
+        {
+            try
+            {
+                await _next(context);
+            }
+            catch (Exception ex)
+            {
+                await HandleExceptionAsync(context, ex);
+            }
+        }
+
+        private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+        {
+            context.Response.ContentType = "application/json";
+
+            ApiResponse response;
+
+            switch (exception)
+            {
+                case NotFoundException notFound:
+                    _logger.LogWarning("NotFoundException: {Message}", notFound.Message);
+                    context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                    response = ApiResponse.FailNoData(notFound.Message, 404, notFound.Errors);
+                    break;
+
+                case ValidationException validation:
+                    _logger.LogWarning("ValidationException: {Message}", validation.Message);
+                    context.Response.StatusCode = (int)HttpStatusCode.UnprocessableEntity;
+                    response = ApiResponse.FailNoData(validation.Message, 422, validation.Errors);
+                    break;
+
+                case UnauthorizedException unauthorized:
+                    _logger.LogWarning("UnauthorizedException: {Message}", unauthorized.Message);
+                    context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                    response = ApiResponse.FailNoData(unauthorized.Message, 401, unauthorized.Errors);
+                    break;
+
+                case ForbiddenException forbidden:
+                    _logger.LogWarning("ForbiddenException: {Message}", forbidden.Message);
+                    context.Response.StatusCode = (int)HttpStatusCode.Forbidden;
+                    response = ApiResponse.FailNoData(forbidden.Message, 403, forbidden.Errors);
+                    break;
+
+                case DomainException domain:
+                    _logger.LogWarning("DomainException: {Message}", domain.Message);
+                    context.Response.StatusCode = domain.StatusCode;
+                    response = ApiResponse.FailNoData(domain.Message, domain.StatusCode, domain.Errors);
+                    break;
+
+                case UnauthorizedAccessException:
+                    _logger.LogWarning("UnauthorizedAccessException caught");
+                    context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
+                    response = ApiResponse.FailNoData("Yetkisiz eriÅim", 401);
+                    break;
+
+                default:
+                    // OWASP: Stack trace ve iÃ§ hata detayÄ± production'da gizlenir
+                    _logger.LogError(exception, "Unhandled exception: {Message}", exception.Message);
+                    context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                    response = ApiResponse.FailNoData("Sunucu hatasÄ± oluÅtu. LÃ¼tfen daha sonra tekrar deneyin.", 500);
+                    break;
+            }
+
+            var json = JsonSerializer.Serialize(response, _jsonOptions);
+            await context.Response.WriteAsync(json);
+        }
+    }
+}
+```
+
+---
+
+### AdÄ±m 3: Program.cs / Startup.cs'e middleware kaydet
+
+`C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Program.cs` dosyasÄ±nÄ± oku.
+
+EÄer `app.UseMiddleware<GlobalExceptionMiddleware>()` satÄ±rÄ± yoksa, `app.UseHttpsRedirection()` satÄ±rÄ±ndan **ÃNCE** ekle:
+
+```csharp
+// using ekle (dosya baÅÄ±nda):
+using BeachRehberi.API.Middleware;
+
+// app pipeline'Ä±na ekle (ilk middleware olarak):
+app.UseMiddleware<GlobalExceptionMiddleware>();
+```
+
+---
+
+### AdÄ±m 4: Controller'lardaki gereksiz try-catch bloklarÄ±nÄ± temizle
+
+Controller dosyalarÄ±nÄ± listele:
+```
+dir C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Controllers\
+```
+
+Her controller'da Åu pattern'i ara ve kaldÄ±r:
+```csharp
+// KALDIRILACAK pattern:
+try { ... }
+catch (Exception ex)
+{
+    return StatusCode(500, new { message = ex.Message });
+}
+
+// BIRAKILACAK: sadece business logic kontrolÃ¼ olan try-catch'ler DEÄÄ°L,
+// generic exception handler olan try-catch'ler kaldÄ±rÄ±lacak.
+```
+
+Controller return deÄerlerini standartlaÅtÄ±r:
+```csharp
+// ESKÄ°:
+return Ok(data);
+return BadRequest("hata");
+return NotFound();
+
+// YENÄ°:
+return Ok(ApiResponse<TipiBuraya>.Ok(data));
+return BadRequest(ApiResponse.FailNoData("hata mesajÄ±"));
+// NotFound, Unauthorized iÃ§in artÄ±k exception fÄ±rlatÄ±lacak:
+throw new NotFoundException("KayÄ±t bulunamadÄ±");
+throw new UnauthorizedException();
+```
+
+---
+
+### AdÄ±m 5: Build ve doÄrulama
+
+```powershell
+cd C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API
+dotnet build
+```
+
+**Beklenen Ã§Ä±ktÄ±:** `Build succeeded. 0 Error(s)`
+
+---
+
+## DOÄRULAMA KRÄ°TERLERÄ°
+
+| Kriter | Kontrol |
+|--------|---------|
+| Build baÅarÄ±lÄ± | `0 Error(s)` |
+| Namespace uyumu | TÃ¼m dosyalar doÄru namespace kullanÄ±yor |
+| Middleware kayÄ±tlÄ± | Program.cs'de `UseMiddleware<GlobalExceptionMiddleware>()` var |
+| OWASP A03 | 500 hatalarÄ±nda stack trace dÃ¶nmÃ¼yor |
+| Format tutarlÄ±lÄ±ÄÄ± | TÃ¼m hatalar `{success, message, errors, statusCode}` formatÄ±nda |
+
+---
+
+## EDGE CASE'LER
+
+- `Startup.cs` kullanÄ±lÄ±yorsa (eski .NET 5 pattern): `Configure` metoduna middleware ekle
+- Mevcut `GlobalExceptionMiddleware.cs` varsa: tamamen Ã¼zerine yaz
+- Controller'larda `[Produces("application/json")]` attribute'u varsa: uyumlu, dokunma
+- FluentValidation kullanÄ±lÄ±yorsa: `ValidationException` namespace Ã§akÄ±ÅmasÄ± olabilir, `using` alias ekle
+
+---
+
+<commit_message>feat: add global exception middleware with consistent ApiResponse format, remove redundant try-catch blocks from controllers</commit_message>

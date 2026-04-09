@@ -300,7 +300,7 @@ app.UseCors("AllowFrontend");
 app.UseRateLimiter();
 
 // Exception handling: en erken
-app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseMiddleware<BeachRehberi.API.Middleware.GlobalExceptionMiddleware>();
 app.UseMiddleware<JwtBlacklistMiddleware>();
 
 // Authentication & Authorization

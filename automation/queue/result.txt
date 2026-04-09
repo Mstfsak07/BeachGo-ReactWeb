@@ -1,34 +1,82 @@
-﻿Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
+﻿I will now implement the global exception handling and standardized response format for the API.
+### 1. Create `ApiResponse.cs`
+I will create the `ApiResponse<T>` and `ApiResponse` models to ensure a consistent response structure across all endpoints.
+```csharp
+// C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Models\ApiResponse.cs
+using System.Collections.Generic;
+namespace BeachRehberi.API.Models
+{
+    public class ApiResponse<T>
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public T? Data { get; set; }
+        public List<string> Errors { get; set; } = new();
+        public int StatusCode { get; set; }
+        public static ApiResponse<T> Ok(T data, string message = "İşlem başarılı")
+            => new() { Success = true, Data = data, Message = message, StatusCode = 200 };
+        public static ApiResponse<T> Fail(string message, int statusCode = 400, List<string> errors = null)
+            => new() { Success = false, Message = message, StatusCode = statusCode, Errors = errors ?? new() };
+    }
+    public class ApiResponse : ApiResponse<object>
+    {
+        public static ApiResponse OkNoData(string message = "İşlem başarılı")
+            => new() { Success = true, Message = message, StatusCode = 200 };
+        public static ApiResponse FailNoData(string message, int statusCode = 400, List<string> errors = null)
+            => new() { Success = false, Message = message, StatusCode = statusCode, Errors = errors ?? new() };
+        public static ApiResponse OkResult(string message = "İşlem başarılı")
+            => new() { Success = true, Message = message, StatusCode = 200 };
+    }
+}
+```
+### 2. Create `ServiceResult.cs`
+I will define the `ServiceResult<T>` and `ServiceResult` classes to standardize the communication between the service and controller layers.
+```csharp
+// C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Models\ServiceResult.cs
+using System.Collections.Generic;
+namespace BeachRehberi.API.Models
+{
+    public class ServiceResult<T>
+    {
+        public bool IsSuccess { get; set; }
+        public T? Data { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public List<string> Errors { get; set; } = new();
+        public int StatusCode { get; set; }
+        public static ServiceResult<T> Success(T data, string message = "Başarılı", int statusCode = 200)
+            => new() { IsSuccess = true, Data = data, Message = message, StatusCode = statusCode };
+        public static ServiceResult<T> Failure(string message, int statusCode = 400, List<string> errors = null)
+            => new() { IsSuccess = false, Message = message, StatusCode = statusCode, Errors = errors ?? new() };
+    }
+    public class ServiceResult : ServiceResult<object>
+    {
+        public static ServiceResult SuccessNoData(string message = "Başarılı")
+            => new() { IsSuccess = true, Message = message, StatusCode = 200 };
+        public static ServiceResult FailureNoData(string message, int statusCode = 400)
+            => new() { IsSuccess = false, Message = message, StatusCode = statusCode };
+    }
+}
+```
+### 3. Create `DomainException.cs`
+I will implement custom exception classes to allow for precise error signaling and handling within the application.
+```csharp
+// C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Exceptions\DomainException.cs
+using System;
+using System.Collections.Generic;
+namespace BeachRehberi.API.Exceptions
+{
+    public class DomainException : Exception
+    {
+        public int StatusCode { get; }
+        public List<string> Errors { get; }
+        public DomainException(string message, int statusCode = 400, List<string> errors = null)
+            : base(message)
+        {
+            StatusCode = statusCode;
+            Errors = errors ?? new List<string>();
+        }
+    }
 Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
 Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
 Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.
-I will now write the dark mode CSS classes into `Login.jsx` and `Register.jsx` as requested, ensuring full compatibility with the project's theme system, and then commit the changes.
-I will now stage the changes, commit them with the specified format, and then update the `result.txt` file to reflect the task completion.
-Unable to determine encoding for windows code page 857.
-C:\Users\akMuratNET\AppData\Local\nvm\v24.14.1\node_modules\@google\gemini-cli\node_modules\@lydell\node-pty\conpty_console_list_agent.js:11
-var consoleProcessList = getConsoleProcessList(shellPid);
-                         ^
-Error: AttachConsole failed
-    at Object.<anonymous> (C:\Users\akMuratNET\AppData\Local\nvm\v24.14.1\node_modules\@google\gemini-cli\node_modules\@lydell\node-pty\conpty_console_list_agent.js:11:26)
-    at Module._compile (node:internal/modules/cjs/loader:1812:14)
-    at Object..js (node:internal/modules/cjs/loader:1943:10)
-    at Module.load (node:internal/modules/cjs/loader:1533:32)
-    at Module._load (node:internal/modules/cjs/loader:1335:12)
-    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
-    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
-    at node:internal/main/run_main_module:33:47
-Node.js v24.14.1
-I will now commit the changes using the correct PowerShell syntax and complete the task.
-C:\Users\akMuratNET\AppData\Local\nvm\v24.14.1\node_modules\@google\gemini-cli\node_modules\@lydell\node-pty\conpty_console_list_agent.js:11
-var consoleProcessList = getConsoleProcessList(shellPid);
-                         ^
-Error: AttachConsole failed
-    at Object.<anonymous> (C:\Users\akMuratNET\AppData\Local\nvm\v24.14.1\node_modules\@google\gemini-cli\node_modules\@lydell\node-pty\conpty_console_list_agent.js:11:26)
-    at Module._compile (node:internal/modules/cjs/loader:1812:14)
-    at Object..js (node:internal/modules/cjs/loader:1943:10)
-    at Module.load (node:internal/modules/cjs/loader:1533:32)
-    at Module._load (node:internal/modules/cjs/loader:1335:12)
-    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
-    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
-    at node:internal/main/run_main_module:33:47
-Node.js v24.14.1
+Both GOOGLE_API_KEY and GEMINI_API_KEY are set. Using GOOGLE_API_KEY.

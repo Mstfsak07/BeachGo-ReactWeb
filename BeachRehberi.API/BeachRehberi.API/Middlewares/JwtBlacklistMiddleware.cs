@@ -39,13 +39,10 @@ public class JwtBlacklistMiddleware
                 context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
                 context.Response.ContentType = "application/json";
                 
-                var response = new ErrorResponse 
-                { 
-                    Success = false, 
-                    Message = "Oturumunuz sonlandırılmış veya geçersiz. Lütfen tekrar giriş yapın." 
-                };
+                var response = ApiResponse.Fail("Oturumunuz sonlandırılmış veya geçersiz. Lütfen tekrar giriş yapın.", 401);
                 
-                await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+                var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                await context.Response.WriteAsync(JsonSerializer.Serialize(response, options));
                 return;
             }
         }

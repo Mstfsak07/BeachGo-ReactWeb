@@ -1,5 +1,10 @@
-﻿using System.Net;
+using System;
+using System.Collections.Generic;
 using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using BeachRehberi.API.Exceptions;
 using BeachRehberi.API.Models;
 
 namespace BeachRehberi.API.Middlewares;
@@ -8,13 +13,11 @@ public class GlobalExceptionMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionMiddleware> _logger;
-    private readonly IWebHostEnvironment _env;
 
-    public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger, IWebHostEnvironment env)
+    public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
     {
         _next = next;
         _logger = logger;
-        _env = env;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -25,67 +28,34 @@ public class GlobalExceptionMiddleware
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
             await HandleExceptionAsync(context, ex);
         }
     }
 
-    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         context.Response.ContentType = "application/json";
-        
-        var response = new ErrorResponse { Success = false };
-        var statusCode = HttpStatusCode.InternalServerError;
 
-        // Categorize exceptions
-        switch (exception)
+        var (statusCode, message, errors) = exception switch
         {
-            case UnauthorizedAccessException:
-                statusCode = HttpStatusCode.Unauthorized;
-                response.Message = "Bu işlem için yetkiniz bulunmamaktadır.";
-                break;
-                
-            case KeyNotFoundException:
-                statusCode = HttpStatusCode.NotFound;
-                response.Message = "İstenen kaynak bulunamadı.";
-                break;
-                
-            case ArgumentException or InvalidOperationException:
-                statusCode = HttpStatusCode.BadRequest;
-                response.Message = exception.Message;
-                break;
+            NotFoundException ne => (404, ne.Message, new List<string> { ne.Message }),
+            ValidationException ve => (ve.StatusCode, ve.Message, ve.Errors),
+            DomainException de => (de.StatusCode, de.Message, de.Errors.Count > 0 ? de.Errors : new List<string> { de.Message }),
+            UnauthorizedAccessException => (401, "Yetkisiz erişim", new List<string> { "Bu işlem için yetkiniz yok" }),
+            _ => (500, "Sunucu hatası", new List<string> { "Beklenmeyen bir hata oluştu" })
+        };
 
-            // Add custom validation exception here if you have one
-            // case ValidationException valEx: 
-            //    statusCode = HttpStatusCode.BadRequest;
-            //    response.Message = "Validasyon hatası.";
-            //    response.Errors = valEx.Errors;
-            //    break;
+        context.Response.StatusCode = statusCode;
 
-            default:
-                response.Message = "Sunucu tarafında beklenmedik bir hata oluştu.";
-                break;
-        }
-
-        context.Response.StatusCode = (int)statusCode;
-
-        // Detailed logging
-        _logger.LogError(exception, "Error path: {Path} | Message: {Message}", context.Request.Path, exception.Message);
-
-        // Show details only in Development
-        if (_env.IsDevelopment())
+        var response = new ApiResponse<object>
         {
-            response.Message = exception.Message;
-            response.Errors = new List<string> { exception.StackTrace ?? "" };
-        }
+            Success = false,
+            Message = message,
+            Errors = errors
+        };
 
-        var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-        await context.Response.WriteAsync(JsonSerializer.Serialize(response, jsonOptions));
+        var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response, options));
     }
-}
-
-public class ErrorResponse
-{
-    public bool Success { get; set; }
-    public string Message { get; set; } = string.Empty;
-    public List<string> Errors { get; set; } = new();
 }

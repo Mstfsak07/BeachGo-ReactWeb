@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using BeachRehberi.API.Models;
+using BeachRehberi.API.Exceptions;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Hosting;
@@ -39,9 +40,10 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             var result = await _authService.RegisterAsync(request);
-            if (result.Success)
-                return Ok(result);
-            return BadRequest(result);
+            if (!result.Success)
+                throw new DomainException(result.Message);
+
+            return Ok(ApiResponse<AuthResult>.Ok(result, "Kayıt başarıyla tamamlandı."));
         }
 
         [AllowAnonymous]
@@ -51,7 +53,7 @@ namespace BeachRehberi.API.Controllers
             var result = await _authService.LoginAsync(request);
 
             if (!result.Success)
-                return BadRequest(result);
+                throw new DomainException(result.Message);
 
             Response.Cookies.Append("refreshToken", result.RefreshToken ?? "", new CookieOptions
             {
@@ -61,7 +63,7 @@ namespace BeachRehberi.API.Controllers
                 Expires = DateTime.UtcNow.AddDays(7)
             });
 
-            return Ok(result);
+            return Ok(ApiResponse<AuthResult>.Ok(result, "Giriş başarılı."));
         }
 
         [HttpPost("forgot-password")]
@@ -70,8 +72,9 @@ namespace BeachRehberi.API.Controllers
         {
             var result = await _authService.ForgotPasswordAsync(request.Email);
             if (!result.Success)
-                return BadRequest(new { message = result.Message });
-            return Ok(new { message = "Şifre sıfırlama linki gönderildi." });
+                throw new DomainException(result.Message);
+
+            return Ok(ApiResponse.OkResult("Şifre sıfırlama linki gönderildi."));
         }
 
         [HttpPost("reset-password")]
@@ -80,8 +83,9 @@ namespace BeachRehberi.API.Controllers
         {
             var result = await _authService.ResetPasswordAsync(request.Email, request.Token, request.NewPassword);
             if (!result.Success)
-                return BadRequest(new { message = result.Message });
-            return Ok(new { message = "Şifre başarıyla sıfırlandı." });
+                throw new DomainException(result.Message);
+
+            return Ok(ApiResponse.OkResult("Şifre başarıyla sıfırlandı."));
         }
 
         [HttpGet("verify-email")]
@@ -89,13 +93,13 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> VerifyEmailGet([FromQuery] string token)
         {
             if (string.IsNullOrWhiteSpace(token))
-                return BadRequest(new { message = "Token gereklidir." });
+                throw new ValidationException("Token gereklidir.");
 
             var result = await _authService.VerifyEmailByTokenAsync(token);
             if (!result.Success)
-                return BadRequest(new { message = result.Message });
+                throw new DomainException(result.Message);
 
-            return Ok(new { message = "E-posta başarıyla doğrulandı." });
+            return Ok(ApiResponse.OkResult("E-posta başarıyla doğrulandı."));
         }
 
         [HttpPost("verify-email")]
@@ -104,8 +108,9 @@ namespace BeachRehberi.API.Controllers
         {
             var result = await _authService.VerifyEmailAsync(request.Email, request.Token);
             if (!result.Success)
-                return BadRequest(new { message = result.Message });
-            return Ok(new { message = "E-posta başarıyla doğrulandı." });
+                throw new DomainException(result.Message);
+
+            return Ok(ApiResponse.OkResult("E-posta başarıyla doğrulandı."));
         }
 
         [HttpPost("resend-verification")]
@@ -114,8 +119,9 @@ namespace BeachRehberi.API.Controllers
         {
             var result = await _authService.ResendVerificationAsync(request.Email);
             if (!result.Success)
-                return BadRequest(new { message = result.Message });
-            return Ok(new { message = "Doğrulama e-postası tekrar gönderildi." });
+                throw new DomainException(result.Message);
+
+            return Ok(ApiResponse.OkResult("Doğrulama e-postası tekrar gönderildi."));
         }
 
         [AllowAnonymous]
@@ -128,7 +134,7 @@ namespace BeachRehberi.API.Controllers
             var result = await _authService.RefreshTokenAsync(request.RefreshToken, ipAddress, userAgent);
 
             if (!result.Success)
-                return BadRequest(new AuthResult { Success = false, Message = result.Message });
+                throw new DomainException(result.Message);
 
             var response = result.Data!;
 
@@ -140,13 +146,15 @@ namespace BeachRehberi.API.Controllers
                 Expires = DateTime.UtcNow.AddDays(7)
             });
 
-            return Ok(new AuthResult
+            var authResult = new AuthResult
             {
                 Success = true,
                 Message = "Token yenilendi.",
                 Token = response.Token,
                 RefreshToken = response.RefreshToken
-            });
+            };
+
+            return Ok(ApiResponse<AuthResult>.Ok(authResult, "Token başarıyla yenilendi."));
         }
 
         [HttpPost("logout")]
@@ -157,7 +165,7 @@ namespace BeachRehberi.API.Controllers
             await _authService.LogoutAsync(null, refreshToken);
 
             Response.Cookies.Delete("refreshToken");
-            return Ok(new AuthResult { Success = true, Message = "Çıkış başarılı." });
+            return Ok(ApiResponse.OkResult("Çıkış başarılı."));
         }
 
         [HttpPost("revoke")]
@@ -167,10 +175,10 @@ namespace BeachRehberi.API.Controllers
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
             var result = await _authService.RevokeTokenAsync(request.RefreshToken, ipAddress, request.Reason ?? "manual_revoke");
 
-            if (result.Success)
-                return Ok(new AuthResult { Success = true, Message = result.Message });
+            if (!result.Success)
+                throw new DomainException(result.Message);
 
-            return BadRequest(new AuthResult { Success = false, Message = result.Message });
+            return Ok(ApiResponse.OkResult("Token başarıyla iptal edildi."));
         }
     }
 }

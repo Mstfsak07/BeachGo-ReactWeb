@@ -1,0 +1,143 @@
+﻿FAZ_LISTESI_BASLANGIC
+
+FAZ 1: API Global Hata YÃ¶netimi ve TutarlÄ± Response FormatÄ±
+SCOPE: api
+DOSYALAR: GlobalExceptionMiddleware.cs, ApiResponse.cs, ServiceResult.cs, DomainException.cs, tÃ¼m Controller'lar
+GÃREV: GlobalExceptionMiddleware'i gÃ¶zden geÃ§ir; tÃ¼m exception tipleri (ValidationException, DomainException, UnauthorizedAccessException, NotFoundException, 500) iÃ§in tutarlÄ± ApiResponse<T> formatÄ± dÃ¶ndÃ¼r. Controller'larda tekrarlanan try-catch bloklarÄ±nÄ± kaldÄ±r, middleware'e taÅÄ±. ServiceResult kullanÄ±mÄ±nÄ± standartlaÅtÄ±r.
+TEST: Swagger'dan kasÄ±tlÄ± hatalÄ± istek gÃ¶nder (geÃ§ersiz token, eksik alan, olmayan kaynak); her durumda {"success":false,"message":"...","errors":[...]} formatÄ±nda response geldiÄini doÄrula.
+---
+
+FAZ 2: Auth Flow - Token Refresh ve Blacklist MekanizmasÄ±
+SCOPE: api
+DOSYALAR: AuthController.cs, TokenService.cs, ITokenService.cs, JwtBlacklistMiddleware.cs, RefreshToken.cs, RevokedToken.cs, AuthService.cs
+GÃREV: /auth/refresh endpoint'inin rotate eden refresh token dÃ¶ndÃ¼rdÃ¼ÄÃ¼nÃ¼ doÄrula. Logout'ta access token'Ä± blacklist'e al, refresh token'Ä± revoke et. JwtBlacklistMiddleware'in her istekte blacklist kontrolÃ¼ yaptÄ±ÄÄ±nÄ± doÄrula. Token expiry sÃ¼relerini config'den oku (hardcode olmamasÄ±n).
+TEST: Login â token al â logout â aynÄ± token ile istek yap â 401 gel. Refresh token ile yeni token al â eski refresh token geÃ§ersiz olsun.
+---
+
+FAZ 3: Auth Flow - Email DoÄrulama ve OTP AkÄ±ÅÄ±
+SCOPE: api
+DOSYALAR: AuthController.cs, AuthService.cs, OtpService.cs, VerificationCode.cs, ResendEmailService.cs, NoOpEmailService.cs
+GÃREV: Register â email doÄrulama OTP gÃ¶nder â /auth/verify-email endpoint'i OTP doÄrula â hesap aktifleÅtir akÄ±ÅÄ±nÄ± uÃ§tan uca Ã§alÄ±ÅÄ±r hale getir. DoÄrulanmamÄ±Å hesapla login denemesinde aÃ§Ä±klayÄ±cÄ± hata mesajÄ± dÃ¶nsÃ¼n. OTP expiry ve yeniden gÃ¶nderme limitini uygula.
+TEST: Register â DB'de IsVerified=false â OTP gÃ¶nderildi â POST /auth/verify-email â IsVerified=true â Login baÅarÄ±lÄ±. SÃ¼resi geÃ§miÅ OTP â hata mesajÄ± gelsin.
+---
+
+FAZ 4: Frontend Auth Context ve Token YÃ¶netimi
+SCOPE: web
+DOSYALAR: src/context/AuthContext.js, src/services/authService.js, src/services/api.js
+GÃREV: api.js'de Axios interceptor ile 401 geldiÄinde otomatik token refresh yap, baÅarÄ±sÄ±z olursa logout et ve /login'e yÃ¶nlendir. AuthContext'te user state'i JWT payload'dan parse et (role, id, email). Token'larÄ± httpOnly cookie yerine memory+localStorage hibrit olarak gÃ¼venli sakla. Refresh token dÃ¶ngÃ¼sÃ¼nÃ¼ (retry once) uygula.
+TEST: Access token sÃ¼resi dolmuÅken istek at â interceptor refresh yapsÄ±n â orijinal istek baÅarÄ±lÄ± dÃ¶nsÃ¼n. Refresh da baÅarÄ±sÄ±z olursa â logout â /login yÃ¶nlendirmesi.
+---
+
+FAZ 5: Frontend Form Validation - Auth SayfalarÄ±
+SCOPE: web
+DOSYALAR: src/pages/Login.jsx, src/pages/Register.jsx, src/pages/ForgotPassword.jsx, src/pages/ResetPassword.jsx, src/pages/VerifyEmail.jsx, src/pages/BusinessRegister.js
+GÃREV: TÃ¼m auth formlarÄ±na react-hook-form + yup/zod ile client-side validation ekle. Zorunlu alan, email format, Åifre gÃ¼cÃ¼ (min 8 karakter, bÃ¼yÃ¼k/kÃ¼Ã§Ã¼k/rakam), Åifre eÅleÅme, telefon format kurallarÄ±nÄ± uygula. API hatalarÄ± (409 conflict, 422) form field seviyesinde gÃ¶ster. Submit sÄ±rasÄ±nda button disabled + loading state ekle.
+TEST: BoÅ form submit â her alanda hata mesajÄ± gÃ¶rÃ¼n. GeÃ§ersiz email â format hatasÄ±. API'den "Email already exists" â email alanÄ± altÄ±nda hata.
+---
+
+FAZ 6: Frontend Form Validation - Rezervasyon AdÄ±mlarÄ±
+SCOPE: web
+DOSYALAR: src/pages/StepDateType.js, src/pages/StepEmailVerify.js, src/pages/StepPayment.js, src/pages/StepPersonalInfo.js, src/pages/StepSuccess.js, src/pages/GuestReservation.jsx, src/services/reservationService.js
+GÃREV: Ãok adÄ±mlÄ± rezervasyon formuna adÄ±m bazlÄ± validation ekle. Her adÄ±mda "ileri" butonuna basÄ±ldÄ±ÄÄ±nda o adÄ±mÄ±n alanlarÄ± validate edilsin. Tarih seÃ§iminde geÃ§miÅ tarih engeli, kapasite kontrolÃ¼, misafir sayÄ±sÄ± limiti uygula. API hatalarÄ± (dolu kapasite, geÃ§ersiz tarih) kullanÄ±cÄ±ya gÃ¶sterilsin. Rezervasyon baÅarÄ±sÄ±z olursa Ã¶deme tekrar alÄ±nmasÄ±n.
+TEST: Tarih seÃ§meden ileri git â hata. GeÃ§miÅ tarih seÃ§ â hata. API capacity error â "Bu tarihte yer kalmadÄ±" mesajÄ±.
+---
+
+FAZ 7: Backend Rezervasyon Validasyonu ve Race Condition KorumasÄ±
+SCOPE: api
+DOSYALAR: ReservationService.cs, ReservationCommandHandler.cs, GuestReservationService.cs, ReservationsController.cs, GuestReservationsController.cs, RaceConditionTestController.cs
+GÃREV: Rezervasyon oluÅtururken DB seviyesinde pessimistic lock veya optimistic concurrency uygula. Kapasite kontrolÃ¼nÃ¼ transaction iÃ§inde yap. AynÄ± kullanÄ±cÄ±nÄ±n aynÄ± tarihte Ã§ift rezervasyonunu engelle (unique constraint veya service check). RaceConditionTestController'Ä± production'da devre dÄ±ÅÄ± bÄ±rak ([ApiExplorerSettings(IgnoreApi=true)] + env check).
+TEST: EÅ zamanlÄ± 10 istek gÃ¶nder (RaceConditionTest endpoint ile dev'de) â sadece kapasiteye kadar kabul edilsin. AynÄ± kullanÄ±cÄ± aynÄ± tarih â 409 Conflict.
+---
+
+FAZ 8: API Endpoint TutarlÄ±lÄ±ÄÄ± ve Eksik Validasyonlar
+SCOPE: api
+DOSYALAR: BeachesController.cs, ReviewsController.cs, EventsController.cs, BusinessController.cs, UsersController.cs, StoriesController.cs, Validators/ klasÃ¶rÃ¼
+GÃREV: TÃ¼m POST/PUT endpoint'lere FluentValidation validator ekle (eksik olanlarÄ± tamamla). [AllowAnonymous] gereken public endpoint'leri iÅaretle (beach listesi, beach detay, events). PagedResponse kullanan endpoint'lerde page/pageSize parametrelerini validate et (min 1, max 100). KullanÄ±cÄ±nÄ±n kendi olmayan kaynaÄa eriÅimini engelle (authorization check).
+TEST: Beach listesi â 401 olmadan gelsin. BaÅka kullanÄ±cÄ±nÄ±n rezervasyonuna eriÅ â 403. page=-1 â 400 validation error.
+---
+
+FAZ 9: Dashboard ve BeachSettings Veri AkÄ±ÅÄ±
+SCOPE: web
+DOSYALAR: src/pages/Dashboard.jsx, src/pages/DashboardStats.jsx, src/pages/DashboardReservations.jsx, src/pages/BeachSettings.jsx, src/services/businessService.js
+GÃREV: Dashboard'da business user'Ä±n plajlarÄ±nÄ±, rezervasyonlarÄ±nÄ± ve istatistiklerini Ã§eken API Ã§aÄrÄ±larÄ±nÄ± doÄru endpoint'lere baÄla. BeachSettings'te plaj bilgisi gÃ¼ncelleme, fiyat ve kapasite dÃ¼zenleme formlarÄ±na validation ekle. BaÅarÄ±lÄ± gÃ¼ncelleme sonrasÄ± state'i refetch ile gÃ¼ncelle (stale veri kalmasÄ±n). Hata durumunda toast ile bildir.
+TEST: Business login â Dashboard â kendi plajÄ± gÃ¶rÃ¼nsÃ¼n. Kapasite gÃ¼ncelle â kaydet â sayfayÄ± yenile â yeni deÄer gelsin. BaÅka plajÄ±n ayarlarÄ±na eriÅmeye Ã§alÄ±Å â 403.
+---
+
+FAZ 10: Tema ve Responsive Eksikleri
+SCOPE: web
+DOSYALAR: src/context/ThemeContext.js, src/components/Navbar.jsx, src/components/Footer.js, src/components/Sidebar.jsx, src/pages/Home.js, src/pages/Beaches.js, src/pages/BeachDetail.js, src/pages/Profile.jsx, tailwind.config.js
+GÃREV: Dark mode geÃ§iÅinde flash of unstyled content'i dÃ¼zelt (localStorage'dan tema oku, html class'Ä±nÄ± erken set et). TÃ¼m sayfalarda dark: class eksiklerini tamamla. Mobil breakpoint'lerde (sm, md) Navbar hamburger menÃ¼sÃ¼, Beach card grid, BeachDetail galeri, Profile form layout'unu dÃ¼zenle. Sidebar'Ä±n mobilde overlay olarak aÃ§Ä±lmasÄ±nÄ± saÄla.
+TEST: SayfayÄ± dark mode'da yenile â flash olmadan aÃ§Ä±lsÄ±n. 375px ekranda Navbar, Home, BeachDetail â scroll veya overflow sorunu olmasÄ±n.
+---
+
+FAZ 11: Favorites ve Profile SayfalarÄ± Veri AkÄ±ÅÄ±
+SCOPE: web
+DOSYALAR: src/pages/Favorites.jsx, src/pages/Profile.jsx, src/services/favoriteService.js, src/services/userService.js
+GÃREV: Favorites sayfasÄ±nda favori plajlarÄ± listele, kaldÄ±r iÅlemi sonrasÄ± listeden Ã§Ä±kar (optimistic update). Profile sayfasÄ±nda kullanÄ±cÄ± bilgilerini getir, ad/soyad/telefon gÃ¼ncelleme formunu Ã§alÄ±ÅtÄ±r, Åifre deÄiÅtirme akÄ±ÅÄ±nÄ± (eski Åifre + yeni Åifre) API'ye baÄla. Loading ve empty state'leri ekle.
+TEST: Favoriye ekle â Favorites sayfasÄ±nda gÃ¶rÃ¼nsÃ¼n. Favoriden Ã§Ä±kar â listeden kalksÄ±n. Profile gÃ¼ncelle â kaydet â aynÄ± deÄerler form'da kalsÄ±n.
+---
+
+FAZ 12: Build ve Deploy HazÄ±rlÄ±ÄÄ± - Web/API
+SCOPE: web
+DOSYALAR: package.json, .env.example, .env.production, Dockerfile (web), src/services/api.js, public/index.html
+GÃREV: React uygulamasÄ±nda tÃ¼m hardcoded API URL'lerini REACT_APP_API_URL env variable'a taÅÄ±. .env.example dosyasÄ± oluÅtur. Production build'de console.log'larÄ± kaldÄ±r (babel-plugin veya override). Bundle size analizi yap (react-scripts build + source-map-explorer), 200KB Ã¼stÃ¼ chunk'larÄ± lazy load ile bÃ¶l. CSP meta tag ekle.
+TEST: REACT_APP_API_URL deÄiÅtir â build al â network tab'da doÄru URL'ye istek gitsin. npm run build hatasÄ±z tamamlansÄ±n, uyarÄ± sayÄ±sÄ± minimize.
+---
+
+FAZ 13: Build ve Deploy HazÄ±rlÄ±ÄÄ± - API
+SCOPE: api
+DOSYALAR: Program.cs, appsettings.json, appsettings.Production.json, Dockerfile (api), .env.example
+GÃREV: SQLite'tan PostgreSQL'e geÃ§iÅ iÃ§in connection string yapÄ±landÄ±rmasÄ±nÄ± tamamla (Npgsql provider ekle, migration gÃ¼ncelle). appsettings.Production.json'da logging seviyesini ayarla, Swagger'Ä± production'da kapat. ADMIN_PASSWORD ve JWT_SECRET iÃ§in startup validation'Ä± gÃ¼Ã§lendir. Health check endpoint ekle (/health). Dockerfile multi-stage build yaz.
+TEST: ASPNETCORE_ENVIRONMENT=Production ile baÅlat â Swagger aÃ§Ä±lmasÄ±n â /health 200 dÃ¶nsÃ¼n. Eksik env variable ile baÅlat â uygulama aÃ§Ä±lÄ±Åta hata versin.
+---
+
+FAZ 14: Mobile - Proje Kurulumu ve Temel YapÄ±
+SCOPE: mobile
+DOSYALAR: (yeni) mobile/package.json, mobile/app.json, mobile/App.tsx, mobile/src/navigation/, mobile/src/context/, mobile/src/constants/api.ts
+GÃREV: React Native (Expo managed workflow) projesi oluÅtur. Bottom tab navigator (Home, Beaches, Reservations, Profile) + Stack navigator kurulumu yap. AuthContext'i React Native iÃ§in porte et (SecureStore ile token saklama). API base URL'yi environment config'den oku. TypeScript strict mode aktif et.
+TEST: expo start â iOS ve Android simulator'da aÃ§Ä±lsÄ±n. Tab navigasyonu Ã§alÄ±ÅsÄ±n. AuthContext login/logout state deÄiÅimi NavigationContainer'Ä± etkilesin.
+---
+
+FAZ 15: Mobile - Auth EkranlarÄ±
+SCOPE: mobile
+DOSYALAR: mobile/src/screens/auth/LoginScreen.tsx, mobile/src/screens/auth/RegisterScreen.tsx, mobile/src/screens/auth/ForgotPasswordScreen.tsx, mobile/src/screens/auth/VerifyEmailScreen.tsx, mobile/src/services/authService.ts
+GÃREV: Login, Register, ForgotPassword, VerifyEmail ekranlarÄ±nÄ± oluÅtur. react-hook-form + zod ile form validation uygula. Keyboard avoiding view, gÃ¼venli alan (SafeAreaView) ve loading state ekle. BaÅarÄ±lÄ± login'de token SecureStore'a kaydet, AuthContext gÃ¼ncelle, tab navigator'a yÃ¶nlendir. Hata mesajlarÄ± Alert veya inline gÃ¶ster.
+TEST: GeÃ§erli credential ile login â tab navigator aÃ§Ä±lsÄ±n. HatalÄ± Åifre â hata mesajÄ±. Register â verify email ekranÄ±na git â OTP doÄrula â login.
+---
+
+FAZ 16: Mobile - Beach Listesi ve Detay EkranlarÄ±
+SCOPE: mobile
+DOSYALAR: mobile/src/screens/BeachesScreen.tsx, mobile/src/screens/BeachDetailScreen.tsx, mobile/src/components/BeachCard.tsx, mobile/src/services/beachService.ts
+GÃREV: Beaches listesi ekranÄ±na arama, filtre (Åehir, Ã¶zellikler) ve sayfalama (FlatList + onEndReached) ekle. BeachDetail ekranÄ±nda galeri (ScrollView yatay), Ã¶zellik ikonlarÄ±, doluluk oranÄ±, yorumlar ve rezervasyon butonu gÃ¶ster. API'den veri Ã§ek, loading skeleton ve error state ekle.
+TEST: Beach listesi yÃ¼klensin ve scroll ile yeni sayfa gelsin. Arama â filtrelenmiÅ sonuÃ§. BeachDetail â tÃ¼m bilgiler doÄru. Offline â error state gÃ¶ster.
+---
+
+FAZ 17: Mobile - Rezervasyon AkÄ±ÅÄ±
+SCOPE: mobile
+DOSYALAR: mobile/src/screens/reservation/, mobile/src/services/reservationService.ts, mobile/src/navigation/ReservationStack.tsx
+GÃREV: Ãok adÄ±mlÄ± rezervasyon akÄ±ÅÄ±: tarih seÃ§imi (DateTimePicker), tip ve kiÅi sayÄ±sÄ±, kiÅisel bilgiler, Ã¶deme (mock), baÅarÄ± ekranÄ±. Her adÄ±mda validation. Guest rezervasyon (auth olmadan) ve kayÄ±tlÄ± kullanÄ±cÄ± akÄ±ÅÄ±nÄ± destekle. BaÅarÄ±lÄ± rezervasyon sonrasÄ± rezervasyon kodu gÃ¶ster, deep link ile rezervasyon sorgu ekranÄ±na yÃ¶nlendir.
+TEST: Plaj detaydan "Rezervasyon Yap" â adÄ±mlarÄ± tamamla â baÅarÄ± ekranÄ± ve rezervasyon kodu gÃ¶rÃ¼nsÃ¼n. Kapasitesi dolu tarih seÃ§ â hata mesajÄ±.
+---
+
+FAZ 18: Mobile - KullanÄ±cÄ± Profili ve Favoriler
+SCOPE: mobile
+DOSYALAR: mobile/src/screens/ProfileScreen.tsx, mobile/src/screens/FavoritesScreen.tsx, mobile/src/screens/ReservationsScreen.tsx, mobile/src/services/userService.ts, mobile/src/services/favoriteService.ts
+GÃREV: Profile ekranÄ±ndan kullanÄ±cÄ± bilgisi dÃ¼zenle ve Åifre deÄiÅtir. Favoriler listesini gÃ¶ster, kaydÄ±rarak silme (swipe-to-delete) ekle. Rezervasyonlar ekranÄ±na geÃ§miÅ ve aktif rezervasyonlarÄ± listele, iptal iÅlevi ekle. Unauthenticated kullanÄ±cÄ±ya login yÃ¶nlendirme ekle.
+TEST: Profil gÃ¼ncelle â form kaydet â gÃ¼ncel deÄerler gelsin. Favoriden sil â listeden kalksÄ±n. Rezervasyonu iptal et â statÃ¼sÃ¼ deÄiÅsin.
+---
+
+FAZ 19: Mobile - Offline DayanÄ±klÄ±lÄ±k ve State YÃ¶netimi
+SCOPE: mobile
+DOSYALAR: mobile/src/hooks/useNetworkStatus.ts, mobile/src/services/cacheService.ts, mobile/src/screens/BeachesScreen.tsx, mobile/src/screens/BeachDetailScreen.tsx, mobile/src/context/AppStateContext.tsx
+GÃREV: NetInfo ile network durumunu izle, offline'da cached veri gÃ¶ster ve "ÃevrimdÄ±ÅÄ± moddasÄ±nÄ±z" banner ekle. Beach listesi ve detay verilerini AsyncStorage'a cache'le (5 dakika TTL). Token refresh baÅarÄ±sÄ±z olduÄunda kullanÄ±cÄ±ya oturum sona erdi bildirimi gÃ¶ster ve auth ekranÄ±na yÃ¶nlendir. App foreground'a dÃ¶ndÃ¼ÄÃ¼nde stale cache'i yenile.
+TEST: Offline â beach listesi cache'den gelsin, banner gÃ¶rÃ¼nsÃ¼n. Online â banner kaybolsun, veriler yenilensin. Token expire â alert â login ekranÄ±.
+---
+
+FAZ 20: Mobile - Build ve Release HazÄ±rlÄ±ÄÄ±
+SCOPE: mobile
+DOSYALAR: mobile/app.json, mobile/eas.json, mobile/src/constants/, mobile/android/, mobile/ios/
+GÃREV: EAS Build yapÄ±landÄ±rmasÄ± (development, preview, production profile). app.json'da bundle identifier, version, splash, icon ayarla. Environment variable'larÄ± eas.json'daki profillere gÃ¶re yÃ¶net (dev API vs prod API). Android keystore ve iOS certificate sÃ¼recini dokÃ¼mante et. Over-the-air update (expo-updates) konfigÃ¼rasyonu ekle. Production build al ve temel smoke test Ã§alÄ±ÅtÄ±r.
+TEST: eas build --platform android --profile preview â APK baÅarÄ±yla Ã¼retilsin. APK cihaza yÃ¼kle â login â beach listesi â rezervasyon akÄ±ÅÄ± Ã§alÄ±ÅsÄ±n.
+---
+
+FAZ_LISTESI_BITIS

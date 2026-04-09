@@ -1,5 +1,6 @@
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
+using BeachRehberi.API.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 namespace BeachRehberi.API.Services;

@@ -23,6 +23,51 @@ function Set-SP {
     else { $Obj | Add-Member -NotePropertyName $Name -NotePropertyValue $Value -Force }
 }
 
+function Test-IsGeminiBoilerplate {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $true }
+
+    $meaningful = ($Text -split "`r`n|`n") | Where-Object {
+        $line = $_.Trim()
+        $line -and
+        $line -notmatch "^YOLO mode is enabled" -and
+        $line -notmatch "^Both GOOGLE_API_KEY and GEMINI_API_KEY are set" -and
+        $line -notmatch "^Scheduling MCP context refresh" -and
+        $line -notmatch "^Executing MCP context refresh" -and
+        $line -notmatch "^MCP context refresh complete" -and
+        $line -notmatch "^Connected to MCP server" -and
+        $line -notmatch "^MCP server started"
+    }
+
+    return $meaningful.Count -eq 0
+}
+
+function Add-ContextFile {
+    param(
+        [System.Text.StringBuilder]$Builder,
+        [string]$Path,
+        [int]$MaxCharsPerFile = 2500
+    )
+
+    $content = Get-Content $Path -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+    if ($null -eq $content) { $content = "" }
+    if ($content.Length -gt $MaxCharsPerFile) {
+        $content = $content.Substring(0, $MaxCharsPerFile) + "`n... [truncated]"
+    }
+
+    [void]$Builder.AppendLine("--- FILE: $Path ---")
+    [void]$Builder.AppendLine($content)
+    [void]$Builder.AppendLine("")
+}
+
+function Test-IsQuotaError {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    return $Text -match "QUOTA_EXHAUSTED|RATE_LIMIT_EXCEEDED|429|RESOURCE_EXHAUSTED|All accounts exhausted|quota will reset|Too Many Requests"
+}
+
 $lockFile = Join-Path $queueDir "executor.lock"
 
 if (Test-Path $lockFile) {
@@ -127,16 +172,18 @@ $planText = $instructionText
         if (-not $resolvedFiles.Add($raw)) { continue }
 
         if (Test-Path $raw) {
-            $content = Get-Content $raw -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
-            [void]$contextBlocks.AppendLine("--- FILE: $raw ---")
-            [void]$contextBlocks.AppendLine($content)
-            [void]$contextBlocks.AppendLine("")
+            Add-ContextFile -Builder $contextBlocks -Path $raw
             Write-Log "Dosya okundu: $raw"
         }
     }
 
-    $isFrontendTask = $instructionText -imatch "login|register|dark mode|dark-mode|tema|theme|ui|navbar|react|frontend|css|tailwind"
-    $isBackendTask = $instructionText -imatch "api|backend|controller|service|auth|jwt|token|endpoint|program.cs|c#|dotnet"
+    $scopeMatch = [regex]::Match($instructionText, '(?im)^\s*SCOPE:\s*(web|api|mobile)\s*$')
+    $declaredScope = if ($scopeMatch.Success) { $scopeMatch.Groups[1].Value.ToLowerInvariant() } else { "" }
+    $isFrontendTask = ($declaredScope -eq "web") -or ($instructionText -imatch "\blogin\b|\bregister\b|\bdark mode\b|\bdark-mode\b|\btema\b|\btheme\b|\bui\b|\bnavbar\b|\breact\b|\bfrontend\b|\bcss\b|\btailwind\b")
+    $isBackendTask = ($declaredScope -eq "api") -or ($instructionText -imatch "\bapi\b|\bbackend\b|\bcontroller\b|\bservice\b|\bauth\b|\bjwt\b|\btoken\b|\bendpoint\b|\bprogram\.cs\b|\bc#\b|\bdotnet\b")
+
+    if ($declaredScope -eq "api") { $isFrontendTask = $false }
+    if ($declaredScope -eq "web") { $isBackendTask = $false }
 
     # Gorev tipine gore otomatik baglam ekle
     $alwaysRead = @()
@@ -144,21 +191,13 @@ $planText = $instructionText
         $alwaysRead += @(
             "Login.jsx",
             "Register.jsx",
-            "ThemeContext.jsx",
-            "Navbar.jsx",
-            "App.js",
-            "index.css",
-            "tailwind.config.js",
-            "package.json"
+            "App.js"
         )
     }
     if ($isBackendTask -or -not $isFrontendTask) {
         $alwaysRead += @(
             "AuthController.cs",
-            "AuthService.cs",
-            "IAuthService.cs",
-            "Program.cs",
-            "AuthModels.cs"
+            "Program.cs"
         )
     }
 
@@ -172,10 +211,7 @@ $planText = $instructionText
                  } |
                  Select-Object -First 1
         if ($found -and $resolvedFiles.Add($found.FullName)) {
-            $content = Get-Content $found.FullName -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
-            [void]$contextBlocks.AppendLine("--- FILE: $($found.FullName) ---")
-            [void]$contextBlocks.AppendLine($content)
-            [void]$contextBlocks.AppendLine("")
+            Add-ContextFile -Builder $contextBlocks -Path $found.FullName
             Write-Log "Otomatik eklendi: $($found.FullName)"
         }
     }
@@ -203,7 +239,7 @@ $contextSection
 
 Final response requirements:
 - Briefly list the files changed (full paths).
-- Build result (success/fail + error if any).
+- Build result: `not-run`.
 - Show the git commit message used.
 "@
     $coderPrompt | Set-Content $coderPromptPath -Encoding UTF8
@@ -214,12 +250,11 @@ if (-not (Test-Path $tmpDir)) { New-Item -ItemType Directory -Path $tmpDir -Forc
 
 $tempPrompt = Join-Path $tmpDir "executor-prompt.txt"
 $tempOutput = Join-Path $tmpDir "gemini-out-$iteration.txt"
-$tempBat    = Join-Path $tmpDir "run-gemini-$iteration.bat"
 
 $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
 
-    $maxRetries     = 1
-    $maxRunSeconds  = if ($env:BEACHGO_GEMINI_TIMEOUT_SEC) { [int]$env:BEACHGO_GEMINI_TIMEOUT_SEC } else { 90 }
+    $maxRetries     = if ($env:BEACHGO_GEMINI_MAX_RETRIES) { [int]$env:BEACHGO_GEMINI_MAX_RETRIES } else { 6 }
+    $maxRunSeconds  = if ($env:BEACHGO_GEMINI_TIMEOUT_SEC) { [int]$env:BEACHGO_GEMINI_TIMEOUT_SEC } else { 180 }
     $retryCount     = 0
     $exitCode       = 1
     $executorOutput = ""
@@ -237,48 +272,37 @@ $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
         try {
             Write-Log "Gemini baslatiliyor (iteration=$iteration, deneme=$retryCount)..."
 
-            # CI=true ve NO_COLOR=1 → Gemini PTY a�maya �al��maz, headless �al���r
             $geminiBaseUrl = if ($env:GOOGLE_GEMINI_BASE_URL) { $env:GOOGLE_GEMINI_BASE_URL } else { "http://127.0.0.1:8045" }
             $geminiApiKey = if ($env:GEMINI_API_KEY) { $env:GEMINI_API_KEY } elseif ($env:BEACHGO_GEMINI_API_KEY) { $env:BEACHGO_GEMINI_API_KEY } else { "" }
             $anthropicApiKey = if ($env:BEACHGO_ANTHROPIC_KEY) { $env:BEACHGO_ANTHROPIC_KEY } else { "" }
             $maskedGeminiApiKey = if ($geminiApiKey.Length -ge 6) { $geminiApiKey.Substring(0, 6) + "..." } elseif ($geminiApiKey) { "***" } else { "(empty)" }
             Write-Log "Gemini env: baseUrl=$geminiBaseUrl apiKey=$maskedGeminiApiKey"
 
-            $batContent = @"
-@echo off
-set GOOGLE_GEMINI_BASE_URL=$geminiBaseUrl
-set GEMINI_API_KEY=$geminiApiKey
-set GOOGLE_API_KEY=$geminiApiKey
-set BEACHGO_ANTHROPIC_KEY=$anthropicApiKey
-set GEMINI_CLI_NO_RELAUNCH=true
-set CI=true
-set NO_COLOR=1
-set TERM=dumb
-cd /d "$repoRoot"
-gemini --approval-mode yolo --allowed-mcp-server-names disabled --model $geminiModel -p "@$tempPrompt" > "$tempOutput" 2>&1
-exit /b %ERRORLEVEL%
-"@
-            $batContent | Set-Content $tempBat -Encoding ASCII
+            $psi = [System.Diagnostics.ProcessStartInfo]::new()
+            $psi.FileName = "cmd.exe"
+            $psi.Arguments = "/d /s /c ""gemini --approval-mode yolo --allowed-mcp-server-names disabled --model $geminiModel --output-format text -p \""\"""""
+            $psi.WorkingDirectory = $repoRoot
+            $psi.UseShellExecute = $false
+            $psi.RedirectStandardInput = $true
+            $psi.RedirectStandardOutput = $true
+            $psi.RedirectStandardError = $true
+            $psi.CreateNoWindow = $true
+            $psi.EnvironmentVariables["GOOGLE_GEMINI_BASE_URL"] = $geminiBaseUrl
+            $psi.EnvironmentVariables["GEMINI_API_KEY"] = $geminiApiKey
+            $psi.EnvironmentVariables["GOOGLE_API_KEY"] = $geminiApiKey
+            $psi.EnvironmentVariables["BEACHGO_ANTHROPIC_KEY"] = $anthropicApiKey
+            $psi.EnvironmentVariables["GEMINI_CLI_NO_RELAUNCH"] = "true"
+            $psi.EnvironmentVariables["CI"] = "true"
+            $psi.EnvironmentVariables["NO_COLOR"] = "1"
+            $psi.EnvironmentVariables["TERM"] = "dumb"
 
-            # WindowStyle Hidden: gercek console var ama gizli - PTY attach sorunu olmaz
-            $proc = Start-Process cmd.exe `
-                -ArgumentList "/c `"$tempBat`"" `
-                -WorkingDirectory $automationDir `
-                -WindowStyle Hidden `
-                -PassThru
+            $proc = [System.Diagnostics.Process]::Start($psi)
+            Write-Log "Gemini PID=$($proc.Id) baslatildi. Prompt stdin ile aktariliyor..."
+            $proc.StandardInput.Write($coderPrompt)
+            $proc.StandardInput.Close()
 
-            Write-Log "Gemini PID=$($proc.Id) baslatildi. 30 saniye bekleniyor..."
-            Start-Sleep -Seconds 30
-
-            if (-not $proc.HasExited) {
-                Write-Log "30 saniye sonra Gemini hala calisiyor, en fazla $maxRunSeconds saniye beklenecek..."
-                $deadline = (Get-Date).AddSeconds($maxRunSeconds - 30)
-                while (-not $proc.HasExited -and (Get-Date) -lt $deadline) {
-                    Start-Sleep -Seconds 5
-                }
-            }
-
-            if (-not $proc.HasExited) {
+            $waited = $proc.WaitForExit($maxRunSeconds * 1000)
+            if (-not $waited) {
                 Write-Log "Gemini timeout oldu. Process tree sonlandiriliyor..."
                 try { & taskkill /PID $proc.Id /T /F | Out-Null } catch {}
                 Start-Sleep -Seconds 2
@@ -287,15 +311,18 @@ exit /b %ERRORLEVEL%
                 $exitCode = $proc.ExitCode
             }
 
-            # Ciktiyi oku
-            if (Test-Path $tempOutput) {
-                $executorOutput = Get-Content $tempOutput -Raw -Encoding UTF8
-            } else {
-                $executorOutput = ""
-            }
+            $stdout = $proc.StandardOutput.ReadToEnd()
+            $stderr = $proc.StandardError.ReadToEnd()
+            $executorOutput = @($stdout, $stderr) -join ""
+            $executorOutput | Set-Content $tempOutput -Encoding UTF8
 
             if ($exitCode -eq 124 -and [string]::IsNullOrWhiteSpace($executorOutput)) {
                 $executorOutput = "Gemini timeout oldu ve cikti uretmeden sonlandirildi."
+            }
+
+            if (Test-IsGeminiBoilerplate $executorOutput) {
+                Write-Log "Gemini anlamli cikti uretmedi; sadece boilerplate/MCP loglari dondu."
+                if ($exitCode -eq 0) { $exitCode = 125 }
             }
 
             # Konsola yazdir
@@ -308,9 +335,13 @@ exit /b %ERRORLEVEL%
             Write-Log "Gemini tamamlandi. ExitCode=$exitCode Cikti uzunlugu=$($executorOutput.Length) karakter"
 
             # Kota hatasi kontrolu
-            if ($executorOutput -match "QUOTA_EXHAUSTED|429|rate.limit|exhausted|All accounts exhausted") {
-                Write-Log "Kota hatasi alindi, 10 saniye bekleniyor..."
-                Start-Sleep -Seconds 10
+            if (Test-IsQuotaError $executorOutput) {
+                if ($retryCount -lt $maxRetries) {
+                    Write-Log "Kota hatasi alindi. Faz kesilmeyecek; yeni hesap/fallback icin 20 saniye bekleniyor..."
+                    Start-Sleep -Seconds 20
+                } else {
+                    Write-Log "Kota hatasi deneme limiti doldu ($retryCount/$maxRetries). Faz ayni durumda korunacak."
+                }
                 continue
             }
 
@@ -374,6 +405,8 @@ exit /b %ERRORLEVEL%
     Set-SP $stateObj "last_result"        ($resultText.Substring(0, [Math]::Min(800, $resultText.Length)))
     Set-SP $stateObj "last_exit_code"     $exitCode
     Set-SP $stateObj "last_files_changed" ($changedFiles -join ", ")
+    Set-SP $stateObj "status"             ($(if ($exitCode -eq 0) { "executed" } else { "executor_failed" }))
+    Set-SP $stateObj "last_error"         ($(if ($exitCode -eq 0) { $null } else { "Executor failed with exit code $exitCode" }))
     Set-SP $stateObj "lastUpdated"        (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")
     $stateObj | ConvertTo-Json -Depth 10 | Set-Content $statePath -Encoding UTF8
 

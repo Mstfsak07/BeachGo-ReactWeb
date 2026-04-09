@@ -12,6 +12,8 @@ $promptsDir    = Join-Path $automationDir "prompts"
 $logFile       = Join-Path $queueDir "automation.log"
 
 $PLANNER_MODEL = if ($env:BEACHGO_PLANNER_MODEL) { $env:BEACHGO_PLANNER_MODEL } else { "claude-sonnet-4-6" }
+$PLANNER_MAX_RESULT_CHARS = if ($env:BEACHGO_PLANNER_RESULT_CHARS) { [int]$env:BEACHGO_PLANNER_RESULT_CHARS } else { 1200 }
+$PLANNER_MAX_HISTORY_LINES = if ($env:BEACHGO_PLANNER_HISTORY_LINES) { [int]$env:BEACHGO_PLANNER_HISTORY_LINES } else { 8 }
 
 function Write-Log($msg) {
     $line = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] [PLANNER] $msg"
@@ -25,6 +27,13 @@ function Set-SP {
     else { $Obj | Add-Member -NotePropertyName $Name -NotePropertyValue $Value -Force }
 }
 
+function Test-IsQuotaError {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    return $Text -match "QUOTA_EXHAUSTED|RATE_LIMIT_EXCEEDED|429|RESOURCE_EXHAUSTED|All accounts exhausted|quotaReset|Too Many Requests"
+}
+
 function Invoke-ClaudeAPI {
     param([string]$Prompt, [string]$SystemPrompt = "")
 
@@ -33,7 +42,7 @@ function Invoke-ClaudeAPI {
 
     $bodyObj = [ordered]@{
         model      = $PLANNER_MODEL
-        max_tokens = 8192
+        max_tokens = 2200
         messages   = @(@{ role = "user"; content = [string]$Prompt })
     }
     if (-not [string]::IsNullOrWhiteSpace($SystemPrompt)) {
@@ -132,6 +141,9 @@ try {
 
     # Diger verileri oku
     $resultText = if (Test-Path $resultPath) { Get-Content $resultPath -Raw -Encoding UTF8 } else { "(bos)" }
+    if ($resultText.Length -gt $PLANNER_MAX_RESULT_CHARS) {
+        $resultText = $resultText.Substring(0, $PLANNER_MAX_RESULT_CHARS) + "`n...(truncated)"
+    }
 
     $gitDiff = try {
         $d = & git -C $repoRoot diff --stat HEAD 2>&1 | Out-String
@@ -140,7 +152,7 @@ try {
 
     $historySnippet = if (Test-Path $historyFile) {
         $lines = Get-Content $historyFile -Encoding UTF8 -ErrorAction SilentlyContinue
-        if ($lines.Count -gt 20) { $lines[-20..-1] -join "`n" } else { $lines -join "`n" }
+        if ($lines.Count -gt $PLANNER_MAX_HISTORY_LINES) { $lines[-$PLANNER_MAX_HISTORY_LINES..-1] -join "`n" } else { $lines -join "`n" }
     } else { "(bos)" }
 
     $iteration  = if ($stateObj.PSObject.Properties["current_iteration"]) { [int]$stateObj.current_iteration } else { 0 }
@@ -172,10 +184,10 @@ $currentPhaseText
 --- ÖNCEKİ SONUÇ (Gemini ne yaptı) ---
 $resultText
 
---- GIT DIFF ÖZETI ---
+--- GIT DIFF ---
 $gitDiff
 
---- SON GEÇMİŞ (son 20 satir) ---
+--- SON GECMIS ---
 $historySnippet
 "@
 
@@ -188,17 +200,18 @@ $historySnippet
     Remove-Item Env:MSYSTEM -ErrorAction SilentlyContinue
     Remove-Item Env:MSYS    -ErrorAction SilentlyContinue
 
-    $maxRetries    = 5
+    $maxRetries    = if ($env:BEACHGO_PLANNER_MAX_RETRIES) { [int]$env:BEACHGO_PLANNER_MAX_RETRIES } else { 12 }
     $retryCount    = 0
     $success       = $false
     $plannerOutput = ""
+    $lastPlannerError = ""
 
     while ($retryCount -lt $maxRetries -and -not $success) {
         $retryCount++
         if ($retryCount -gt 1) {
             Write-Log "Yeniden deneniyor ($retryCount / $maxRetries)..."
-            Write-Log "30 saniye bekleniyor..."
-            Start-Sleep -Seconds 30
+            Write-Log "20 saniye bekleniyor..."
+            Start-Sleep -Seconds 20
         }
 
         try {
@@ -211,12 +224,27 @@ $historySnippet
                 Write-Log "API bos cikti dondu. (Deneme $retryCount / $maxRetries)"
             }
         } catch {
-            Write-Log "API hatasi: $_ (Deneme $retryCount / $maxRetries)"
+            $lastPlannerError = $_ | Out-String
+            Write-Log "API hatasi: $lastPlannerError (Deneme $retryCount / $maxRetries)"
             Write-Host "=== CLAUDE HATA (deneme $retryCount) ===`n$_`n================================" -ForegroundColor Red
+            if (Test-IsQuotaError $lastPlannerError) {
+                Set-SP $stateObj "status" "waiting_quota"
+                Set-SP $stateObj "last_error" "Planner quota/rate-limit nedeniyle yeniden deniyor."
+                Set-SP $stateObj "lastUpdated" (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")
+                $stateObj | ConvertTo-Json -Depth 10 | Set-Content $statePath -Encoding UTF8
+            }
         }
     }
 
     if (-not $success) {
+        if (Test-IsQuotaError $lastPlannerError) {
+            Write-Log "Planner kota nedeniyle plan uretemedi; faz korunuyor ve instruction degistirilmiyor."
+            Set-SP $stateObj "status" "waiting_quota"
+            Set-SP $stateObj "last_error" "Planner quota/rate-limit nedeniyle beklemede."
+            Set-SP $stateObj "lastUpdated" (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")
+            $stateObj | ConvertTo-Json -Depth 10 | Set-Content $statePath -Encoding UTF8
+            return
+        }
         Write-Log "KRITIK HATA: Claude API $maxRetries deneme sonrasinda yanit vermedi. Otomasyon durduruluyor."
         throw "Planner Claude API hatasi ($maxRetries deneme basarisiz oldu). Otomasyon durduruluyor."
     }

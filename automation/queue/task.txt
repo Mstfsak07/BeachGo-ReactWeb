@@ -6,4 +6,4 @@ Ana hedefler:
 - Kritik teknik borclari ve kullanici akislarini kapatmadan mobile fazina gecme.
 - Mobile fazina gectiginde ekranlar, servis entegrasyonu, auth akislari, state yonetimi, offline/dayaniklilik, test/build/release hazirligini adim adim tamamla.
 - Claude projeyi eksiklere gore ilerletsin; her faz net, uygulanabilir ve dogrulanabilir olsun.
-- Fazlar sirali ilerlesin: once web/api tamamlansin, sonra mobile.
+- Fazlar sirali ilerlesin: once web/api tamamlansin, sonra mobile. 

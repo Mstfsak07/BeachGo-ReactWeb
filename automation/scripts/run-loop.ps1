@@ -152,10 +152,15 @@ function Set-SP {
 
 # ─── BUILD HATA KONTROLÃœ ────────────────────────────────────────
 function Test-BuildSuccess {
-    param([string]$ResultText)
+    param(
+        [string]$ResultText,
+        [int]$ExitCode = 0
+    )
+
+    if ($ExitCode -ne 0) { return $false }
     if ([string]::IsNullOrWhiteSpace($ResultText)) { return $false }
     # result.txt'te build hatası varsa false
-    if ($ResultText -imatch "Build FAILED|Error\(s\)|error CS[0-9]|HATALI|BUILD: HATALI") { return $false }
+    if ($ResultText -imatch "Build FAILED|Error\(s\)|error CS[0-9]|HATALI|BUILD: HATALI|timeout oldu|AttachConsole failed|Executor failed") { return $false }
     return $true
 }
 
@@ -204,6 +209,13 @@ function Get-ErrorHash($text) {
     )
     $hash = [System.Security.Cryptography.MD5]::Create().ComputeHash($bytes)
     return [BitConverter]::ToString($hash) -replace '-', ''
+}
+
+function Test-IsQuotaError {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    return $Text -match "QUOTA_EXHAUSTED|RATE_LIMIT_EXCEEDED|429|RESOURCE_EXHAUSTED|All accounts exhausted|quotaReset|Too Many Requests|rate_limit_error"
 }
 
 function Invoke-Analyzer {
@@ -258,7 +270,17 @@ or
 {"decision":"SYSTEM_COMPLETE"}
 "@
 
-    try {
+    $maxRetries = if ($env:BEACHGO_ANALYZER_MAX_RETRIES) { [int]$env:BEACHGO_ANALYZER_MAX_RETRIES } else { 8 }
+    $retryCount = 0
+    $lastAnalyzerError = ""
+
+    while ($retryCount -lt $maxRetries) {
+        $retryCount++
+        if ($retryCount -gt 1) {
+            Write-Log "Analyzer yeniden deneniyor ($retryCount/$maxRetries)..."
+            Start-Sleep -Seconds 15
+        }
+        try {
         $env:ANTHROPIC_API_KEY  = $env:BEACHGO_ANTHROPIC_KEY
         $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:8045"
         $env:CLAUDE_CONFIG_DIR  = "$env:USERPROFILE\.claude-antigravity"
@@ -288,11 +310,28 @@ or
             }
         }
         Write-Log "Analyzer gecersiz JSON dondu: $raw"
-        return $null
+        if (-not (Test-IsQuotaError $raw)) { return $null }
+        $lastAnalyzerError = $raw
+        Write-Log "Analyzer kota/rate-limit yaniti aldi."
     } catch {
-        Write-Log "Analyzer hatasi: $_"
-        return $null
+        $lastAnalyzerError = $_ | Out-String
+        Write-Log "Analyzer hatasi: $lastAnalyzerError"
+        if (-not (Test-IsQuotaError $lastAnalyzerError)) { return $null }
+        Set-SP $state "status" "waiting_quota"
+        Set-SP $state "last_error" "Analyzer quota/rate-limit nedeniyle yeniden deniyor."
+        Save-State $state
+      }
     }
+
+    if (Test-IsQuotaError $lastAnalyzerError) {
+        Write-Log "Analyzer kota nedeniyle karar uretemedi; faz korunarak CONTINUE donuluyor."
+        return [PSCustomObject]@{
+            decision = "CONTINUE"
+            next_steps = "Quota fallback bekleniyor; ayni fazi yeniden dene."
+        }
+    }
+
+    return $null
 }
 
 function Invoke-PlannerStep {
@@ -354,6 +393,11 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
     try {
         Invoke-PlannerStep
     } catch {
+        if (Test-IsQuotaError ($_ | Out-String)) {
+            Write-Log "PLANNER kota nedeniyle beklemede; faz kesilmeden ayni iteration korunuyor."
+            Start-Sleep -Seconds 20
+            continue
+        }
         Write-Log "PLANNER HATASI: $_"
         break
     }
@@ -376,7 +420,13 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
         Write-Log (Get-Content $instructionFile -Raw -ErrorAction SilentlyContinue)
     }
 
+    $state = Read-State
     $resultText = if (Test-Path $resultPath) { Get-Content $resultPath -Raw -Encoding UTF8 } else { "" }
+    $executorExitCode = if ($state.PSObject.Properties["last_exit_code"]) { [int]$state.last_exit_code } else { 1 }
+    if ($executorExitCode -ne 0) {
+        $executorFailed = $true
+        Write-Log "Executor exit code basarisiz: $executorExitCode"
+    }
 
     if ($executorFailed -and [string]::IsNullOrWhiteSpace($resultText)) {
         Write-Log "Executor basarisiz ve result bos. Analyzer'a geciliyor (bos result ile)."
@@ -385,7 +435,7 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
     }
 
     # 3) Build basariliysa backend'i yeniden baslat
-    $buildOk = Test-BuildSuccess -ResultText $resultText
+    $buildOk = Test-BuildSuccess -ResultText $resultText -ExitCode $executorExitCode
     if ($buildOk) {
         Write-Log "Build basarili. Backend yeniden baslatiliyor..."
         Start-Backend -RepoRoot $repoRoot | Out-Null

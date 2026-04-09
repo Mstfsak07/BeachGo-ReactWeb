@@ -107,7 +107,7 @@ const Register = () => {
                             <input
                                 type="text"
                                 name="name"
-                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.name ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition`}
+                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.name ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition placeholder-slate-400 dark:placeholder-slate-500`}
                                 placeholder="Ad Soyad"
                                 value={formData.name}
                                 onChange={handleChange}
@@ -121,7 +121,7 @@ const Register = () => {
                             <input
                                 type="email"
                                 name="email"
-                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.email ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition`}
+                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.email ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition placeholder-slate-400 dark:placeholder-slate-500`}
                                 placeholder="e-posta@adresiniz.com"
                                 value={formData.email}
                                 onChange={handleChange}
@@ -135,7 +135,7 @@ const Register = () => {
                             <input
                                 type="password"
                                 name="password"
-                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.password ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition`}
+                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.password ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition placeholder-slate-400 dark:placeholder-slate-500`}
                                 placeholder="Şifre"
                                 value={formData.password}
                                 onChange={handleChange}
@@ -149,7 +149,7 @@ const Register = () => {
                             <input
                                 type="password"
                                 name="confirmPassword"
-                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.confirmPassword ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition`}
+                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.confirmPassword ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition placeholder-slate-400 dark:placeholder-slate-500`}
                                 placeholder="Şifre Tekrar"
                                 value={formData.confirmPassword}
                                 onChange={handleChange}

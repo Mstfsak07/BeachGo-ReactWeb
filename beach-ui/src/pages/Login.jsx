@@ -85,7 +85,7 @@ const Login = () => {
                             <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 block">E-posta Adresi</label>
                             <input
                                 type="email"
-                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.email ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition`}
+                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.email ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition placeholder-slate-400 dark:placeholder-slate-500`}
                                 placeholder="e-posta@adresiniz.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -101,7 +101,7 @@ const Login = () => {
                             </div>
                             <input
                                 type="password"
-                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.password ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition`}
+                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.password ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition placeholder-slate-400 dark:placeholder-slate-500`}
                                 placeholder="Şifre"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}

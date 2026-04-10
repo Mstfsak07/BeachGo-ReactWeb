@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Services;
+using BeachRehberi.API.Middleware;
 using BeachRehberi.API.Middlewares;
 using BeachRehberi.API.Validators;
 using BeachRehberi.API.Mappings;
@@ -300,7 +301,7 @@ app.UseCors("AllowFrontend");
 app.UseRateLimiter();
 
 // Exception handling: en erken
-app.UseMiddleware<BeachRehberi.API.Middleware.GlobalExceptionMiddleware>();
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseMiddleware<JwtBlacklistMiddleware>();
 
 // Authentication & Authorization

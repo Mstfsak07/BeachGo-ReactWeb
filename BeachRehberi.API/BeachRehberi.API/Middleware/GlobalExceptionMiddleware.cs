@@ -41,47 +41,44 @@ namespace BeachRehberi.API.Middleware
         {
             context.Response.ContentType = "application/json";
 
+            int statusCode;
             ApiResponse response;
 
             switch (exception)
             {
                 case NotFoundException notFound:
-                    _logger.LogWarning(notFound, "Resource not found");
-                    context.Response.StatusCode = 404;
+                    statusCode = 404;
                     response = ApiResponse.Fail(notFound.Message, 404);
                     break;
 
                 case ValidationException validation:
-                    _logger.LogWarning(validation, "Validation error");
-                    context.Response.StatusCode = 422;
-                    response = ApiResponse.Fail(validation.Message, 422, validation.Errors);
+                    statusCode = 400;
+                    response = ApiResponse.Fail(validation.Message, 400, validation.Errors);
                     break;
 
                 case UnauthorizedException unauthorized:
-                    _logger.LogWarning(unauthorized, "Unauthorized access");
-                    context.Response.StatusCode = 401;
+                    statusCode = 401;
                     response = ApiResponse.Fail(unauthorized.Message, 401);
                     break;
 
-                case DomainException domain:
-                    _logger.LogWarning(domain, "Domain exception");
-                    context.Response.StatusCode = domain.StatusCode;
-                    response = ApiResponse.Fail(domain.Message, domain.StatusCode, domain.Errors);
+                case UnauthorizedAccessException:
+                    statusCode = 401;
+                    response = ApiResponse.Fail("Yetkisiz erişim", 401);
                     break;
 
-                case UnauthorizedAccessException:
-                    _logger.LogWarning(exception, "Unauthorized access exception");
-                    context.Response.StatusCode = 401;
-                    response = ApiResponse.Fail("Yetkisiz erişim", 401);
+                case DomainException domain:
+                    statusCode = domain.StatusCode;
+                    response = ApiResponse.Fail(domain.Message, domain.StatusCode, domain.Errors);
                     break;
 
                 default:
                     _logger.LogError(exception, "Unhandled exception occurred");
-                    context.Response.StatusCode = 500;
+                    statusCode = 500;
                     response = ApiResponse.Fail("Beklenmeyen bir hata oluştu", 500);
                     break;
             }
 
+            context.Response.StatusCode = statusCode;
             var json = JsonSerializer.Serialize(response, _jsonOptions);
             await context.Response.WriteAsync(json);
         }

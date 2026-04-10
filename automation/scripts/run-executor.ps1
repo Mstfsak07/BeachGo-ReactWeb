@@ -68,6 +68,25 @@ function Test-IsQuotaError {
     return $Text -match "QUOTA_EXHAUSTED|RATE_LIMIT_EXCEEDED|429|RESOURCE_EXHAUSTED|All accounts exhausted|quota will reset|Too Many Requests"
 }
 
+function Get-BatchEnvValue {
+    param(
+        [string]$BatchPath,
+        [string]$VariableName
+    )
+
+    if (-not (Test-Path $BatchPath)) { return "" }
+
+    $pattern = "^\s*set\s+$([regex]::Escape($VariableName))=(.*)$"
+    foreach ($line in Get-Content $BatchPath -Encoding UTF8 -ErrorAction SilentlyContinue) {
+        $match = [regex]::Match($line, $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        if ($match.Success) {
+            return $match.Groups[1].Value.Trim()
+        }
+    }
+
+    return ""
+}
+
 $lockFile = Join-Path $queueDir "executor.lock"
 
 if (Test-Path $lockFile) {
@@ -272,23 +291,41 @@ $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
         try {
             Write-Log "Gemini baslatiliyor (iteration=$iteration, deneme=$retryCount)..."
 
-            $geminiBaseUrl = if ($env:GOOGLE_GEMINI_BASE_URL) { $env:GOOGLE_GEMINI_BASE_URL } else { "http://127.0.0.1:8045" }
-            $geminiApiKey = if ($env:GEMINI_API_KEY) { $env:GEMINI_API_KEY } elseif ($env:BEACHGO_GEMINI_API_KEY) { $env:BEACHGO_GEMINI_API_KEY } else { "" }
+            $runnerBatchPath = Join-Path $queueDir "run-gemini-3.bat"
+            $geminiBaseUrl = if ($env:GOOGLE_GEMINI_BASE_URL) {
+                $env:GOOGLE_GEMINI_BASE_URL
+            } else {
+                $batchBaseUrl = Get-BatchEnvValue -BatchPath $runnerBatchPath -VariableName "GOOGLE_GEMINI_BASE_URL"
+                if ($batchBaseUrl) { $batchBaseUrl } else { "http://127.0.0.1:8045" }
+            }
+            $geminiApiKey = if ($env:GEMINI_API_KEY) {
+                $env:GEMINI_API_KEY
+            } elseif ($env:GOOGLE_API_KEY) {
+                $env:GOOGLE_API_KEY
+            } elseif ($env:BEACHGO_GEMINI_API_KEY) {
+                $env:BEACHGO_GEMINI_API_KEY
+            } else {
+                $batchApiKey = Get-BatchEnvValue -BatchPath $runnerBatchPath -VariableName "GOOGLE_API_KEY"
+                if (-not $batchApiKey) {
+                    $batchApiKey = Get-BatchEnvValue -BatchPath $runnerBatchPath -VariableName "GEMINI_API_KEY"
+                }
+                $batchApiKey
+            }
             $anthropicApiKey = if ($env:BEACHGO_ANTHROPIC_KEY) { $env:BEACHGO_ANTHROPIC_KEY } else { "" }
             $maskedGeminiApiKey = if ($geminiApiKey.Length -ge 6) { $geminiApiKey.Substring(0, 6) + "..." } elseif ($geminiApiKey) { "***" } else { "(empty)" }
             Write-Log "Gemini env: baseUrl=$geminiBaseUrl apiKey=$maskedGeminiApiKey"
 
             $psi = [System.Diagnostics.ProcessStartInfo]::new()
             $psi.FileName = "cmd.exe"
-            $psi.Arguments = "/d /s /c ""gemini --approval-mode yolo --allowed-mcp-server-names disabled --model $geminiModel --output-format text -p \""\"""""
+            $escapedPromptPath = $tempPrompt.Replace('"', '""')
+            $psi.Arguments = "/d /s /c ""gemini --approval-mode yolo --allowed-mcp-server-names disabled --model $geminiModel --output-format text -p ""@$escapedPromptPath"""""
             $psi.WorkingDirectory = $repoRoot
             $psi.UseShellExecute = $false
-            $psi.RedirectStandardInput = $true
+            $psi.RedirectStandardInput = $false
             $psi.RedirectStandardOutput = $true
             $psi.RedirectStandardError = $true
             $psi.CreateNoWindow = $true
             $psi.EnvironmentVariables["GOOGLE_GEMINI_BASE_URL"] = $geminiBaseUrl
-            $psi.EnvironmentVariables["GEMINI_API_KEY"] = $geminiApiKey
             $psi.EnvironmentVariables["GOOGLE_API_KEY"] = $geminiApiKey
             $psi.EnvironmentVariables["BEACHGO_ANTHROPIC_KEY"] = $anthropicApiKey
             $psi.EnvironmentVariables["GEMINI_CLI_NO_RELAUNCH"] = "true"
@@ -297,9 +334,7 @@ $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
             $psi.EnvironmentVariables["TERM"] = "dumb"
 
             $proc = [System.Diagnostics.Process]::Start($psi)
-            Write-Log "Gemini PID=$($proc.Id) baslatildi. Prompt stdin ile aktariliyor..."
-            $proc.StandardInput.Write($coderPrompt)
-            $proc.StandardInput.Close()
+            Write-Log "Gemini PID=$($proc.Id) baslatildi. Prompt dosyadan aktariliyor: $tempPrompt"
 
             $waited = $proc.WaitForExit($maxRunSeconds * 1000)
             if (-not $waited) {

@@ -20,6 +20,9 @@ public interface ITokenService
     Task<bool> IsTokenRevoked(string jti);
     Task<AuthResult> RefreshTokenAsync(string refreshToken);
     Task RevokeRefreshToken(string token);
+    Task RevokeAccessTokenAsync(string token);
+    Task<bool> IsTokenRevokedAsync(string token);
+    Task RevokeRefreshTokenAsync(string refreshToken);
 }
 
 public class ClaimsPrincipalResult

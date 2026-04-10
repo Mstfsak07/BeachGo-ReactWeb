@@ -1,6 +1,6 @@
 ﻿#Requires -Version 5.1
-$ErrorActionPreference = "Continue"
 param([string]$ApiKey = "")
+$ErrorActionPreference = "Continue"
 if ($ApiKey) {
     $env:BEACHGO_ANTHROPIC_KEY = $ApiKey
     $env:ANTHROPIC_API_KEY     = $ApiKey
@@ -154,14 +154,74 @@ function Set-SP {
 function Test-BuildSuccess {
     param(
         [string]$ResultText,
-        [int]$ExitCode = 0
+        [int]$ExitCode = 0,
+        [Nullable[int]]$BuildExitCode = $null
     )
 
     if ($ExitCode -ne 0) { return $false }
+    if ($BuildExitCode -ne $null -and $BuildExitCode -ne 0) { return $false }
     if ([string]::IsNullOrWhiteSpace($ResultText)) { return $false }
     # result.txt'te build hatası varsa false
     if ($ResultText -imatch "Build FAILED|Error\(s\)|error CS[0-9]|HATALI|BUILD: HATALI|timeout oldu|AttachConsole failed|Executor failed") { return $false }
     return $true
+}
+
+function Invoke-BuildVerification {
+    param(
+        [string]$InstructionText,
+        [string]$RepoRoot
+    )
+
+    $buildMatch = [regex]::Match($InstructionText, '(?im)^\s*BUILD:\s*(.+?)\s*$')
+    if (-not $buildMatch.Success) {
+        return [PSCustomObject]@{
+            ran = $false
+            exit_code = $null
+            summary = "BUILD komutu yok."
+        }
+    }
+
+    $buildCommand = $buildMatch.Groups[1].Value.Trim()
+    if ([string]::IsNullOrWhiteSpace($buildCommand)) {
+        return [PSCustomObject]@{
+            ran = $false
+            exit_code = $null
+            summary = "BUILD komutu bos."
+        }
+    }
+
+    Write-Log "Build dogrulamasi baslatiliyor: $buildCommand"
+    try {
+        $psi = [System.Diagnostics.ProcessStartInfo]::new()
+        $psi.FileName = "cmd.exe"
+        $psi.Arguments = "/d /s /c ""$buildCommand"""
+        $psi.WorkingDirectory = $RepoRoot
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.CreateNoWindow = $true
+
+        $proc = [System.Diagnostics.Process]::Start($psi)
+        $proc.WaitForExit()
+        $stdout = $proc.StandardOutput.ReadToEnd()
+        $stderr = $proc.StandardError.ReadToEnd()
+        $combined = @($stdout, $stderr) -join ""
+        $preview = if ([string]::IsNullOrWhiteSpace($combined)) { "(bos)" } else { $combined.Substring(0, [Math]::Min(1200, $combined.Length)) }
+        Write-Log "Build tamamlandi. ExitCode=$($proc.ExitCode)"
+        return [PSCustomObject]@{
+            ran = $true
+            exit_code = $proc.ExitCode
+            summary = $preview
+        }
+    } catch {
+        $err = $_ | Out-String
+        Write-Log "Build dogrulamasi hatasi: $err"
+        return [PSCustomObject]@{
+            ran = $true
+            exit_code = 1
+            summary = $err
+        }
+    }
 }
 
 function Read-State {
@@ -251,6 +311,7 @@ VERIFICATION CHECKLIST:
 
 RULES:
 - Return CONTINUE if: any write_file failed, build failed, files were missing, workspace errors occurred, any step is incomplete, or verification found issues.
+- Return CONTINUE if result.txt contains planning language such as "I will", exploration steps, read_file failures, or build status is `not-run`.
 - Return PHASE_COMPLETE if the current phase goals were completed successfully and the project should move to the next phase.
 - Return SYSTEM_COMPLETE only if the current phase goals were completed successfully AND this was the final phase.
 - If returning CONTINUE, next_steps must be ONE SHORT SENTENCE (max 120 chars) describing only the immediate next action.
@@ -434,8 +495,14 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
         $resultText = Get-Content $resultPath -Raw -Encoding UTF8
     }
 
+    $instructionText = if (Test-Path $instructionFile) { Get-Content $instructionFile -Raw -Encoding UTF8 } else { "" }
+    $buildResult = Invoke-BuildVerification -InstructionText $instructionText -RepoRoot $repoRoot
+    Set-SP $state "last_build_exit_code" $buildResult.exit_code
+    Set-SP $state "last_build_summary" $buildResult.summary
+    Save-State $state
+
     # 3) Build basariliysa backend'i yeniden baslat
-    $buildOk = Test-BuildSuccess -ResultText $resultText -ExitCode $executorExitCode
+    $buildOk = Test-BuildSuccess -ResultText $resultText -ExitCode $executorExitCode -BuildExitCode $buildResult.exit_code
     if ($buildOk) {
         Write-Log "Build basarili. Backend yeniden baslatiliyor..."
         Start-Backend -RepoRoot $repoRoot | Out-Null

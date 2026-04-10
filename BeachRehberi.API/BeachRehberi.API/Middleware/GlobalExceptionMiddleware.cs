@@ -46,24 +46,24 @@ namespace BeachRehberi.API.Middleware
 
             switch (exception)
             {
-                case NotFoundException notFound:
-                    statusCode = 404;
-                    response = ApiResponse.Fail(notFound.Message, 404);
-                    break;
-
                 case ValidationException validation:
                     statusCode = 400;
                     response = ApiResponse.Fail(validation.Message, 400, validation.Errors);
                     break;
 
-                case UnauthorizedException unauthorized:
-                    statusCode = 401;
-                    response = ApiResponse.Fail(unauthorized.Message, 401);
-                    break;
-
                 case UnauthorizedAccessException:
                     statusCode = 401;
                     response = ApiResponse.Fail("Yetkisiz erişim", 401);
+                    break;
+
+                case NotFoundException notFound:
+                    statusCode = 404;
+                    response = ApiResponse.Fail(notFound.Message, 404);
+                    break;
+
+                case UnauthorizedException unauthorized:
+                    statusCode = 401;
+                    response = ApiResponse.Fail(unauthorized.Message, 401);
                     break;
 
                 case DomainException domain:
@@ -72,7 +72,7 @@ namespace BeachRehberi.API.Middleware
                     break;
 
                 default:
-                    _logger.LogError(exception, "Unhandled exception occurred");
+                    _logger.LogError(exception, "Unhandled exception occurred: {Message}", exception.Message);
                     statusCode = 500;
                     response = ApiResponse.Fail("Beklenmeyen bir hata oluştu", 500);
                     break;

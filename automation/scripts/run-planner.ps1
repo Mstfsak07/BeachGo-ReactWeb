@@ -34,6 +34,205 @@ function Test-IsQuotaError {
     return $Text -match "QUOTA_EXHAUSTED|RATE_LIMIT_EXCEEDED|429|RESOURCE_EXHAUSTED|All accounts exhausted|quotaReset|Too Many Requests"
 }
 
+function Normalize-PlannerOutput {
+    param(
+        [string]$Text,
+        [string]$RepoRoot,
+        [string]$CurrentPhaseText
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $Text }
+    if ($Text -imatch "^\s*SYSTEM_COMPLETE\s*$") { return "SYSTEM_COMPLETE" }
+
+    $normalized = $Text -replace "`r`n", "`n"
+    $phasePaths = New-Object System.Collections.Generic.List[string]
+    $phaseInline = [regex]::Match($CurrentPhaseText, '(?im)^\s*DOSYALAR:\s*(.+?)\s*$')
+    if ($phaseInline.Success) {
+        foreach ($item in ($phaseInline.Groups[1].Value -split ',')) {
+            $candidate = $item.Trim().Trim('`')
+            if ($candidate) { $phasePaths.Add($candidate) }
+        }
+    }
+    foreach ($match in [regex]::Matches($CurrentPhaseText, '(?im)^\s*-\s*`?([^`\r\n]+?\.(cs|ts|tsx|json|txt|csproj|sql))`?\s*$')) {
+        $candidate = $match.Groups[1].Value.Trim()
+        if ($candidate) { $phasePaths.Add($candidate) }
+    }
+    $phasePaths = @($phasePaths | Select-Object -Unique)
+
+    $validPathMap = @{}
+    foreach ($phasePath in $phasePaths) {
+        $candidate = if ([System.IO.Path]::IsPathRooted($phasePath)) { $phasePath } else { Join-Path $RepoRoot $phasePath }
+        if (Test-Path $candidate) {
+            $validPathMap[$candidate.ToLowerInvariant()] = $candidate
+            $validPathMap[[System.IO.Path]::GetFileName($candidate).ToLowerInvariant()] = $candidate
+        } else {
+            $resolvedByName = Get-ChildItem -Path $RepoRoot -Recurse -File -ErrorAction SilentlyContinue |
+                Where-Object {
+                    $_.Name -ieq $phasePath -and
+                    $_.FullName -notmatch "\\obj\\" -and
+                    $_.FullName -notmatch "\\bin\\" -and
+                    $_.FullName -notmatch "\\node_modules\\"
+                } |
+                Select-Object -First 1
+            if ($resolvedByName) {
+                $validPathMap[$resolvedByName.FullName.ToLowerInvariant()] = $resolvedByName.FullName
+                $validPathMap[$resolvedByName.Name.ToLowerInvariant()] = $resolvedByName.FullName
+            }
+        }
+    }
+    $lines = $normalized -split "`n"
+
+    $priority = ""
+    $scope = ""
+    $build = ""
+    $commit = ""
+    $fileLines = New-Object System.Collections.Generic.List[string]
+    $taskLines = New-Object System.Collections.Generic.List[string]
+    $testLines = New-Object System.Collections.Generic.List[string]
+
+    $section = ""
+    foreach ($line in $lines) {
+        $trim = $line.Trim().Trim('`')
+        if ([string]::IsNullOrWhiteSpace($trim)) { continue }
+
+        if ($trim -match '^(ONCELIK|ÖNCELIK|ONCELiK):') { $priority = $trim; $section = ""; continue }
+        if ($trim -match '^SCOPE:') { $scope = $trim; $section = ""; continue }
+        if ($trim -match '^DOSYALAR:\s*(.+)$') {
+            $section = "files"
+            $inlineFiles = $Matches[1] -split ','
+            foreach ($inlineFile in $inlineFiles) {
+                $candidate = $inlineFile.Trim().Trim('`')
+                if ($candidate) { $fileLines.Add("- $candidate") }
+            }
+            continue
+        }
+        if ($trim -eq 'DOSYALAR:') { $section = "files"; continue }
+        if ($trim -eq 'GOREV:') { $section = "tasks"; continue }
+        if ($trim -match '^BUILD:') { $build = $trim; $section = ""; continue }
+        if ($trim -eq 'TEST:') { $section = "tests"; continue }
+        if ($trim -match '^<commit_message>') { $commit = $trim; $section = ""; continue }
+
+        switch ($section) {
+            "files" {
+                if ($trim -match '^-') {
+                    $fileLines.Add($trim)
+                } elseif ($trim -match '^[^:]+\.(cs|ts|tsx|json|txt|csproj|sql)$') {
+                    $fileLines.Add("- $trim")
+                }
+            }
+            "tasks" {
+                if ($trim -match '^\d+\.') {
+                    $taskLines.Add($trim)
+                } elseif ($trim -match '^-') {
+                    $taskLines.Add(("{0}. {1}" -f ($taskLines.Count + 1), $trim.TrimStart('-').Trim()))
+                } else {
+                    $taskLines.Add(("{0}. {1}" -f ($taskLines.Count + 1), $trim))
+                }
+            }
+            "tests" {
+                if ($trim -match '^\d+\.') {
+                    $testLines.Add($trim)
+                } elseif ($trim -match '^-') {
+                    $testLines.Add(("{0}. {1}" -f ($testLines.Count + 1), $trim.TrimStart('-').Trim()))
+                } else {
+                    $testLines.Add(("{0}. {1}" -f ($testLines.Count + 1), $trim))
+                }
+            }
+        }
+    }
+
+    if ($fileLines.Count -eq 0) {
+        $fallbackFiles = [regex]::Matches($normalized, '(?im)([A-Za-z0-9_./\\-]+\.(cs|ts|tsx|json|txt|csproj|sql))') |
+            ForEach-Object { $_.Groups[1].Value.Trim() } |
+            Select-Object -Unique
+        foreach ($file in ($fallbackFiles | Select-Object -First 2)) {
+            $fileLines.Add("- $file")
+        }
+    }
+
+    $resolvedFileLines = New-Object System.Collections.Generic.List[string]
+    foreach ($line in $fileLines) {
+        $rawPath = $line.Trim().TrimStart('-').Trim().Trim('`')
+        if (-not $rawPath) { continue }
+        $resolved = $null
+        if ($validPathMap.ContainsKey($rawPath.ToLowerInvariant())) {
+            $resolved = $validPathMap[$rawPath.ToLowerInvariant()]
+        } elseif ($validPathMap.ContainsKey([System.IO.Path]::GetFileName($rawPath).ToLowerInvariant())) {
+            $resolved = $validPathMap[[System.IO.Path]::GetFileName($rawPath).ToLowerInvariant()]
+        } else {
+            $candidate = if ([System.IO.Path]::IsPathRooted($rawPath)) { $rawPath } else { Join-Path $RepoRoot $rawPath }
+            if (Test-Path $candidate) { $resolved = $candidate }
+        }
+        if ($resolved) { $resolvedFileLines.Add("- $resolved") }
+    }
+
+    if ($resolvedFileLines.Count -eq 0) {
+        foreach ($phasePath in $phasePaths) {
+            $candidate = $null
+            if ($validPathMap.ContainsKey($phasePath.ToLowerInvariant())) {
+                $candidate = $validPathMap[$phasePath.ToLowerInvariant()]
+            } elseif ($validPathMap.ContainsKey([System.IO.Path]::GetFileName($phasePath).ToLowerInvariant())) {
+                $candidate = $validPathMap[[System.IO.Path]::GetFileName($phasePath).ToLowerInvariant()]
+            }
+            if ($candidate) { $resolvedFileLines.Add("- $candidate") }
+            if ($resolvedFileLines.Count -ge 2) { break }
+        }
+    }
+
+    $fileLines = @($resolvedFileLines | Select-Object -First 2)
+    $taskLines = @($taskLines | Select-Object -First 3)
+    $testLines = @($testLines | Select-Object -First 2)
+
+    if (-not $priority) { $priority = "ONCELIK: BUGFIX" }
+    if (-not $scope) { $scope = "SCOPE: api" }
+    if ($build) {
+        $quotedBuildPath = [regex]::Match($build, '"([^"]+\.csproj)"')
+        if ($quotedBuildPath.Success) {
+            $candidateBuildPath = $quotedBuildPath.Groups[1].Value
+            $resolvedBuildPath = if ([System.IO.Path]::IsPathRooted($candidateBuildPath)) { $candidateBuildPath } else { Join-Path $RepoRoot $candidateBuildPath }
+            if (-not (Test-Path $resolvedBuildPath)) {
+                $build = ""
+            }
+        }
+    }
+    if ($build -match 'src/Api|Api\.csproj|cd src/Api') { $build = "" }
+    if (-not $build) {
+        $buildSource = [regex]::Match($CurrentPhaseText, '(?im)^\s*BUILD:\s*(.+?)\s*$')
+        if ($buildSource.Success) {
+            $build = "BUILD: " + $buildSource.Groups[1].Value.Trim()
+        } else {
+            $defaultCsproj = Get-ChildItem -Path $RepoRoot -Recurse -Filter "*.csproj" -ErrorAction SilentlyContinue |
+                Where-Object { $_.FullName -notmatch "\\obj\\" -and $_.FullName -notmatch "\\bin\\" } |
+                Select-Object -First 1
+            if ($defaultCsproj) {
+                $relativeCsproj = $defaultCsproj.FullName.Substring($RepoRoot.Length).TrimStart('\')
+                $build = "BUILD: dotnet build `"$relativeCsproj`""
+            } else {
+                $build = "BUILD: dotnet build"
+            }
+        }
+    }
+    if (-not $commit) { $commit = "<commit_message>chore: planner normalized slice</commit_message>" }
+
+    $out = New-Object System.Collections.Generic.List[string]
+    $out.Add($priority)
+    $out.Add($scope)
+    $out.Add("DOSYALAR:")
+    foreach ($line in $fileLines) { $out.Add($line) }
+    $out.Add("")
+    $out.Add("GOREV:")
+    foreach ($line in $taskLines) { $out.Add($line) }
+    $out.Add("")
+    $out.Add($build)
+    $out.Add("")
+    $out.Add("TEST:")
+    foreach ($line in $testLines) { $out.Add($line) }
+    $out.Add("")
+    $out.Add($commit)
+
+    return ($out -join "`r`n")
+}
+
 function Invoke-ClaudeAPI {
     param([string]$Prompt, [string]$SystemPrompt = "")
 
@@ -170,6 +369,11 @@ try {
     if (-not (Test-Path $systemPromptPath)) { throw "planner-system.txt bulunamadi." }
     $systemPrompt = Get-Content $systemPromptPath -Raw -Encoding UTF8
 
+    $buildSummary = if ($stateObj.PSObject.Properties["last_build_summary"] -and $stateObj.last_build_summary) {
+        [string]$stateObj.last_build_summary
+    } else { "(yok)" }
+    $lastBuildExit = if ($stateObj.PSObject.Properties["last_build_exit_code"]) { $stateObj.last_build_exit_code } else { "(yok)" }
+
     $fullPrompt = @"
 --- MEVCUT DURUM ---
 Iteration: $iteration / $maxIter
@@ -177,6 +381,9 @@ Faz: $currentPhase / $totalPhases
 Scope: $scope
 Ardisik Hata Sayisi: $consErrors
 Son Hata: $lastError
+Son Build ExitCode: $lastBuildExit
+Son Build Ozeti:
+$buildSummary
 
 --- SIRADAKI FAZ ---
 $currentPhaseText
@@ -249,6 +456,8 @@ $historySnippet
         throw "Planner Claude API hatasi ($maxRetries deneme basarisiz oldu). Otomasyon durduruluyor."
     }
 
+    $plannerOutput = Normalize-PlannerOutput -Text $plannerOutput -RepoRoot $repoRoot -CurrentPhaseText $currentPhaseText
+    Write-Log "Normalize edilmis planner cikti:`n$plannerOutput"
     $plannerOutput | Set-Content $instructionPath    -Encoding UTF8
     
 

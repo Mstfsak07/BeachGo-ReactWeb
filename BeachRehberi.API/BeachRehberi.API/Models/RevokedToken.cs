@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace BeachRehberi.API.Models;
 
 public class RevokedToken
 {
-    [Key]
+    public int Id { get; set; }
     public string Token { get; set; } = string.Empty;
-    public DateTime ExpiryDate { get; set; }
+    public DateTime RevokedAt { get; set; } = DateTime.UtcNow;
 }

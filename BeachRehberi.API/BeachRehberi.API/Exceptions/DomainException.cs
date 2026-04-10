@@ -25,7 +25,7 @@ namespace BeachRehberi.API.Exceptions
     public class ValidationException : DomainException
     {
         public ValidationException(string message = "Doğrulama hatası", List<string>? errors = null)
-            : base(message, 422, errors) { }
+            : base(message, 400, errors) { }
     }
 
     public class UnauthorizedException : DomainException

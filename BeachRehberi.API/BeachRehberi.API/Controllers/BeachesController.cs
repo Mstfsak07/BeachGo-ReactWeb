@@ -1,6 +1,7 @@
 using BeachRehberi.API.Models;
 using BeachRehberi.API.Services;
 using BeachRehberi.API.Extensions;
+using BeachRehberi.API.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -32,8 +33,8 @@ public class BeachesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var beach = await _beachService.GetByIdAsync(id);
-        return beach != null ? beach.ToOkApiResponse() : "Plaj bulunamadı.".ToNotFoundApiResponse();
+        var beach = await _beachService.GetByIdAsync(id) ?? throw new NotFoundException("Plaj bulunamadı.");
+        return beach.ToOkApiResponse();
     }
 
     [AllowAnonymous]
@@ -48,8 +49,7 @@ public class BeachesController : ControllerBase
     [HttpGet("{id}/weather")]
     public async Task<IActionResult> GetWeather(int id)
     {
-        var beach = await _beachService.GetByIdAsync(id);
-        if (beach == null) return "Plaj bulunamadı.".ToNotFoundApiResponse();
+        var beach = await _beachService.GetByIdAsync(id) ?? throw new NotFoundException("Plaj bulunamadı.");
 
         var weather = await _weatherService.GetWeatherAsync(beach.Latitude, beach.Longitude);
         var sea = await _weatherService.GetSeaDataAsync(beach.Latitude, beach.Longitude);

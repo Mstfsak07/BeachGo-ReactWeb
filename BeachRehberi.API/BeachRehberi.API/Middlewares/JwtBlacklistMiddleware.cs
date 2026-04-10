@@ -34,7 +34,7 @@ public class JwtBlacklistMiddleware
         if (!string.IsNullOrEmpty(token))
         {
             // Requirement 3: Use optimized blacklist check
-            if (await tokenService.IsTokenBlacklistedAsync(token))
+            if (await tokenService.IsTokenRevokedAsync(token))
             {
                 context.Response.StatusCode = (int)HttpStatusCode.Unauthorized;
                 context.Response.ContentType = "application/json";

@@ -27,11 +27,13 @@ namespace BeachRehberi.API.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly ITokenService _tokenService;
         private readonly IWebHostEnvironment _env;
 
-        public AuthController(IAuthService authService, IWebHostEnvironment env)
+        public AuthController(IAuthService authService, ITokenService tokenService, IWebHostEnvironment env)
         {
             _authService = authService;
+            _tokenService = tokenService;
             _env = env;
         }
 
@@ -129,16 +131,16 @@ namespace BeachRehberi.API.Controllers
         [HttpPost("refresh-token")]
         public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
         {
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var userAgent = Request.Headers["User-Agent"].ToString();
-            var result = await _authService.RefreshTokenAsync(request.RefreshToken, ipAddress, userAgent);
+            var refreshToken = request.RefreshToken ?? Request.Cookies["refreshToken"];
+            if (string.IsNullOrEmpty(refreshToken))
+                throw new DomainException("Refresh token gerekli.");
+
+            var result = await _tokenService.RefreshTokenAsync(refreshToken);
 
             if (!result.Success)
                 throw new DomainException(result.Message);
 
-            var response = result.Data!;
-
-            Response.Cookies.Append("refreshToken", response.RefreshToken ?? "", new CookieOptions
+            Response.Cookies.Append("refreshToken", result.RefreshToken ?? "", new CookieOptions
             {
                 HttpOnly = true,
                 Secure = !_env.IsDevelopment(),
@@ -146,23 +148,25 @@ namespace BeachRehberi.API.Controllers
                 Expires = DateTime.UtcNow.AddDays(7)
             });
 
-            var authResult = new AuthResult
-            {
-                Success = true,
-                Message = "Token yenilendi.",
-                Token = response.Token,
-                RefreshToken = response.RefreshToken
-            };
-
-            return Ok(ApiResponse<AuthResult>.Ok(authResult, "Token başarıyla yenilendi."));
+            return Ok(ApiResponse<AuthResult>.Ok(result, "Token başarıyla yenilendi."));
         }
 
         [HttpPost("logout")]
         [Authorize]
         public async Task<IActionResult> Logout()
         {
+            var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
             var refreshToken = Request.Cookies["refreshToken"];
-            await _authService.LogoutAsync(null, refreshToken);
+            
+            if (!string.IsNullOrEmpty(accessToken))
+            {
+                await _tokenService.RevokeAccessTokenAsync(accessToken);
+            }
+
+            if (!string.IsNullOrEmpty(refreshToken))
+            {
+                await _tokenService.RevokeRefreshTokenAsync(refreshToken);
+            }
 
             Response.Cookies.Delete("refreshToken");
             return Ok(ApiResponse.OkResult("Çıkış başarılı."));

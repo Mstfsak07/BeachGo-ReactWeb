@@ -298,14 +298,13 @@ if (app.Environment.IsDevelopment())
 
 // CORS: Authentication'dan ÖNCE olmalı
 app.UseCors("AllowFrontend");
+app.UseRouting();
 app.UseRateLimiter();
 
-// Exception handling: en erken
-app.UseMiddleware<GlobalExceptionMiddleware>();
-app.UseMiddleware<JwtBlacklistMiddleware>();
-
 // Authentication & Authorization
+app.UseMiddleware<JwtBlacklistMiddleware>();
 app.UseAuthentication();
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

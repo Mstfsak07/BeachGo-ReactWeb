@@ -68,6 +68,33 @@ function Test-IsQuotaError {
     return $Text -match "QUOTA_EXHAUSTED|RATE_LIMIT_EXCEEDED|429|RESOURCE_EXHAUSTED|All accounts exhausted|quota will reset|Too Many Requests"
 }
 
+function Test-IsExecutorDrift {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+
+    return $Text -match "(?im)\bI will\b|\bI'll\b|once .*kontrol|kontrol edecegim|searching for|read the|locate the|first,?\s+i'?ll|let me\s|inspecting|opening the file|read_file"
+}
+
+function Get-FileFingerprintMap {
+    param([string[]]$Paths)
+
+    $map = @{}
+    foreach ($path in ($Paths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)) {
+        if (Test-Path $path) {
+            try {
+                $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $path -ErrorAction Stop).Hash
+                $map[$path] = "existing:$hash"
+            } catch {
+                $map[$path] = "existing:(hash-error)"
+            }
+        } else {
+            $map[$path] = "missing"
+        }
+    }
+    return $map
+}
+
 function Get-BatchEnvValue {
     param(
         [string]$BatchPath,
@@ -125,7 +152,7 @@ try {
     $instructionText = Get-Content $instructionPath -Raw -Encoding UTF8
 $planText = $instructionText
 
-    $geminiModel = if ($env:BEACHGO_GEMINI_MODEL) { $env:BEACHGO_GEMINI_MODEL } else { "gemini-3-flash" }
+    $geminiModel = if ($env:BEACHGO_GEMINI_MODEL) { $env:BEACHGO_GEMINI_MODEL } else { "gemini-3-pro" }
     if ($instructionText -imatch "\[SECURITY\]|\[REFACTOR\]|guvenlik|security|audit|mimari|architecture|refactor") {
         $geminiModel = if ($env:BEACHGO_GEMINI_PRO_MODEL) { $env:BEACHGO_GEMINI_PRO_MODEL } else { "gemini-3-pro" }
         Write-Log "Karmasik gorev tespit edildi, PRO model kullaniliyor: $geminiModel"
@@ -196,6 +223,23 @@ $planText = $instructionText
         }
     }
 
+    $instructionFileList = [regex]::Matches($instructionText, '(?im)^\s*-\s*`?([^`]+?\.(cs|ts|tsx|json|txt|csproj|sql))`?\s*$') |
+        ForEach-Object { $_.Groups[1].Value.Trim() } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        ForEach-Object {
+            if ([System.IO.Path]::IsPathRooted($_)) { $_ } else { Join-Path $repoRoot $_ }
+        } |
+        Select-Object -Unique
+
+    foreach ($instructionFile in $instructionFileList) {
+        if ($resolvedFiles.Add($instructionFile) -and (Test-Path $instructionFile)) {
+            Add-ContextFile -Builder $contextBlocks -Path $instructionFile
+            Write-Log "Instruction dosyasi okundu: $instructionFile"
+        }
+    }
+
+    $beforeFingerprints = Get-FileFingerprintMap -Paths $instructionFileList
+
     $scopeMatch = [regex]::Match($instructionText, '(?im)^\s*SCOPE:\s*(web|api|mobile)\s*$')
     $declaredScope = if ($scopeMatch.Success) { $scopeMatch.Groups[1].Value.ToLowerInvariant() } else { "" }
     $isFrontendTask = ($declaredScope -eq "web") -or ($instructionText -imatch "\blogin\b|\bregister\b|\bdark mode\b|\bdark-mode\b|\btema\b|\btheme\b|\bui\b|\bnavbar\b|\breact\b|\bfrontend\b|\bcss\b|\btailwind\b")
@@ -217,6 +261,17 @@ $planText = $instructionText
         $alwaysRead += @(
             "AuthController.cs",
             "Program.cs"
+        )
+    }
+    if ($isBackendTask -and $instructionText -imatch "\btoken\b|\bauth\b|\brefresh\b|\blogout\b|\bjwt\b|\bblacklist\b") {
+        $alwaysRead += @(
+            "ITokenService.cs",
+            "AuthModels.cs",
+            "BusinessUser.cs",
+            "RefreshToken.cs",
+            "RevokedToken.cs",
+            "BeachDbContext.cs",
+            "JwtBlacklistMiddleware.cs"
         )
     }
 
@@ -253,7 +308,8 @@ $contextSection
 - [WEB_ROOT] = $webRoot
 - Dosyalari DOGRUDAN bu tam path'lere yaz. Baska path deneme.
 - find, cat, ls gibi kesfetme komutlari calistirma - bilgi sana yukarida verildi.
-- Plan veya dusunce yazma. Hemen uygula, result.txt'e sonucu yaz ve prosesi kapat.
+- Plan veya dusunce yazma. Hemen uygula; gerekli tum hedef dosyalar yukarida verildi.
+- Hedef dosya yoksa veya baglam yetmiyorsa tahmin yurutme; verilen dosyalarla sinirli kal.
 - Son cikti sadece sonuc olsun; "I will", "once sunu kontrol edecegim" gibi ifadeler kullanma.
 
 Final response requirements:
@@ -380,12 +436,19 @@ $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
                 continue
             }
 
-            if ($executorOutput -match "I will|I'll|once .*kontrol|kontrol edecegim|searching for|read the|locate the") {
+            if (Test-IsExecutorDrift $executorOutput) {
                 Write-Log "Gemini uygulama yerine plan/arama moduna girdi."
+                if ($exitCode -eq 0) { $exitCode = 126 }
             }
 
             if ($executorOutput -match "Error executing tool read_file: File not found") {
                 Write-Log "Gemini verilen baglam yerine read_file aracina gitti ve dosya bulamadi."
+                if ($exitCode -eq 0) { $exitCode = 127 }
+            }
+
+            if ($exitCode -eq 0 -and $executorOutput -notmatch "(?m)^SUMMARY:\s+" -and $executorOutput -notmatch "(?m)^KOK_NEDEN:\s+") {
+                Write-Log "Gemini gecerli sonuc formati uretmedi."
+                $exitCode = 128
             }
 
             # Basarili cikis
@@ -432,9 +495,28 @@ $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
         $resultText = "(empty)"
     }
 
+    $afterFingerprints = Get-FileFingerprintMap -Paths $instructionFileList
+    $actualChangedTargets = @()
+    foreach ($path in $instructionFileList) {
+        if ($beforeFingerprints.ContainsKey($path) -and $afterFingerprints.ContainsKey($path)) {
+            if ($beforeFingerprints[$path] -ne $afterFingerprints[$path]) {
+                $actualChangedTargets += $path
+            }
+        }
+    }
+
+    if ($exitCode -eq 0 -and $instructionFileList.Count -gt 0 -and $actualChangedTargets.Count -eq 0) {
+        Write-Log "Gemini basarili gorundu ama hedef dosyalarda gercek degisiklik yok."
+        $exitCode = 129
+    }
+
     # Degisen dosyalari yakala (satir basinda mutlak path veya relative path)
     $changedFiles = [regex]::Matches($resultText, '(?m)^[-+]\s*(.+\.(cs|ts|tsx|json|csproj|txt))') |
         ForEach-Object { $_.Groups[1].Value.Trim() } | Select-Object -Unique
+
+    if ($actualChangedTargets.Count -gt 0) {
+        $changedFiles = @($changedFiles + $actualChangedTargets) | Select-Object -Unique
+    }
 
     # Sadece 3 alan guncelle - is_complete'e dokunma
     Set-SP $stateObj "last_result"        ($resultText.Substring(0, [Math]::Min(800, $resultText.Length)))

@@ -81,6 +81,37 @@ public class AuthResult
     public string? RefreshToken { get; set; }
     public DateTime? ExpiresAt { get; set; }
     public UserDto? User { get; set; }
+
+    public static AuthResult Failure(string message, List<string>? errors = null)
+    {
+        return new AuthResult
+        {
+            Success = false,
+            Message = message,
+            Errors = errors
+        };
+    }
+
+    public static AuthResult SuccessResult(BusinessUser user, string accessToken, string refreshToken)
+    {
+        return new AuthResult
+        {
+            Success = true,
+            Message = "Token başarıyla yenilendi.",
+            Token = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            User = new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName ?? string.Empty,
+                LastName = user.LastName ?? string.Empty,
+                PhoneNumber = user.PhoneNumber ?? string.Empty,
+                IsEmailVerified = user.IsEmailVerified
+            }
+        };
+    }
 }
 
 public class AuthResponse

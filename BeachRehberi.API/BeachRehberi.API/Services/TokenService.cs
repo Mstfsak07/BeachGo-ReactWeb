@@ -147,6 +147,12 @@ public class TokenService : ITokenService
         }
     }
 
+    public async Task RevokeAccessTokenAsync(string token) => await RevokeAccessToken(token);
+
+    public async Task<bool> IsTokenRevokedAsync(string token) => await IsTokenRevoked(token);
+
+    public async Task RevokeRefreshTokenAsync(string refreshToken) => await RevokeRefreshToken(refreshToken);
+
     // Compatibility methods
     public async Task BlacklistTokenAsync(string token, DateTime expiry) => await RevokeAccessToken(token);
     public async Task<bool> IsTokenBlacklistedAsync(string token) => await IsTokenRevoked(token);

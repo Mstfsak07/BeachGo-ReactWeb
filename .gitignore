@@ -404,20 +404,6 @@ FodyWeavers.xsd
 
 automation.zip/
 
-# AI & Machine Learning Model Files
-*.ai
-*.psd
-*.sketch
-*.model
-*.pkl
-*.pickle
-*.joblib
-*.h5
-*.pt
-*.pth
-*.onnx
-*.pb
-*.tflite
-*.keras
-*.safetensors
 
+.claude
+.abacusai

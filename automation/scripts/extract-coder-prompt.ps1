@@ -10,11 +10,11 @@ $instruction = ""
 $plan = ""
 
 if (Test-Path $instructionFile) {
-    $instruction = Get-Content $instructionFile -Raw
+    $instruction = Get-Content $instructionFile -Raw -Encoding UTF8
 }
 
 if (Test-Path $planFile) {
-    $plan = Get-Content $planFile -Raw
+    $plan = Get-Content $planFile -Raw -Encoding UTF8
 }
 
 $template = @"

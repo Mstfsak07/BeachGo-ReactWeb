@@ -1,17 +1,12 @@
 ﻿{
-    "current_iteration":  5,
+    "current_iteration":  1,
     "max_iterations":  50,
-    "status":  "executing",
+    "status":  "halted",
     "is_complete":  false,
     "consecutive_errors":  0,
     "last_error":  null,
     "last_error_hash":  null,
     "current_phase":  1,
-    "total_phases":  20,
-    "lastUpdated":  "2026-04-10T03:32:41",
-    "last_result":  "Exception calling \"Write\" with \"1\" argument(s): \"Boru sonlandı.\r\n\"\r\nAt C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\automation\\scripts\\run-executor.ps1:301 char:13\r\n+             $proc.StandardInput.Write($coderPrompt)\r\n+             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n    + CategoryInfo          : NotSpecified: (:) [], MethodInvocationException\r\n    + FullyQualifiedErrorId : IOException\r\n",
-    "last_exit_code":  1,
-    "last_files_changed":  "",
-    "scope":  "web",
-    "last_result_summary":  null
+    "total_phases":  22,
+    "lastUpdated":  "2026-04-10T06:33:01"
 }

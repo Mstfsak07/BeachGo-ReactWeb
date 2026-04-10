@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 $ErrorActionPreference = "Continue"
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -21,6 +21,46 @@ function Write-Log($msg) {
     Add-Content -Path $logFile -Value $line -Encoding UTF8
 }
 
+function Get-MojibakeScore {
+    param([string]$Text)
+
+    if ([string]::IsNullOrEmpty($Text)) { return 0 }
+    return ([regex]::Matches($Text, 'Ã|Ä|Å|â|�|ğŸ|Â')).Count
+}
+
+function Repair-MojibakeText {
+    param([string]$Text)
+
+    if ([string]::IsNullOrEmpty($Text)) { return $Text }
+
+    $current = $Text
+    for ($round = 0; $round -lt 3; $round++) {
+        $originalScore = Get-MojibakeScore $current
+        if ($originalScore -eq 0) { break }
+
+        $candidates = @()
+        foreach ($encName in @("windows-1254", "windows-1252")) {
+            try {
+                $enc = [System.Text.Encoding]::GetEncoding($encName)
+                $candidate = [System.Text.Encoding]::UTF8.GetString($enc.GetBytes($current))
+                $candidates += [PSCustomObject]@{
+                    Text  = $candidate
+                    Score = Get-MojibakeScore $candidate
+                }
+            } catch {}
+        }
+
+        $best = $candidates | Sort-Object Score | Select-Object -First 1
+        if ($best -and $best.Score -lt $originalScore) {
+            $current = $best.Text
+        } else {
+            break
+        }
+    }
+
+    return $current
+}
+
 function Invoke-ClaudeAPI {
     param([string]$Prompt, [string]$SystemPrompt = "")
     
@@ -39,7 +79,7 @@ function Invoke-ClaudeAPI {
     )
 
     try {
-        $response = Invoke-RestMethod `
+        $response = Invoke-WebRequest `
             -Uri "$baseUrl/v1/messages" `
             -Method Post `
             -Headers @{
@@ -47,10 +87,18 @@ function Invoke-ClaudeAPI {
                 "anthropic-version" = "2023-06-01"
                 "Content-Type"      = "application/json"
             } `
-            -Body $bodyBytes
+            -Body $bodyBytes `
+            -UseBasicParsing
 
-        if ($response.content -and $response.content.Count -gt 0) {
-            return $response.content[0].text
+        $stream = $response.RawContentStream
+        $stream.Position = 0
+        $reader = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::UTF8, $true)
+        $responseJson = $reader.ReadToEnd()
+        $reader.Dispose()
+        $parsed = $responseJson | ConvertFrom-Json
+
+        if ($parsed.content -and $parsed.content.Count -gt 0) {
+            return $parsed.content[0].text
         }
     } catch {
         Write-Log "HATA: API cagrisi basarisiz: $_"
@@ -66,7 +114,7 @@ $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:8045"
 
 Write-Log "Initializer baslatiliyor - proje analizi yapilacak..."
 
-# Proje dosya yap�s�n� topla
+# Proje dosya yapisini topla
 $frontendPages = try {
     (Get-ChildItem -Path (Join-Path $repoRoot "beach-ui\src\pages") -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { $_.Name }) -join ", "
 } catch { "(alinamadi)" }
@@ -114,27 +162,27 @@ $taskPath = Join-Path $queueDir "task.txt"
 $userGoal = if (Test-Path $taskPath) { Get-Content $taskPath -Raw -Encoding UTF8 } else { "BeachGo projesini mobil oncesi hazir hale getir." }
 
 $systemPrompt = @"
-Sen BeachGo projesinin kıdemli mimarısın. Projeyi derinlemesine analiz edecek ve �ncelikli bir geli�tirme plan� ��karacaks�n.
+Sen BeachGo projesinin kıdemli mimarısın. Projeyi derinlemesine analiz edecek ve öncelikli bir geliştirme planı çıkaracaksın.
 
 Kurallar:
 1. Sadece projeye ait bilgilere dayanarak karar ver.
-2. Her faz bağmsz, test edilebilir ve net olsun.
-3. Fazlar kk ve somut olsun - Gemini CLI'nin uygulayabilecei byklkte.
-4. Her fazda: hangi dosyalar deiecek, ne yaplacak, nasl test edilecek yaz.
-5. Toplam faz says 15-25 arasnda olsun.
-6. Mobil fazlar en sona koy,nce web/api eksikliklerini gider.
-7. Once web ve api tarafini mobile-ready hale getir: auth, form akislari, hata yonetimi, validation, API tutarliligi, build, deploy hazirligi, tema, responsive eksikleri, veri akislari ve kritik UX bosluklari kapatilsin.
-8. Mobile fazlarina sadece web/api tarafindaki kritik eksikler kapandiktan sonra gec. Mobile fazlarinda ekranlar, servis entegrasyonu, auth akislari, state yonetimi, offline/dayaniklilik, build ve release hazirligi olsun.
-9. Ilk fazlar analiz ve inventory degil, dogrudan uygulanabilir teknik gorevler olsun.
-10. Ayni problemi tekrar eden veya cok genis fazlar yazma. Her faz tek net ciktisi olan bir is olsun.
-7. Çktn SADECE aadaki formatta yaz, baka hibirey yazma:
+2. Her faz bağımsız, test edilebilir ve net olsun.
+3. Fazlar küçük ve somut olsun; Gemini CLI'nin uygulayabileceği büyüklükte olsun.
+4. Her fazda hangi dosyalar değişecek, ne yapılacak, nasıl test edilecek yaz.
+5. Toplam faz sayısı 15-25 arasında olsun.
+6. Mobil fazları en sona koy, önce web/api eksikliklerini gider.
+7. Önce web ve api tarafını mobile-ready hale getir: auth, form akışları, hata yönetimi, validation, API tutarlılığı, build, deploy hazırlığı, tema, responsive eksikleri, veri akışları ve kritik UX boşlukları kapatılsın.
+8. Mobile fazlarına sadece web/api tarafındaki kritik eksikler kapandıktan sonra geç. Mobile fazlarında ekranlar, servis entegrasyonu, auth akışları, state yönetimi, offline/dayanıklılık, build ve release hazırlığı olsun.
+9. İlk fazlar analiz ve inventory değil, doğrudan uygulanabilir teknik görevler olsun.
+10. Aynı problemi tekrar eden veya çok geniş fazlar yazma. Her faz tek net çıktısı olan bir iş olsun.
+11. Çıktını SADECE aşağıdaki formatta yaz, başka hiçbir şey yazma:
 
 FAZ_LISTESI_BASLANGIC
 FAZ 1: [Başlık]
 SCOPE: web|api|mobile
 DOSYALAR: [etkilenecek dosyalar]
 GÖREV: [net, uygulanabilir görev açıklaması]
-TEST: [nasıl doyranalanacak]
+TEST: [nasıl doğrulanacak]
 ---
 FAZ 2: [Başlık]
 ...
@@ -157,7 +205,7 @@ Services: $backendServices
 Models: $backendModels
 Son Migration: $lastMigration
 
-## App.js Route Yap�s�:
+## App.js Route Yapısı:
 $appJs
 
 ## Program.cs Middleware/DI:
@@ -172,7 +220,7 @@ $phases = $null
 $retries = 3
 for ($i = 1; $i -le $retries; $i++) {
     try {
-        $phases = Invoke-ClaudeAPI -Prompt $analysisPrompt -SystemPrompt $systemPrompt
+        $phases = Repair-MojibakeText (Invoke-ClaudeAPI -Prompt $analysisPrompt -SystemPrompt $systemPrompt)
         if (-not [string]::IsNullOrWhiteSpace($phases)) { break }
     } catch {
         Write-Log "Deneme $i basarisiz: $_"
@@ -186,7 +234,7 @@ if ([string]::IsNullOrWhiteSpace($phases)) {
 }
 
 # phases.txt'e yaz
-$phases | Set-Content $phasesFile -Encoding UTF8
+(Repair-MojibakeText $phases) | Set-Content $phasesFile -Encoding UTF8
 Write-Log "phases.txt olusturuldu. Faz listesi hazir."
 
 # Kac faz oldugunu say
@@ -210,3 +258,4 @@ $state = [PSCustomObject]@{
 $state | ConvertTo-Json -Depth 10 | Set-Content $statePath -Encoding UTF8
 
 Write-Log "Initializer tamamlandi. Loop baslatilabilir."
+

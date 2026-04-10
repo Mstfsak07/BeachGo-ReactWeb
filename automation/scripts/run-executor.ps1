@@ -68,6 +68,46 @@ function Test-IsQuotaError {
     return $Text -match "QUOTA_EXHAUSTED|RATE_LIMIT_EXCEEDED|429|RESOURCE_EXHAUSTED|All accounts exhausted|quota will reset|Too Many Requests"
 }
 
+function Get-MojibakeScore {
+    param([string]$Text)
+
+    if ([string]::IsNullOrEmpty($Text)) { return 0 }
+    return ([regex]::Matches($Text, 'Ã|Ä|Å|â|�|ğŸ|Â')).Count
+}
+
+function Repair-MojibakeText {
+    param([string]$Text)
+
+    if ([string]::IsNullOrEmpty($Text)) { return $Text }
+
+    $current = $Text
+    for ($round = 0; $round -lt 3; $round++) {
+        $originalScore = Get-MojibakeScore $current
+        if ($originalScore -eq 0) { break }
+
+        $candidates = @()
+        foreach ($encName in @("windows-1254", "windows-1252")) {
+            try {
+                $enc = [System.Text.Encoding]::GetEncoding($encName)
+                $candidate = [System.Text.Encoding]::UTF8.GetString($enc.GetBytes($current))
+                $candidates += [PSCustomObject]@{
+                    Text  = $candidate
+                    Score = Get-MojibakeScore $candidate
+                }
+            } catch {}
+        }
+
+        $best = $candidates | Sort-Object Score | Select-Object -First 1
+        if ($best -and $best.Score -lt $originalScore) {
+            $current = $best.Text
+        } else {
+            break
+        }
+    }
+
+    return $current
+}
+
 function Test-IsExecutorDrift {
     param([string]$Text)
 
@@ -149,12 +189,12 @@ try {
     Set-SP $stateObj "lastUpdated" (Get-Date -Format "yyyy-MM-ddTHH:mm:ss")
     $stateObj | ConvertTo-Json -Depth 10 | Set-Content $statePath -Encoding UTF8
 
-    $instructionText = Get-Content $instructionPath -Raw -Encoding UTF8
-$planText = $instructionText
+    $instructionText = Repair-MojibakeText (Get-Content $instructionPath -Raw -Encoding UTF8)
+    $planText = $instructionText
 
-    $geminiModel = if ($env:BEACHGO_GEMINI_MODEL) { $env:BEACHGO_GEMINI_MODEL } else { "gemini-3-pro" }
+    $geminiModel = if ($env:BEACHGO_GEMINI_MODEL) { $env:BEACHGO_GEMINI_MODEL } else { "gemini-3.1-pro" }
     if ($instructionText -imatch "\[SECURITY\]|\[REFACTOR\]|guvenlik|security|audit|mimari|architecture|refactor") {
-        $geminiModel = if ($env:BEACHGO_GEMINI_PRO_MODEL) { $env:BEACHGO_GEMINI_PRO_MODEL } else { "gemini-3-pro" }
+        $geminiModel = if ($env:BEACHGO_GEMINI_PRO_MODEL) { $env:BEACHGO_GEMINI_PRO_MODEL } else { "gemini-3.1-pro" }
         Write-Log "Karmasik gorev tespit edildi, PRO model kullaniliyor: $geminiModel"
     } else {
         Write-Log "Standart gorev, FLASH model kullaniliyor: $geminiModel"
@@ -172,9 +212,9 @@ $planText = $instructionText
         $workflowPromptPath = Join-Path $promptsDir "build-cycle-system.txt"
     }
 
-    $coderSystem = Get-Content $coderSystemPath -Raw -Encoding UTF8
+    $coderSystem = Repair-MojibakeText (Get-Content $coderSystemPath -Raw -Encoding UTF8)
     if ($workflowPromptPath -and (Test-Path $workflowPromptPath)) {
-        $workflowSystem = Get-Content $workflowPromptPath -Raw -Encoding UTF8
+        $workflowSystem = Repair-MojibakeText (Get-Content $workflowPromptPath -Raw -Encoding UTF8)
         $coderSystem = $coderSystem + "`n`n=== EK WORKFLOW TALIMATLARI ===`n" + $workflowSystem
         Write-Log "Workflow prompt eklendi: $workflowPromptPath"
     }
@@ -374,13 +414,15 @@ $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
             $psi = [System.Diagnostics.ProcessStartInfo]::new()
             $psi.FileName = "cmd.exe"
             $escapedPromptPath = $tempPrompt.Replace('"', '""')
-            $psi.Arguments = "/d /s /c ""gemini --approval-mode yolo --allowed-mcp-server-names disabled --model $geminiModel --output-format text -p ""@$escapedPromptPath"""""
+            $psi.Arguments = "/d /s /c ""chcp 65001>nul & gemini --approval-mode yolo --allowed-mcp-server-names disabled --model $geminiModel --output-format text -p ""@$escapedPromptPath"""""
             $psi.WorkingDirectory = $repoRoot
             $psi.UseShellExecute = $false
             $psi.RedirectStandardInput = $false
             $psi.RedirectStandardOutput = $true
             $psi.RedirectStandardError = $true
             $psi.CreateNoWindow = $true
+            if ($psi.PSObject.Properties.Name -contains "StandardOutputEncoding") { $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8 }
+            if ($psi.PSObject.Properties.Name -contains "StandardErrorEncoding") { $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8 }
             $psi.EnvironmentVariables["GOOGLE_GEMINI_BASE_URL"] = $geminiBaseUrl
             $psi.EnvironmentVariables["GOOGLE_API_KEY"] = $geminiApiKey
             $psi.EnvironmentVariables["BEACHGO_ANTHROPIC_KEY"] = $anthropicApiKey
@@ -405,6 +447,7 @@ $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
             $stdout = $proc.StandardOutput.ReadToEnd()
             $stderr = $proc.StandardError.ReadToEnd()
             $executorOutput = @($stdout, $stderr) -join ""
+            $executorOutput = Repair-MojibakeText $executorOutput
             $executorOutput | Set-Content $tempOutput -Encoding UTF8
 
             if ($exitCode -eq 124 -and [string]::IsNullOrWhiteSpace($executorOutput)) {
@@ -464,6 +507,7 @@ $coderPrompt | Set-Content $tempPrompt -Encoding UTF8
     }
 
     # Sonuclari dosyalara yaz
+    $executorOutput = Repair-MojibakeText $executorOutput
     $executorOutput | Set-Content $outputPath -Encoding UTF8
     $executorOutput | Set-Content $resultPath  -Encoding UTF8
 

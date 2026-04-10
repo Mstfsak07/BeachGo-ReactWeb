@@ -34,6 +34,46 @@ function Test-IsQuotaError {
     return $Text -match "QUOTA_EXHAUSTED|RATE_LIMIT_EXCEEDED|429|RESOURCE_EXHAUSTED|All accounts exhausted|quotaReset|Too Many Requests"
 }
 
+function Get-MojibakeScore {
+    param([string]$Text)
+
+    if ([string]::IsNullOrEmpty($Text)) { return 0 }
+    return ([regex]::Matches($Text, 'Ã|Ä|Å|â|�|ğŸ|Â')).Count
+}
+
+function Repair-MojibakeText {
+    param([string]$Text)
+
+    if ([string]::IsNullOrEmpty($Text)) { return $Text }
+
+    $current = $Text
+    for ($round = 0; $round -lt 3; $round++) {
+        $originalScore = Get-MojibakeScore $current
+        if ($originalScore -eq 0) { break }
+
+        $candidates = @()
+        foreach ($encName in @("windows-1254", "windows-1252")) {
+            try {
+                $enc = [System.Text.Encoding]::GetEncoding($encName)
+                $candidate = [System.Text.Encoding]::UTF8.GetString($enc.GetBytes($current))
+                $candidates += [PSCustomObject]@{
+                    Text  = $candidate
+                    Score = Get-MojibakeScore $candidate
+                }
+            } catch {}
+        }
+
+        $best = $candidates | Sort-Object Score | Select-Object -First 1
+        if ($best -and $best.Score -lt $originalScore) {
+            $current = $best.Text
+        } else {
+            break
+        }
+    }
+
+    return $current
+}
+
 function Normalize-PlannerOutput {
     param(
         [string]$Text,
@@ -259,18 +299,26 @@ function Invoke-ClaudeAPI {
 
     Write-Log "Anthropic API cagrisi: $baseUrl/v1/messages (model=$PLANNER_MODEL)"
 
-    $response = Invoke-RestMethod `
+    $response = Invoke-WebRequest `
         -Uri     "$baseUrl/v1/messages" `
         -Method  POST `
         -Headers $headers `
-        -Body    $bodyBytes
+        -Body    $bodyBytes `
+        -UseBasicParsing
 
-    if ($response.content -and $response.content[0].text) {
-        return $response.content[0].text
-    } elseif ($response.text) {
-        return $response.text
+    $stream = $response.RawContentStream
+    $stream.Position = 0
+    $reader = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::UTF8, $true)
+    $responseJson = $reader.ReadToEnd()
+    $reader.Dispose()
+
+    $parsed = $responseJson | ConvertFrom-Json
+    if ($parsed.content -and $parsed.content[0].text) {
+        return $parsed.content[0].text
+    } elseif ($parsed.text) {
+        return $parsed.text
     } else {
-        Write-Log "HATA: API beklenmedik format dondu. Yanit: $($response | ConvertTo-Json -Compress)"
+        Write-Log "HATA: API beklenmedik format dondu. Yanit: $responseJson"
         return $null
     }
 }
@@ -316,7 +364,7 @@ try {
         throw "phases.txt bulunamadi. Once run-initializer.ps1 calistirin."
     }
 
-    $phasesContent = Get-Content $phasesFile -Raw -Encoding UTF8
+    $phasesContent = Repair-MojibakeText (Get-Content $phasesFile -Raw -Encoding UTF8)
 
     # Mevcut faz numarasini al
     $currentPhase = if ($stateObj.PSObject.Properties["current_phase"]) { [int]$stateObj.current_phase } else { 1 }
@@ -339,7 +387,7 @@ try {
     }
 
     # Diger verileri oku
-    $resultText = if (Test-Path $resultPath) { Get-Content $resultPath -Raw -Encoding UTF8 } else { "(bos)" }
+    $resultText = if (Test-Path $resultPath) { Repair-MojibakeText (Get-Content $resultPath -Raw -Encoding UTF8) } else { "(bos)" }
     if ($resultText.Length -gt $PLANNER_MAX_RESULT_CHARS) {
         $resultText = $resultText.Substring(0, $PLANNER_MAX_RESULT_CHARS) + "`n...(truncated)"
     }
@@ -367,7 +415,7 @@ try {
 
     $systemPromptPath = Join-Path $promptsDir "planner-system.txt"
     if (-not (Test-Path $systemPromptPath)) { throw "planner-system.txt bulunamadi." }
-    $systemPrompt = Get-Content $systemPromptPath -Raw -Encoding UTF8
+    $systemPrompt = Repair-MojibakeText (Get-Content $systemPromptPath -Raw -Encoding UTF8)
 
     $buildSummary = if ($stateObj.PSObject.Properties["last_build_summary"] -and $stateObj.last_build_summary) {
         [string]$stateObj.last_build_summary
@@ -423,6 +471,7 @@ $historySnippet
 
         try {
             $plannerOutput = Invoke-ClaudeAPI -Prompt $fullPrompt -SystemPrompt $systemPrompt
+            $plannerOutput = Repair-MojibakeText $plannerOutput
             Write-Log "Claude API yaniti (deneme $retryCount): $plannerOutput"
             Write-Host "=== CLAUDE YANITI (deneme $retryCount) ===`n$plannerOutput`n================================" -ForegroundColor Cyan
             if (-not [string]::IsNullOrWhiteSpace($plannerOutput)) {
@@ -456,7 +505,7 @@ $historySnippet
         throw "Planner Claude API hatasi ($maxRetries deneme basarisiz oldu). Otomasyon durduruluyor."
     }
 
-    $plannerOutput = Normalize-PlannerOutput -Text $plannerOutput -RepoRoot $repoRoot -CurrentPhaseText $currentPhaseText
+    $plannerOutput = Normalize-PlannerOutput -Text (Repair-MojibakeText $plannerOutput) -RepoRoot $repoRoot -CurrentPhaseText $currentPhaseText
     Write-Log "Normalize edilmis planner cikti:`n$plannerOutput"
     $plannerOutput | Set-Content $instructionPath    -Encoding UTF8
     

@@ -23,13 +23,13 @@ BeachGo-ReactWeb\.env.example
 BeachGo-ReactWeb\.gitattributes
 BeachGo-ReactWeb\.githookspre-commit.txt
 BeachGo-ReactWeb\.gitignore
-BeachGo-ReactWeb\1. Önce Package Manager Console (veya Komut satırına Terminal'den) aşağıdaki komutu yazarak initial migration'ı oluşturun
+BeachGo-ReactWeb\1. �nce Package Manager Console (veya Komut satirina Terminal'den) asagidaki komutu yazarak initial migration'i olusturun
 BeachGo-ReactWeb\add_location.js
 BeachGo-ReactWeb\add_preview_modal.js
 BeachGo-ReactWeb\add_story_gallery.js
-BeachGo-ReactWeb\AppDbContext` içindeki Global Sorgu Filtreleri sayesinde
+BeachGo-ReactWeb\AppDbContext` i�indeki Global Sorgu Filtreleri sayesinde
 BeachGo-ReactWeb\automation.zip
-BeachGo-ReactWeb\Ayrıca `SaveChangesAsync` metodunuzdaki şu blok sayesinde
+BeachGo-ReactWeb\Ayrica `SaveChangesAsync` metodunuzdaki su blok sayesinde
 BeachGo-ReactWeb\BeachGo
 BeachGo-ReactWeb\became
 BeachGo-ReactWeb\CHANGES_SUMMARY.md
@@ -42,7 +42,7 @@ BeachGo-ReactWeb\fix_instagram_icon.js
 BeachGo-ReactWeb\I committed the changes with git hash 96447f4 & commit msg
 BeachGo-ReactWeb\IMPLEMENTATION_GUIDE.md
 BeachGo-ReactWeb\Mevcut filtrenizde
-BeachGo-ReactWeb\OnModelCreating` metodu içindeki şu satırlara dikkat edelim
+BeachGo-ReactWeb\OnModelCreating` metodu i�indeki su satirlara dikkat edelim
 BeachGo-ReactWeb\orchestrator.js
 BeachGo-ReactWeb\orchestrator.log
 BeachGo-ReactWeb\package-lock.json
@@ -54,9 +54,9 @@ BeachGo-ReactWeb\README_JWT_AUTH.md
 BeachGo-ReactWeb\result.txt
 BeachGo-ReactWeb\run-all.ps1
 BeachGo-ReactWeb\SETUP_JWT_AUTH.md
-BeachGo-ReactWeb\Sıradaki aşamalar
+BeachGo-ReactWeb\Siradaki asamalar
 BeachGo-ReactWeb\temp.txt
-BeachGo-ReactWeb\Terminalden şunu çalıştırabilirsiniz
+BeachGo-ReactWeb\Terminalden sunu �alistirabilirsiniz
 BeachGo-ReactWeb\test-result.txt
 BeachGo-ReactWeb\TESTING_GUIDE.md
 BeachGo-ReactWeb\update_backend_api_social.py
@@ -14757,8 +14757,8 @@ namespace BeachRehberi.API.Controllers
             var totalReservations = await _context.Reservations.CountAsync();
             var pendingBeaches = await _context.Beaches.CountAsync(b => !b.IsActive);
             
-            // Ortalama sepet tutarÄ± 500 TRY varsayÄ±mÄ± Ã¼zerinden genel ciro hesabÄ± 
-            // (gerÃ§ek senaryoda veritabanÄ±ndaki rezervasyon Ã¶demelerinden Ã§ekilebilir)
+            // Ortalama sepet tutarı 500 TRY varsayımı üzerinden genel ciro hesabı 
+            // (gerçek senaryoda veritabanındaki rezervasyon ödemelerinden çekilebilir)
             var revenue = totalReservations * 500m; 
 
             return Ok(new {
@@ -14851,7 +14851,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> GetBeachById(int id)
         {
             var beach = await _context.Beaches.FindAsync(id);
-            if (beach == null) return NotFound(new { success = false, message = "Plaj bulunamadÄ±." });
+            if (beach == null) return NotFound(new { success = false, message = "Plaj bulunamadı." });
             return Ok(new { success = true, data = beach });
         }
 
@@ -14859,7 +14859,7 @@ namespace BeachRehberi.API.Controllers
         public async Task<IActionResult> UpdateBeach(int id, [FromBody] DTOs.UpdateBeachDto dto)
         {
             var beach = await _context.Beaches.FindAsync(id);
-            if (beach == null) return NotFound(new { success = false, message = "Plaj bulunamadÄ±." });
+            if (beach == null) return NotFound(new { success = false, message = "Plaj bulunamadı." });
 
             beach.UpdateDetails(dto.Name, dto.Description, dto.Address);
             beach.Phone = dto.Phone;
@@ -14888,14 +14888,14 @@ namespace BeachRehberi.API.Controllers
             beach.SetTodaySpecial(dto.TodaySpecial);
 
             await _context.SaveChangesAsync();
-            return Ok(new { success = true, message = "Plaj baÅŸarÄ±yla gÃ¼ncellendi." });
+            return Ok(new { success = true, message = "Plaj başarıyla güncellendi." });
         }
 
         [HttpPost("beaches/import")]
         public async Task<IActionResult> ImportBeaches([FromBody] List<DTOs.UpdateBeachDto> beaches)
         {
             if (beaches == null || beaches.Count == 0)
-                return BadRequest(new { success = false, message = "Veri bulunamadÄ±." });
+                return BadRequest(new { success = false, message = "Veri bulunamadı." });
 
             var created = 0;
             foreach (var dto in beaches)
@@ -14955,7 +14955,7 @@ namespace BeachRehberi.API.Controllers
             }
 
             await _context.SaveChangesAsync();
-            return Ok(new { success = true, message = $"{created} yeni plaj eklendi, {beaches.Count - created} plaj gÃ¼ncellendi." });
+            return Ok(new { success = true, message = $"{created} yeni plaj eklendi, {beaches.Count - created} plaj güncellendi." });
         }
     }
 }
@@ -15023,7 +15023,7 @@ namespace BeachRehberi.API.Controllers
             var refreshToken = Request.Cookies["refreshToken"];
 
             if (string.IsNullOrWhiteSpace(refreshToken))
-                return Unauthorized("Refresh token bulunamadÄ±.");
+                return Unauthorized("Refresh token bulunamadı.");
 
             var result = await _authService.RefreshTokenAsync(
                 refreshToken,
@@ -15058,7 +15058,7 @@ namespace BeachRehberi.API.Controllers
 
             Response.Cookies.Delete("refreshToken");
 
-            return ((object?)null).ToOkApiResponse("Ã‡Ä±kÄ±ÅŸ baÅŸarÄ±lÄ±.");
+            return ((object?)null).ToOkApiResponse("Çıkış başarılı.");
         }
 
         // ===================== REVOKE =====================
@@ -15098,7 +15098,7 @@ namespace BeachRehberi.API.Controllers
                     Request.Headers["User-Agent"].ToString()
                 );
 
-                // ğŸ”¥ COOKIE EKLE (Ã–NEMLÄ°)
+                // g��� COOKIE EKLE (ÖNEMLİ)
                 if (result.Success && result.Data != null)
                 {
                     Response.Cookies.Append("refreshToken", result.Data.RefreshToken!, new CookieOptions
@@ -15119,7 +15119,7 @@ namespace BeachRehberi.API.Controllers
                 return UnprocessableEntity(new ApiResponse<object>
                 {
                     Success = false,
-                    Message = _configuration["Auth:ValidationErrorMessage"] ?? "DoÄŸrulama hatalarÄ± var.",
+                    Message = _configuration["Auth:ValidationErrorMessage"] ?? "Doğrulama hataları var.",
                     Errors = ex.Errors.Select(e => e.ErrorMessage).ToList()
                 });
             }
@@ -15136,7 +15136,7 @@ namespace BeachRehberi.API.Controllers
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
-                    Message = _configuration["Auth:ServerErrorMessage"] ?? "Sunucu hatasÄ± oluÅŸtu."
+                    Message = _configuration["Auth:ServerErrorMessage"] ?? "Sunucu hatası oluştu."
                 });
             }
         }
@@ -15156,7 +15156,7 @@ namespace BeachRehberi.API.Controllers
                     Request.Headers["User-Agent"].ToString()
                 );
 
-                // ğŸ”¥ COOKIE EKLE (Ã–NEMLÄ°)
+                // g��� COOKIE EKLE (ÖNEMLİ)
                 if (result.Success && result.Data != null)
                 {
                     Response.Cookies.Append("refreshToken", result.Data.RefreshToken!, new CookieOptions
@@ -15177,7 +15177,7 @@ namespace BeachRehberi.API.Controllers
                 return UnprocessableEntity(new ApiResponse<object>
                 {
                     Success = false,
-                    Message = _configuration["Auth:ValidationErrorMessage"] ?? "DoÄŸrulama hatalarÄ± var.",
+                    Message = _configuration["Auth:ValidationErrorMessage"] ?? "Doğrulama hataları var.",
                     Errors = ex.Errors.Select(e => e.ErrorMessage).ToList()
                 });
             }
@@ -15194,7 +15194,7 @@ namespace BeachRehberi.API.Controllers
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
-                    Message = _configuration["Auth:ServerErrorMessage"] ?? "Sunucu hatasÄ± oluÅŸtu."
+                    Message = _configuration["Auth:ServerErrorMessage"] ?? "Sunucu hatası oluştu."
                 });
             }
         }
@@ -15245,7 +15245,7 @@ public class BeachesController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var beach = await _beachService.GetByIdAsync(id);
-        return beach != null ? beach.ToOkApiResponse() : "Plaj bulunamadÄ±.".ToNotFoundApiResponse();
+        return beach != null ? beach.ToOkApiResponse() : "Plaj bulunamadı.".ToNotFoundApiResponse();
     }
 
     [AllowAnonymous]
@@ -15261,7 +15261,7 @@ public class BeachesController : ControllerBase
     public async Task<IActionResult> GetWeather(int id)
     {
         var beach = await _beachService.GetByIdAsync(id);
-        if (beach == null) return "Plaj bulunamadÄ±.".ToNotFoundApiResponse();
+        if (beach == null) return "Plaj bulunamadı.".ToNotFoundApiResponse();
 
         var weather = await _weatherService.GetWeatherAsync(beach.Latitude, beach.Longitude);
         var sea = await _weatherService.GetSeaDataAsync(beach.Latitude, beach.Longitude);
@@ -15310,7 +15310,7 @@ public class BusinessController : ControllerBase
     public async Task<IActionResult> GetMyReservations()
     {
         var beachId = GetUserBeachId();
-        if (beachId == -1) return "Kendi iÅŸletme yetkiniz bulunamadÄ±, iÅŸlem reddedildi.".ToForbiddenApiResponse();
+        if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
         var reservations = await _businessService.GetAllReservationsAsync(beachId);
         return reservations.ToOkApiResponse();
@@ -15320,7 +15320,7 @@ public class BusinessController : ControllerBase
     public async Task<IActionResult> GetMyStats()
     {
         var beachId = GetUserBeachId();
-        if (beachId == -1) return "Kendi iÅŸletme yetkiniz bulunamadÄ±, iÅŸlem reddedildi.".ToForbiddenApiResponse();
+        if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
         var stats = await _businessService.GetStatsAsync(beachId);
         return stats.ToOkApiResponse();
@@ -15330,7 +15330,7 @@ public class BusinessController : ControllerBase
     public async Task<IActionResult> GetMyBeach()
     {
         var beachId = GetUserBeachId();
-        if (beachId == -1) return "Kendi iÅŸletme yetkiniz bulunamadÄ±, iÅŸlem reddedildi.".ToForbiddenApiResponse();
+        if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
         var beach = await _businessService.GetBeachByIdAsync(beachId);
         return beach.ToOkApiResponse();
@@ -15340,9 +15340,9 @@ public class BusinessController : ControllerBase
     public async Task<IActionResult> UpdateMyBeach([FromBody] UpdateBeachDto beachUpdate)
     {
         var beachId = GetUserBeachId();
-        if (beachId == -1) return "Kendi iÅŸletme yetkiniz bulunamadÄ±, iÅŸlem reddedildi.".ToForbiddenApiResponse();
+        if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
-        // sadece belirli alanlarÄ±n gÃ¼ncellenmesine izin ver
+        // sadece belirli alanların güncellenmesine izin ver
         var result = await _businessService.UpdateBeachDetailsAsync(beachId, beachUpdate);
         return result.ToActionResult();
     }
@@ -15351,7 +15351,7 @@ public class BusinessController : ControllerBase
     public async Task<IActionResult> Approve(int id)
     {
         var beachId = GetUserBeachId();
-        if (beachId == -1) return "Kendi iÅŸletme yetkiniz bulunamadÄ±, iÅŸlem reddedildi.".ToForbiddenApiResponse();
+        if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
         var result = await _businessService.UpdateReservationStatusAsync(id, beachId, ReservationStatus.Approved);
         return result.ToActionResult();
@@ -15361,7 +15361,7 @@ public class BusinessController : ControllerBase
     public async Task<IActionResult> Reject(int id, [FromBody] string? comment)
     {
         var beachId = GetUserBeachId();
-        if (beachId == -1) return "Kendi iÅŸletme yetkiniz bulunamadÄ±, iÅŸlem reddedildi.".ToForbiddenApiResponse();
+        if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
         var result = await _businessService.UpdateReservationStatusAsync(id, beachId, ReservationStatus.Rejected, comment);
         return result.ToActionResult();
@@ -15371,7 +15371,7 @@ public class BusinessController : ControllerBase
     public async Task<IActionResult> Cancel(int id, [FromBody] string? comment)
     {
         var beachId = GetUserBeachId();
-        if (beachId == -1) return "Kendi iÅŸletme yetkiniz bulunamadÄ±, iÅŸlem reddedildi.".ToForbiddenApiResponse();
+        if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
         var result = await _businessService.UpdateReservationStatusAsync(id, beachId, ReservationStatus.Cancelled, comment);
         return result.ToActionResult();
@@ -15611,7 +15611,7 @@ public class ReservationsController : ControllerBase
         if (string.IsNullOrWhiteSpace(code)) return BadRequest();
 
         var data = await _reservationService.GetByCodeAsync(code.ToUpper());
-        if (data == null) return NotFound(new { success = false, message = "Rezervasyon bulunamadÄ±." });
+        if (data == null) return NotFound(new { success = false, message = "Rezervasyon bulunamadı." });
 
         return Ok(new { success = true, data });
     }
@@ -15651,7 +15651,7 @@ public class ReviewsController : ControllerBase
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(userIdStr, out int userId))
-            return "KullanÄ±cÄ± kimliÄŸi doÄŸrulanamadÄ±.".ToUnauthorizedApiResponse();
+            return "Kullanıcı kimliği doğrulanamadı.".ToUnauthorizedApiResponse();
 
         var result = await _reviewService.CreateAsync(dto, userId);
         return result.ToActionResult();
@@ -15752,7 +15752,7 @@ public class UsersController : ControllerBase
             })
             .FirstOrDefaultAsync(u => u.Id == userId);
 
-        if (user == null) return NotFound("KullanÄ±cÄ± bulunamadÄ±.");
+        if (user == null) return NotFound("Kullanıcı bulunamadı.");
 
         return user.ToOkApiResponse();
     }
@@ -15766,13 +15766,13 @@ public class UsersController : ControllerBase
         var userId = int.Parse(userIdStr);
         var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Id == userId);
 
-        if (user == null) return NotFound("KullanÄ±cÄ± bulunamadÄ±.");
+        if (user == null) return NotFound("Kullanıcı bulunamadı.");
 
         user.UpdateProfile(request.ContactName, request.BusinessName);
         
         await _db.SaveChangesAsync();
 
-        return "Profil baÅŸarÄ±yla gÃ¼ncellendi.".ToOkApiResponse();
+        return "Profil başarıyla güncellendi.".ToOkApiResponse();
     }
 
     [HttpPut("change-password")]
@@ -15784,16 +15784,16 @@ public class UsersController : ControllerBase
         var userId = int.Parse(userIdStr);
         var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Id == userId);
 
-        if (user == null) return NotFound("KullanÄ±cÄ± bulunamadÄ±.");
+        if (user == null) return NotFound("Kullanıcı bulunamadı.");
 
         if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
         {
-            return BadRequest("Mevcut ÅŸifre hatalÄ±.");
+            return BadRequest("Mevcut şifre hatalı.");
         }
 
         if (request.NewPassword != request.ConfirmPassword)
         {
-            return BadRequest("Yeni ÅŸifreler eÅŸleÅŸmiyor.");
+            return BadRequest("Yeni şifreler eşleşmiyor.");
         }
 
         // Reflection or adding a method to BusinessUser would be better, 
@@ -15805,7 +15805,7 @@ public class UsersController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        return "Åifre baÅŸarÄ±yla deÄŸiÅŸtirildi.".ToOkApiResponse();
+        return "�?ifre başarıyla değiştirildi.".ToOkApiResponse();
     }
 }
 
@@ -15848,7 +15848,7 @@ public class AuthController : BaseController
         _currentUserService = currentUserService;
     }
 
-    /// <summary>Yeni kullanÄ±cÄ± kaydÄ±</summary>
+    /// <summary>Yeni kullanıcı kaydı</summary>
     [HttpPost("register")]
     [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(RegisterResult), 200)]
@@ -15861,7 +15861,7 @@ public class AuthController : BaseController
         return Ok(new { isSuccess = true, data = result });
     }
 
-    /// <summary>KullanÄ±cÄ± giriÅŸi</summary>
+    /// <summary>Kullanıcı girişi</summary>
     [HttpPost("login")]
     [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(LoginResult), 200)]
@@ -15886,7 +15886,7 @@ public class AuthController : BaseController
         return Ok(new { isSuccess = true, data = result });
     }
 
-    /// <summary>Ã‡Ä±kÄ±ÅŸ yap â€” refresh token geÃ§ersiz kÄ±lÄ±nÄ±r</summary>
+    /// <summary>Çıkış yap — refresh token geçersiz kılınır</summary>
     [HttpPost("logout")]
     [Authorize]
     [ProducesResponseType(200)]
@@ -15896,7 +15896,7 @@ public class AuthController : BaseController
         if (userId.HasValue)
             await _mediator.Send(new LogoutCommand(userId.Value), cancellationToken);
 
-        return Ok(new { isSuccess = true, message = "BaÅŸarÄ±yla Ã§Ä±kÄ±ÅŸ yapÄ±ldÄ±." });
+        return Ok(new { isSuccess = true, message = "Başarıyla çıkış yapıldı." });
     }
 }
 === C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\Controllers\BaseController.cs ===
@@ -15912,7 +15912,7 @@ public abstract class BaseController : ControllerBase
     protected IActionResult HandleResult<T>(T? result)
     {
         if (result is null)
-            return NotFound(new { isSuccess = false, message = "KayÄ±t bulunamadÄ±." });
+            return NotFound(new { isSuccess = false, message = "Kayıt bulunamadı." });
 
         return Ok(new { isSuccess = true, data = result });
     }
@@ -15942,7 +15942,7 @@ public class BeachesController : BaseController
         _mediator = mediator;
     }
 
-    /// <summary>PlajlarÄ± listele â€” filtre ve sayfalama destekli</summary>
+    /// <summary>Plajları listele — filtre ve sayfalama destekli</summary>
     [HttpGet]
     [ProducesResponseType(200)]
     public async Task<IActionResult> GetBeaches(
@@ -15969,7 +15969,7 @@ public class BeachesController : BaseController
         return Ok(new { isSuccess = true, data = result });
     }
 
-    /// <summary>Plaj detayÄ±</summary>
+    /// <summary>Plaj detayı</summary>
     [HttpGet("{id:int}", Name = "GetBeachById")]
     [ProducesResponseType(typeof(BeachDetailDto), 200)]
     [ProducesResponseType(404)]
@@ -15979,7 +15979,7 @@ public class BeachesController : BaseController
         return Ok(new { isSuccess = true, data = result });
     }
 
-    /// <summary>Yeni plaj oluÅŸtur â€” BusinessOwner veya Admin</summary>
+    /// <summary>Yeni plaj oluştur — BusinessOwner veya Admin</summary>
     [HttpPost]
     [Authorize(Policy = "BusinessOnly")]
     [ProducesResponseType(201)]
@@ -15996,7 +15996,7 @@ public class BeachesController : BaseController
             new { isSuccess = true, data = new { id } });
     }
 
-    /// <summary>Plaj gÃ¼ncelle</summary>
+    /// <summary>Plaj güncelle</summary>
     [HttpPut("{id:int}")]
     [Authorize(Policy = "BusinessOnly")]
     [ProducesResponseType(204)]
@@ -16011,7 +16011,7 @@ public class BeachesController : BaseController
         return NoContent();
     }
 
-    /// <summary>Plaj sil â€” soft delete</summary>
+    /// <summary>Plaj sil — soft delete</summary>
     [HttpDelete("{id:int}")]
     [Authorize(Policy = "BusinessOnly")]
     [ProducesResponseType(204)]
@@ -16047,7 +16047,7 @@ public class ReservationsController : BaseController
         _mediator = mediator;
     }
 
-    /// <summary>Rezervasyon oluÅŸtur</summary>
+    /// <summary>Rezervasyon oluştur</summary>
     [HttpPost]
     [ProducesResponseType(201)]
     [ProducesResponseType(400)]
@@ -16060,7 +16060,7 @@ public class ReservationsController : BaseController
         return StatusCode(201, new { isSuccess = true, data = new { id } });
     }
 
-    /// <summary>Kendi rezervasyonlarÄ±mÄ± getir</summary>
+    /// <summary>Kendi rezervasyonlarımı getir</summary>
     [HttpGet("my")]
     [ProducesResponseType(200)]
     public async Task<IActionResult> GetMyReservations(
@@ -16089,7 +16089,7 @@ public class ReservationsController : BaseController
             new CancelReservationCommand(id, body?.Reason),
             cancellationToken);
 
-        return Ok(new { isSuccess = true, message = "Rezervasyon baÅŸarÄ±yla iptal edildi." });
+        return Ok(new { isSuccess = true, message = "Rezervasyon başarıyla iptal edildi." });
     }
 }
 
@@ -16126,7 +16126,7 @@ public class ApiResponse<T>
     public T? Data { get; set; }
     public List<string> Errors { get; set; } = new();
 
-    public static ApiResponse<T> SuccessResult(T? data, string message = "İşlem başarılı.")
+    public static ApiResponse<T> SuccessResult(T? data, string message = "Islem basarili.")
     {
         return new ApiResponse<T> { Success = true, Data = data, Message = message, Errors = new List<string>() };
     }
@@ -16152,7 +16152,7 @@ public class LoginRequest
     public required string Password { get; set; }
 }
 
-public class UserRegisterRequest  // ← YENİ: User Registration
+public class UserRegisterRequest  // ? YENI: User Registration
 {
     public required string Username { get; set; }
     public required string Email { get; set; }
@@ -16169,14 +16169,14 @@ public class RegisterRequest
     public string Role { get; set; } = UserRoles.User;
 }
 
-// ← DEĞİŞTİ: artık body tabanlı, cookie yok
+// ? DEGISTI: artik body tabanli, cookie yok
 public class RefreshRequest
 {
     public required string AccessToken { get; set; }
     public required string RefreshToken { get; set; }
 }
 
-public class RevokeRequest  // ← YENİ
+public class RevokeRequest  // ? YENI
 {
     public required string RefreshToken { get; set; }
 }
@@ -16187,7 +16187,7 @@ public class AuthResponse
     public string? RefreshToken { get; set; }
     public string Email { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
-    public DateTime AccessTokenExpiry { get; set; } // ← YENİ: proaktif refresh için
+    public DateTime AccessTokenExpiry { get; set; } // ? YENI: proaktif refresh i�in
 }
 === C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.API\Models\Beach.cs ===
 using System;
@@ -16255,22 +16255,22 @@ public class Beach
 
     public bool IsDeleted { get; private set; }
 
-    // Computed: Frontend uyumluluÄŸu iÃ§in facilities listesi
+    // Computed: Frontend uyumluluğu için facilities listesi
     public List<string> Facilities
     {
         get
         {
             var list = new List<string>();
-            if (HasSunbeds) list.Add("Åezlong");
-            if (HasShower) list.Add("DuÅŸ");
+            if (HasSunbeds) list.Add("�?ezlong");
+            if (HasShower) list.Add("Duş");
             if (HasParking) list.Add("Otopark");
             if (HasRestaurant) list.Add("Restoran");
             if (HasBar) list.Add("Bar");
             if (HasWifi) list.Add("WiFi");
-            if (HasWaterSports) list.Add("Su SporlarÄ±");
-            if (HasPool) list.Add("YÃ¼zme Havuzu");
-            if (IsChildFriendly) list.Add("Ã‡ocuk Dostu");
-            if (HasAccessibility) list.Add("Engelli EriÅŸim");
+            if (HasWaterSports) list.Add("Su Sporları");
+            if (HasPool) list.Add("Yüzme Havuzu");
+            if (IsChildFriendly) list.Add("Çocuk Dostu");
+            if (HasAccessibility) list.Add("Engelli Erişim");
             return list;
         }
     }
@@ -16380,9 +16380,9 @@ public class BeachEvent
 
     public BeachEvent(int beachId, string title, string description, DateTime start, DateTime end, int capacity)
     {
-        if (start < DateTime.UtcNow) throw new DomainException("Etkinlik baÅŸlangÄ±Ã§ tarihi geÃ§miÅŸ olamaz.");
-        if (end <= start) throw new DomainException("BitiÅŸ tarihi baÅŸlangÄ±Ã§ tarihinden sonra olmalÄ±dÄ±r.");
-        if (capacity <= 0) throw new DomainException("Kapasite 0dan bÃ¼yÃ¼k olmalÄ±dÄ±r.");
+        if (start < DateTime.UtcNow) throw new DomainException("Etkinlik başlangıç tarihi geçmiş olamaz.");
+        if (end <= start) throw new DomainException("Bitiş tarihi başlangıç tarihinden sonra olmalıdır.");
+        if (capacity <= 0) throw new DomainException("Kapasite 0dan büyük olmalıdır.");
 
         BeachId = beachId;
         Title = title ?? throw new ArgumentNullException(nameof(title));
@@ -16534,8 +16534,8 @@ public class BusinessUser
 
     public void SetEmail(string email)
     {
-        if (string.IsNullOrWhiteSpace(email)) throw new DomainException("Email adresi boÅŸ olamaz.");
-        if (!Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$")) throw new DomainException("GeÃ§ersiz email formatÄ±.");
+        if (string.IsNullOrWhiteSpace(email)) throw new DomainException("Email adresi boş olamaz.");
+        if (!Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$")) throw new DomainException("Geçersiz email formatı.");
         Email = email;
     }
 
@@ -16600,8 +16600,8 @@ public class RefreshToken
     public DateTime ExpiresAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? RevokedAt { get; private set; }
-    public string? ReplacedByToken { get; private set; }   // â† YENÄ°
-    public string? RevokedReason { get; private set; }     // â† YENÄ°
+    public string? ReplacedByToken { get; private set; }   // ← YENİ
+    public string? RevokedReason { get; private set; }     // ← YENİ
     public string? CreatedByIp { get; private set; }
     public string? CreatedByUserAgent { get; private set; }
 
@@ -16622,7 +16622,7 @@ public class RefreshToken
         CreatedAt = DateTime.UtcNow;
     }
 
-    // Token rotation: eski token revoke, yeni token referansÄ± kaydet
+    // Token rotation: eski token revoke, yeni token referansı kaydet
     public void RevokeAndReplace(string newPlainToken, string reason = "rotation")
     {
         RevokedAt = DateTime.UtcNow;
@@ -16815,7 +16815,7 @@ public class Review
 
     public Review(int beachId, int? userId, string userName, string userPhone, int rating, string comment)
     {
-        if (rating < 1 || rating > 5) throw new DomainException("Puan 1-5 arasÄ±nda olmalÄ±dÄ±r.");
+        if (rating < 1 || rating > 5) throw new DomainException("Puan 1-5 arasında olmalıdır.");
         
         BeachId = beachId;
         UserId = userId;
@@ -16855,7 +16855,7 @@ public class ServiceResult<T>
     public T? Data { get; set; }
     public List<string> Errors { get; set; } = new();
 
-    public static ServiceResult<T> SuccessResult(T? data, string message = "İşlem başarılı.")
+    public static ServiceResult<T> SuccessResult(T? data, string message = "Islem basarili.")
     {
         return new ServiceResult<T> { Success = true, Data = data, Message = message };
     }
@@ -16923,8 +16923,8 @@ using System;
 namespace BeachRehberi.Domain.Entities;
 
 /// <summary>
-/// Multi-tenant yapÄ± iÃ§in temel entity sÄ±nÄ±fÄ±.
-/// TÃ¼m entity'ler bu sÄ±nÄ±ftan tÃ¼retilmelidir.
+/// Multi-tenant yapı için temel entity sınıfı.
+/// Tüm entity'ler bu sınıftan türetilmelidir.
 /// </summary>
 public abstract class BaseEntity
 {
@@ -17025,7 +17025,7 @@ public class Beach : BaseEntity
 
     public int OccupancyPercent { get; private set; }
     public OccupancyLevel OccupancyLevel { get; private set; }
-    // â”€â”€ Eksik alanlar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Eksik alanlar ─────────────────────────────────────────────────────────────
     public string City { get; private set; } = string.Empty;
     public string? District { get; private set; }
     public string? Location { get; private set; }
@@ -17286,7 +17286,7 @@ using BeachRehberi.Domain.Entities;
 namespace BeachRehberi.Domain.Entities;
 
 /// <summary>
-/// Beach Photo entity - plaj fotoÄŸraflarÄ±nÄ± temsil eder
+/// Beach Photo entity - plaj fotoğraflarını temsil eder
 /// </summary>
 public class BeachPhoto : BaseEntity
 {
@@ -17318,7 +17318,7 @@ public class BeachPhoto : BaseEntity
         BeachId = beachId;
         ImageUrl = imageUrl ?? throw new ArgumentNullException(nameof(imageUrl));
         Caption = caption;
-        AltText = altText ?? caption; // Alt text caption'dan tÃ¼retilebilir
+        AltText = altText ?? caption; // Alt text caption'dan türetilebilir
         UploadedAt = DateTime.UtcNow;
         DisplayOrder = 0;
         IsCoverPhoto = false;
@@ -17362,7 +17362,7 @@ using BeachRehberi.Domain.ValueObjects;
 namespace BeachRehberi.Domain.Entities;
 
 /// <summary>
-/// Business User entity - iÅŸletme kullanÄ±cÄ±larÄ±nÄ± temsil eder
+/// Business User entity - işletme kullanıcılarını temsil eder
 /// </summary>
 public class BusinessUser : BaseEntity
 {
@@ -17463,7 +17463,7 @@ public class Reservation : BaseEntity
     {
         BeachId = beachId;
         UserId = userId;
-        ReservationDate = reservationDate.Date; // Sadece tarih kÄ±smÄ±
+        ReservationDate = reservationDate.Date; // Sadece tarih kısmı
         CreatedAt = DateTime.UtcNow;
         Status = ReservationStatus.Pending;
     }
@@ -17518,7 +17518,7 @@ using BeachRehberi.Domain.Entities;
 namespace BeachRehberi.Domain.Entities;
 
 /// <summary>
-/// Review entity - yorum ve deÄŸerlendirme bilgilerini temsil eder
+/// Review entity - yorum ve değerlendirme bilgilerini temsil eder
 /// </summary>
 public class Review : BaseEntity
 {
@@ -17528,7 +17528,7 @@ public class Review : BaseEntity
     public int UserId { get; private set; }
     public BusinessUser User { get; private set; }
 
-    public int Rating { get; private set; } // 1-5 arasÄ±
+    public int Rating { get; private set; } // 1-5 arası
     public string Comment { get; private set; }
     public DateTime ReviewDate { get; private set; }
 
@@ -17575,7 +17575,7 @@ public class Review : BaseEntity
 
     public bool IsEditable()
     {
-        // Yorumlar oluÅŸturulduktan sonra 24 saat iÃ§inde dÃ¼zenlenebilir
+        // Yorumlar oluşturulduktan sonra 24 saat içinde düzenlenebilir
         return (DateTime.UtcNow - CreatedAt).TotalHours <= 24;
     }
 }
@@ -17583,7 +17583,7 @@ public class Review : BaseEntity
 namespace BeachRehberi.Domain.Enums;
 
 /// <summary>
-/// KullanÄ±cÄ± rolleri
+/// Kullanıcı rolleri
 /// </summary>
 public static class UserRoles
 {
@@ -17593,7 +17593,7 @@ public static class UserRoles
 }
 
 /// <summary>
-/// Rezervasyon durumlarÄ±
+/// Rezervasyon durumları
 /// </summary>
 public enum ReservationStatus
 {
@@ -17616,7 +17616,7 @@ public enum OccupancyLevel
 }
 
 /// <summary>
-/// Plaj tÃ¼rleri
+/// Plaj türleri
 /// </summary>
 public enum BeachType
 {
@@ -17626,7 +17626,7 @@ public enum BeachType
 }
 
 /// <summary>
-/// Ã–deme durumlarÄ±
+/// Ödeme durumları
 /// </summary>
 public enum PaymentStatus
 {
@@ -17641,7 +17641,7 @@ using System;
 namespace BeachRehberi.Domain.Exceptions;
 
 /// <summary>
-/// Domain katmanÄ± iÃ§in temel exception sÄ±nÄ±fÄ±
+/// Domain katmanı için temel exception sınıfı
 /// </summary>
 public abstract class DomainException : Exception
 {
@@ -17782,7 +17782,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyTitleAttribute("BeachRehberi.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 
-// MSBuild WriteCodeFragment sÄ±nÄ±fÄ± tarafÄ±ndan oluÅŸturuldu.
+// MSBuild WriteCodeFragment sınıfı tarafından oluşturuldu.
 
 === C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.API\BeachRehberi.Domain\obj\Debug\net8.0\BeachRehberi.Domain.GlobalUsings.g.cs ===
 // <auto-generated/>
@@ -17994,7 +17994,7 @@ public class Result<T>
 
     private Result() { }
 
-    public static Result<T> Success(T data, string message = "Ä°ÅŸlem baÅŸarÄ±lÄ±.")
+    public static Result<T> Success(T data, string message = "İşlem başarılı.")
     {
         return new Result<T>
         {
@@ -18005,7 +18005,7 @@ public class Result<T>
         };
     }
 
-    public static Result<T> Created(T data, string message = "KayÄ±t oluÅŸturuldu.")
+    public static Result<T> Created(T data, string message = "Kayıt oluşturuldu.")
     {
         return new Result<T>
         {
@@ -18027,7 +18027,7 @@ public class Result<T>
         };
     }
 
-    public static Result<T> NotFound(string message = "KayÄ±t bulunamadÄ±.")
+    public static Result<T> NotFound(string message = "Kayıt bulunamadı.")
     {
         return new Result<T>
         {
@@ -18037,7 +18037,7 @@ public class Result<T>
         };
     }
 
-    public static Result<T> Unauthorized(string message = "Bu iÅŸlem iÃ§in yetkiniz yok.")
+    public static Result<T> Unauthorized(string message = "Bu işlem için yetkiniz yok.")
     {
         return new Result<T>
         {
@@ -18047,7 +18047,7 @@ public class Result<T>
         };
     }
 
-    public static Result<T> Forbidden(string message = "Bu kaynaÄŸa eriÅŸim yasak.")
+    public static Result<T> Forbidden(string message = "Bu kaynağa erişim yasak.")
     {
         return new Result<T>
         {
@@ -18068,7 +18068,7 @@ public class Result
 
     private Result() { }
 
-    public static Result Success(string message = "Ä°ÅŸlem baÅŸarÄ±lÄ±.")
+    public static Result Success(string message = "İşlem başarılı.")
     {
         return new Result { IsSuccess = true, Message = message, StatusCode = 200 };
     }
@@ -18084,7 +18084,7 @@ public class Result
         };
     }
 
-    public static Result NotFound(string message = "KayÄ±t bulunamadÄ±.")
+    public static Result NotFound(string message = "Kayıt bulunamadı.")
     {
         return new Result { IsSuccess = false, Message = message, StatusCode = 404 };
     }
@@ -18130,7 +18130,7 @@ public class Beach : BaseEntity
     public double AverageRating { get; private set; } = 0;
     public int TotalReviews { get; private set; } = 0;
 
-    // Ã–zellikler
+    // Özellikler
     public bool HasParking { get; private set; }
     public bool HasRestaurant { get; private set; }
     public bool HasWaterSports { get; private set; }
@@ -18170,7 +18170,7 @@ public class Beach : BaseEntity
             : throw new ArgumentException("Fiyat negatif olamaz.");
         Capacity = capacity > 0
             ? capacity
-            : throw new ArgumentException("Kapasite 0'dan bÃ¼yÃ¼k olmalÄ±.");
+            : throw new ArgumentException("Kapasite 0'dan büyük olmalı.");
         IsActive = true;
     }
 
@@ -18258,7 +18258,7 @@ public class BeachEvent : BaseEntity
         Description = description ?? throw new ArgumentNullException(nameof(description));
 
         if (endDate <= startDate)
-            throw new ArgumentException("BitiÅŸ tarihi baÅŸlangÄ±Ã§ tarihinden sonra olmalÄ±dÄ±r.");
+            throw new ArgumentException("Bitiş tarihi başlangıç tarihinden sonra olmalıdır.");
 
         StartDate = startDate;
         EndDate = endDate;
@@ -18273,7 +18273,7 @@ public class BeachEvent : BaseEntity
         Description = description ?? Description;
 
         if (endDate <= startDate)
-            throw new ArgumentException("BitiÅŸ tarihi baÅŸlangÄ±Ã§ tarihinden sonra olmalÄ±dÄ±r.");
+            throw new ArgumentException("Bitiş tarihi başlangıç tarihinden sonra olmalıdır.");
 
         StartDate = startDate;
         EndDate = endDate;
@@ -18356,7 +18356,7 @@ public class Reservation : BaseEntity
         BeachId = beachId;
         TenantId = tenantId;
         ReservationDate = reservationDate;
-        GuestCount = guestCount > 0 ? guestCount : throw new ArgumentException("Misafir sayÄ±sÄ± 0'dan bÃ¼yÃ¼k olmalÄ±.");
+        GuestCount = guestCount > 0 ? guestCount : throw new ArgumentException("Misafir sayısı 0'dan büyük olmalı.");
         TotalPrice = totalPrice;
         Notes = notes;
     }
@@ -18384,7 +18384,7 @@ public class Reservation : BaseEntity
     public void Cancel(string? reason = null)
     {
         if (Status == ReservationStatus.Completed || Status == ReservationStatus.NoShow)
-            throw new InvalidOperationException("TamamlanmÄ±ÅŸ veya gelmemiÅŸ rezervasyonlar iptal edilemez.");
+            throw new InvalidOperationException("Tamamlanmış veya gelmemiş rezervasyonlar iptal edilemez.");
 
         Status = ReservationStatus.Cancelled;
         StatusNote = reason;
@@ -18394,7 +18394,7 @@ public class Reservation : BaseEntity
     public void MarkAsNoShow()
     {
         if (Status != ReservationStatus.Approved)
-            throw new InvalidOperationException("Sadece onaylanmÄ±ÅŸ rezervasyonlar 'gelmedi' olarak iÅŸaretlenebilir.");
+            throw new InvalidOperationException("Sadece onaylanmış rezervasyonlar 'gelmedi' olarak işaretlenebilir.");
 
         Status = ReservationStatus.NoShow;
         SetUpdated();
@@ -18403,7 +18403,7 @@ public class Reservation : BaseEntity
     public void MarkAsCompleted()
     {
         if (Status != ReservationStatus.Approved)
-            throw new InvalidOperationException("Sadece onaylanmÄ±ÅŸ rezervasyonlar tamamlanabilir.");
+            throw new InvalidOperationException("Sadece onaylanmış rezervasyonlar tamamlanabilir.");
 
         Status = ReservationStatus.Completed;
         SetUpdated();
@@ -18442,7 +18442,7 @@ public class Review : BaseEntity
         BeachId = beachId;
         Rating = rating is >= 1 and <= 5
             ? rating
-            : throw new ArgumentException("Puan 1 ile 5 arasÄ±nda olmalÄ±dÄ±r.");
+            : throw new ArgumentException("Puan 1 ile 5 arasında olmalıdır.");
         Comment = comment ?? throw new ArgumentNullException(nameof(comment));
     }
 
@@ -18453,9 +18453,9 @@ public class Review : BaseEntity
     {
         Rating = rating is >= 1 and <= 5
             ? rating
-            : throw new ArgumentException("Puan 1 ile 5 arasÄ±nda olmalÄ±dÄ±r.");
+            : throw new ArgumentException("Puan 1 ile 5 arasında olmalıdır.");
         Comment = comment ?? Comment;
-        IsApproved = false; // GÃ¼ncelleme sonrasÄ± tekrar onay beklesin
+        IsApproved = false; // Güncelleme sonrası tekrar onay beklesin
         SetUpdated();
     }
 }
@@ -18777,18 +18777,18 @@ public class DomainException : Exception
 public class NotFoundException : DomainException
 {
     public NotFoundException(string entityName, object key)
-        : base($"{entityName} bulunamadÄ±. (Id: {key})", "NOT_FOUND") { }
+        : base($"{entityName} bulunamadı. (Id: {key})", "NOT_FOUND") { }
 }
 
 public class UnauthorizedException : DomainException
 {
-    public UnauthorizedException(string message = "Bu iÅŸlem iÃ§in yetkiniz yok.")
+    public UnauthorizedException(string message = "Bu işlem için yetkiniz yok.")
         : base(message, "UNAUTHORIZED") { }
 }
 
 public class ForbiddenException : DomainException
 {
-    public ForbiddenException(string message = "Bu kaynaÄŸa eriÅŸim yasak.")
+    public ForbiddenException(string message = "Bu kaynağa erişim yasak.")
         : base(message, "FORBIDDEN") { }
 }
 
@@ -18797,7 +18797,7 @@ public class ValidationException : DomainException
     public List<string> Errors { get; }
 
     public ValidationException(List<string> errors)
-        : base("DoÄŸrulama hatalarÄ± var.", "VALIDATION_ERROR")
+        : base("Doğrulama hataları var.", "VALIDATION_ERROR")
     {
         Errors = errors;
     }
@@ -18812,24 +18812,24 @@ public class BusinessRuleException : DomainException
 public class TenantLimitExceededException : DomainException
 {
     public TenantLimitExceededException(string limitName)
-        : base($"Plan limitiniz aÅŸÄ±ldÄ±: {limitName}. LÃ¼tfen planÄ±nÄ±zÄ± yÃ¼kseltin.", "LIMIT_EXCEEDED") { }
+        : base($"Plan limitiniz aşıldı: {limitName}. Lütfen planınızı yükseltin.", "LIMIT_EXCEEDED") { }
 }
 === C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.Domain\Interfaces\ICacheService.cs ===
-// Bu dosya artÄ±k kullanÄ±lmÄ±yor.
-// ICacheService â†’ BeachRehberi.Application.Common.Interfaces.ICacheService
-// Silmek yerine boÅŸ bÄ±rakÄ±ldÄ± (derleme hatasÄ± vermemesi iÃ§in namespace korundu).
+// Bu dosya artık kullanılmıyor.
+// ICacheService → BeachRehberi.Application.Common.Interfaces.ICacheService
+// Silmek yerine boş bırakıldı (derleme hatası vermemesi için namespace korundu).
 
 namespace BeachRehberi.Domain.Interfaces;
 
-// Intentionally empty â€” use BeachRehberi.Application.Common.Interfaces.ICacheService
+// Intentionally empty — use BeachRehberi.Application.Common.Interfaces.ICacheService
 === C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.Domain\Interfaces\ICurrentUserService.cs ===
-// Bu dosya artÄ±k kullanÄ±lmÄ±yor.
-// ICurrentUserService â†’ BeachRehberi.Application.Common.Interfaces.ICurrentUserService
-// Silmek yerine boÅŸ bÄ±rakÄ±ldÄ± (derleme hatasÄ± vermemesi iÃ§in namespace korundu).
+// Bu dosya artık kullanılmıyor.
+// ICurrentUserService → BeachRehberi.Application.Common.Interfaces.ICurrentUserService
+// Silmek yerine boş bırakıldı (derleme hatası vermemesi için namespace korundu).
 
 namespace BeachRehberi.Domain.Interfaces;
 
-// Intentionally empty â€” use BeachRehberi.Application.Common.Interfaces.ICurrentUserService
+// Intentionally empty — use BeachRehberi.Application.Common.Interfaces.ICurrentUserService
 === C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.Domain\Interfaces\IRepository.cs ===
 using System.Linq.Expressions;
 using BeachRehberi.Domain.Common;
@@ -18838,7 +18838,7 @@ namespace BeachRehberi.Domain.Interfaces;
 
 public interface IRepository<T> where T : BaseEntity
 {
-    // â”€â”€ Okuma â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Okuma ────────────────────────────────────────────────────────────────
     Task<T?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<T>> GetAllAsync(CancellationToken cancellationToken = default);
@@ -18860,11 +18860,11 @@ public interface IRepository<T> where T : BaseEntity
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Ham IQueryable eriÅŸimi â€” include, pagination gibi Ã¶zel sorgular iÃ§in.
+    /// Ham IQueryable erişimi — include, pagination gibi özel sorgular için.
     /// </summary>
     IQueryable<T> Query();
 
-    // â”€â”€ Yazma â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Yazma ─────────────────────────────────────────────────────────────────
     Task AddAsync(T entity, CancellationToken cancellationToken = default);
 
     Task AddRangeAsync(
@@ -18924,7 +18924,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyTitleAttribute("BeachRehberi.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 
-// MSBuild WriteCodeFragment sÄ±nÄ±fÄ± tarafÄ±ndan oluÅŸturuldu.
+// MSBuild WriteCodeFragment sınıfı tarafından oluşturuldu.
 
 === C:\Users\akMuratNET\Desktop\BeachGo\BeachGo-ReactWeb\BeachRehberi.Domain\obj\Debug\net8.0\BeachRehberi.Domain.GlobalUsings.g.cs ===
 // <auto-generated/>
@@ -18948,7 +18948,7 @@ public record Money
     public Money(decimal amount, string currency = "TRY")
     {
         if (amount < 0)
-            throw new ArgumentException("Para miktarÄ± negatif olamaz.", nameof(amount));
+            throw new ArgumentException("Para miktarı negatif olamaz.", nameof(amount));
 
         Amount = amount;
         Currency = currency ?? "TRY";
@@ -18960,7 +18960,7 @@ public record Money
     public Money Add(Money other)
     {
         if (Currency != other.Currency)
-            throw new InvalidOperationException("FarklÄ± para birimleri toplanamaz.");
+            throw new InvalidOperationException("Farklı para birimleri toplanamaz.");
         return new Money(Amount + other.Amount, Currency);
     }
 
@@ -19009,8 +19009,8 @@ BeachDbContextModelSnapshot.cs
     "ExpiryDays": 30
   },
   "Auth": {
-    "ValidationErrorMessage": "DoÄŸrulama hatalarÄ± var.",
-    "ServerErrorMessage": "Sunucu hatasÄ± oluÅŸtu."
+    "ValidationErrorMessage": "Doğrulama hataları var.",
+    "ServerErrorMessage": "Sunucu hatası oluştu."
   },
   "Logging": {
     "LogLevel": {
@@ -19054,8 +19054,8 @@ BeachDbContextModelSnapshot.cs
     "RefreshTokenExpiryDays": 30
   },
   "Auth": {
-    "ValidationErrorMessage": "DoÄŸrulama hatalarÄ± var.",
-    "ServerErrorMessage": "Sunucu hatasÄ± oluÅŸtu."
+    "ValidationErrorMessage": "Doğrulama hataları var.",
+    "ServerErrorMessage": "Sunucu hatası oluştu."
   },
   "Stripe": {
     "PublishableKey": "YOUR_STRIPE_PUBLISHABLE_KEY",
@@ -19123,8 +19123,8 @@ BeachDbContextModelSnapshot.cs
     "RefreshTokenExpiryDays": 30
   },
   "Auth": {
-    "ValidationErrorMessage": "DoÄŸrulama hatalarÄ± var.",
-    "ServerErrorMessage": "Sunucu hatasÄ± oluÅŸtu."
+    "ValidationErrorMessage": "Doğrulama hataları var.",
+    "ServerErrorMessage": "Sunucu hatası oluştu."
   },
   "Stripe": {
     "PublishableKey": "YOUR_STRIPE_PUBLISHABLE_KEY",
@@ -19186,8 +19186,8 @@ BeachDbContextModelSnapshot.cs
     "RefreshTokenExpiryDays": 30
   },
   "Auth": {
-    "ValidationErrorMessage": "DoÄŸrulama hatalarÄ± var.",
-    "ServerErrorMessage": "Sunucu hatasÄ± oluÅŸtu."
+    "ValidationErrorMessage": "Doğrulama hataları var.",
+    "ServerErrorMessage": "Sunucu hatası oluştu."
   },
   "Stripe": {
     "PublishableKey": "YOUR_STRIPE_PUBLISHABLE_KEY",
@@ -19249,8 +19249,8 @@ BeachDbContextModelSnapshot.cs
     "RefreshTokenExpiryDays": 30
   },
   "Auth": {
-    "ValidationErrorMessage": "DoÄŸrulama hatalarÄ± var.",
-    "ServerErrorMessage": "Sunucu hatasÄ± oluÅŸtu."
+    "ValidationErrorMessage": "Doğrulama hataları var.",
+    "ServerErrorMessage": "Sunucu hatası oluştu."
   },
   "Stripe": {
     "PublishableKey": "YOUR_STRIPE_PUBLISHABLE_KEY",
@@ -19314,9 +19314,9 @@ using BeachRehberi.Domain.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 // 1. JWT SECRET (Must be provided in production)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 var jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET")
                 ?? builder.Configuration["Jwt:SecretKey"];
 
@@ -19328,9 +19328,9 @@ if (string.IsNullOrEmpty(jwtSecret) || (builder.Environment.IsProduction() && jw
 if (jwtSecret.Length < 32)
     throw new InvalidOperationException("JWT Secret must be at least 32 characters long.");
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 // DATABASE CONFIGURATION (SQLite)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 var dbConn = builder.Configuration.GetConnectionString("DefaultConnection")
              ?? "Data Source=beachgo.db";
 builder.Services.AddDbContext<BeachDbContext>(options =>
@@ -19387,24 +19387,24 @@ if (paymentProvider == "Iyzipay" || paymentProvider == "PayTR") {
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IGuestReservationService, GuestReservationService>();builder.Services.AddScoped<IStoryService, StoryService>();
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// 5. MAPSTER â€“ IMapper DI
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
+// 5. MAPSTER – IMapper DI
+// ─────────────────────────────────────────
 MapsterConfig.Register();
 var mapsterConfig = TypeAdapterConfig.GlobalSettings;
 mapsterConfig.Scan(typeof(Program).Assembly);
 builder.Services.AddSingleton(mapsterConfig);
 builder.Services.AddScoped<IMapper, ServiceMapper>();
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 // 6. MEDIATR
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 // 7. FLUENT VALIDATION
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -19413,9 +19413,9 @@ builder.Services.AddControllers()
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 // 8. RATE LIMITING (Production Grade)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -19438,9 +19438,9 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 // 9. JWT AUTHENTICATION & AUTHORIZATION POLICIES
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -19475,9 +19475,9 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("BusinessOnly", policy => policy.RequireRole(UserRoles.Business, UserRoles.Admin));
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 // 10. SWAGGER + JWT AUTHORIZE BUTONU
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -19485,7 +19485,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "BeachRehberi API",
         Version = "v1",
-        Description = "BeachGo â€“ Plaj Rehberi REST API"
+        Description = "BeachGo – Plaj Rehberi REST API"
     });
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -19495,7 +19495,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Token deÄŸerini girin (Bearer prefix otomatik eklenir).\nÃ–rnek: eyJhbGciOiJIUzI1NiIs..."
+        Description = "Token değerini girin (Bearer prefix otomatik eklenir).\nÖrnek: eyJhbGciOiJIUzI1NiIs..."
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -19514,9 +19514,9 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 // 11. CORS
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -19548,18 +19548,18 @@ builder.Services.AddCors(options =>
     });
 });
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 // BUILD
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 var app = builder.Build();
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// MIDDLEWARE PIPELINE (sÄ±ralama kritik!)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
+// MIDDLEWARE PIPELINE (sıralama kritik!)
+// ─────────────────────────────────────────
 
-app.UseForwardedHeaders(); // Proxy/Nginx reverse yÃ¶nlendirmeleri iÃ§in gerekli
+app.UseForwardedHeaders(); // Proxy/Nginx reverse yönlendirmeleri için gerekli
 
-// Security, HTTPS redirect & HSTS: Production korumalarÄ±
+// Security, HTTPS redirect & HSTS: Production korumaları
 if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
@@ -19586,7 +19586,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// CORS: Authentication'dan Ã–NCE olmalÄ±
+// CORS: Authentication'dan ÖNCE olmalı
 app.UseCors("AllowFrontend");
 app.UseRateLimiter();
 
@@ -19600,9 +19600,9 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 // AUTO MIGRATE
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<BeachDbContext>();
@@ -19715,8 +19715,8 @@ app.Run();
     "RefreshTokenExpiryDays": 30
   },
   "Auth": {
-    "ValidationErrorMessage": "DoÄŸrulama hatalarÄ± var.",
-    "ServerErrorMessage": "Sunucu hatasÄ± oluÅŸtu."
+    "ValidationErrorMessage": "Doğrulama hataları var.",
+    "ServerErrorMessage": "Sunucu hatası oluştu."
   },
   "Stripe": {
     "PublishableKey": "YOUR_STRIPE_PUBLISHABLE_KEY",
@@ -29358,3 +29358,4 @@ export const Toaster: React.FC<ToasterProps> = ({
     "tailwindcss": "^3.4.1"
   }
 }
+

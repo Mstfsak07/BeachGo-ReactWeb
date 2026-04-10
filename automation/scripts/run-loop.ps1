@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 param([string]$ApiKey = "")
 $ErrorActionPreference = "Continue"
 if ($ApiKey) {
@@ -13,12 +13,17 @@ $OutputEncoding            = [System.Text.Encoding]::UTF8
 $scriptsDir    = $PSScriptRoot
 $automationDir = Split-Path $scriptsDir -Parent
 $queueDir      = Join-Path $automationDir "queue"
+
+# Queue dizini yoksa oluştur
+if (-not (Test-Path $queueDir)) {
+    New-Item -ItemType Directory -Path $queueDir -Force | Out-Null
+}
+
 $logFile       = Join-Path $queueDir "automation.log"
 $historyFile   = Join-Path $queueDir "history.log"
-$statePath       = Join-Path $queueDir "state.json"
-$resultPath      = Join-Path $queueDir "result.txt"
-$instructionPath        = Join-Path $queueDir "instruction.txt"
-$phasesFile      = Join-Path $queueDir "phases.txt"
+$statePath     = Join-Path $queueDir "state.json"
+$resultPath    = Join-Path $queueDir "result.txt"
+$phasesFile    = Join-Path $queueDir "phases.txt"
 $instructionFile = Join-Path $queueDir "instruction.txt"
 
 $MAX_ITERATIONS      = 50
@@ -26,7 +31,12 @@ $MAX_CONSECUTIVE_ERR = 3
 $MAX_ANALYZER_ERR    = 3
 $ANALYZER_MODEL      = if ($env:BEACHGO_ANALYZER_MODEL) { $env:BEACHGO_ANALYZER_MODEL } else { "claude-sonnet-4-6" }
 
-# ─── GLOBAL PROCESS TRACKING ────────────────────────────────────
+# Environment variables'ları baştan set et
+$env:ANTHROPIC_API_KEY  = $env:BEACHGO_ANTHROPIC_KEY
+$env:ANTHROPIC_BASE_URL = "http://127.0.0.1:8045"
+$env:CLAUDE_CONFIG_DIR  = "$env:USERPROFILE\.claude-antigravity"
+
+# --- GLOBAL PROCESS TRACKING ------------------------------------
 $script:BackendProcess = $null
 
 function Write-Log($msg) {
@@ -40,31 +50,31 @@ function Write-History($msg) {
     Add-Content -Path $historyFile -Value $line -Encoding UTF8
 }
 
-# ─── CLEANUP: TÃ¼m child process'leri Ã¶ldÃ¼r ──────────────────────
+# --- CLEANUP: Tüm child process'leri öldür ----------------------
 function Invoke-Cleanup {
     Write-Log "Cleanup baslatiliyor (orphan process temizleme)..."
 
     # Backend process
     if ($script:BackendProcess -and -not $script:BackendProcess.HasExited) {
         try {
-            $script:BackendProcess.Kill($true)   # recursive = true â†’ child'ları da Ã¶ldÃ¼r
+            $script:BackendProcess.Kill($true)   # recursive = true -> child'lari da oldur
             Write-Log "Backend process durduruldu (PID=$($script:BackendProcess.Id))."
         } catch {
             Write-Log "Backend process durdurulamadi: $_"
         }
     }
 
-    # Kaçan node.exe process'leri
+    # Kacan node.exe process'leri
     Get-Process -Name "node" -ErrorAction SilentlyContinue | ForEach-Object {
         try { $_.Kill(); Write-Log "Orphan node.exe durduruldu (PID=$($_.Id))." } catch {}
     }
 
-    # Kaçan gemini process'leri
+    # Kacan gemini process'leri
     Get-Process -Name "gemini" -ErrorAction SilentlyContinue | ForEach-Object {
         try { $_.Kill(); Write-Log "Orphan gemini durduruldu (PID=$($_.Id))." } catch {}
     }
 
-    # dotnet run ile başlatılan backend'ler
+    # dotnet run ile baslatilan backend'ler
     Get-CimInstance Win32_Process -Filter "Name = 'dotnet.exe'" -ErrorAction SilentlyContinue |
     Where-Object { $_.CommandLine -match "run" } | ForEach-Object {
         try { Stop-Process -Id $_.ProcessId -Force; Write-Log "Orphan dotnet process durduruldu (PID=$($_.ProcessId))." } catch {}
@@ -76,7 +86,7 @@ function Invoke-Cleanup {
     Write-Log "Cleanup tamamlandi."
 }
 
-# ─── ORPHAN CLEANUP: PowerShell kapanınca çalışır ───────────────
+# --- ORPHAN CLEANUP: PowerShell kapaninca calisir ---------------
 Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
     Invoke-Cleanup
 } | Out-Null
@@ -93,7 +103,7 @@ try {
     Write-Log "Ctrl+C handler atanamadi (non-interactive shell), devam ediliyor."
 }
 
-# ─── BACKEND YÃ–NETÄ°MÄ° ───────────────────────────────────────────
+# --- BACKEND YÖNETİMİ -------------------------------------------
 function Stop-Backend {
     if ($script:BackendProcess -and -not $script:BackendProcess.HasExited) {
         try {
@@ -110,7 +120,7 @@ function Stop-Backend {
 function Start-Backend {
     param([string]$RepoRoot)
 
-    # Varsa Ã¶nce durdur
+    # Varsa önce durdur
     Stop-Backend
 
     # API projesini bul
@@ -150,7 +160,7 @@ function Set-SP {
     else { $Obj | Add-Member -NotePropertyName $Name -NotePropertyValue $Value -Force }
 }
 
-# ─── BUILD HATA KONTROLÃœ ────────────────────────────────────────
+# --- BUILD HATA KONTROLÜ ----------------------------------------
 function Test-BuildSuccess {
     param(
         [string]$ResultText,
@@ -161,7 +171,7 @@ function Test-BuildSuccess {
     if ($ExitCode -ne 0) { return $false }
     if ($BuildExitCode -ne $null -and $BuildExitCode -ne 0) { return $false }
     if ([string]::IsNullOrWhiteSpace($ResultText)) { return $false }
-    # result.txt'te build hatası varsa false
+    # result.txt'te build hatasi varsa false
     if ($ResultText -imatch "Build FAILED|Error\(s\)|error CS[0-9]|HATALI|BUILD: HATALI|timeout oldu|AttachConsole failed|Executor failed") { return $false }
     return $true
 }
@@ -278,15 +288,55 @@ function Test-IsQuotaError {
     return $Text -match "QUOTA_EXHAUSTED|RATE_LIMIT_EXCEEDED|429|RESOURCE_EXHAUSTED|All accounts exhausted|quotaReset|Too Many Requests|rate_limit_error"
 }
 
+function Get-MojibakeScore {
+    param([string]$Text)
+
+    if ([string]::IsNullOrEmpty($Text)) { return 0 }
+    return ([regex]::Matches($Text, 'Ã|Ä|Å|â|�|ğŸ|Â')).Count
+}
+
+function Repair-MojibakeText {
+    param([string]$Text)
+
+    if ([string]::IsNullOrEmpty($Text)) { return $Text }
+
+    $current = $Text
+    for ($round = 0; $round -lt 3; $round++) {
+        $originalScore = Get-MojibakeScore $current
+        if ($originalScore -eq 0) { break }
+
+        $candidates = @()
+        foreach ($encName in @("windows-1254", "windows-1252")) {
+            try {
+                $enc = [System.Text.Encoding]::GetEncoding($encName)
+                $candidate = [System.Text.Encoding]::UTF8.GetString($enc.GetBytes($current))
+                $candidates += [PSCustomObject]@{
+                    Text  = $candidate
+                    Score = Get-MojibakeScore $candidate
+                }
+            } catch {}
+        }
+
+        $best = $candidates | Sort-Object Score | Select-Object -First 1
+        if ($best -and $best.Score -lt $originalScore) {
+            $current = $best.Text
+        } else {
+            break
+        }
+    }
+
+    return $current
+}
+
 function Invoke-Analyzer {
     Write-Log "Analyzer baslatiliyor ($ANALYZER_MODEL)..."
 
-    # Dosya içeriklerini oku ve prompt'a gÃ¶m ─ API call'un tool erişimi yok
-    $resultContent = if (Test-Path $resultPath)    { Get-Content $resultPath -Raw -Encoding UTF8 } else { "(empty)" }
+    # Dosya iceriklerini oku ve prompt'a gom - API call'un tool erisimi yok
+    $resultContent = if (Test-Path $resultPath)    { Repair-MojibakeText (Get-Content $resultPath -Raw -Encoding UTF8) } else { "(empty)" }
     $stateContent  = if (Test-Path $statePath)     { Get-Content $statePath  -Raw -Encoding UTF8 } else { "(empty)" }
-    $instrContent  = if (Test-Path $instructionFile) { Get-Content $instructionFile -Raw -Encoding UTF8 } else { "(empty)" }
+    $instrContent  = if (Test-Path $instructionFile) { Repair-MojibakeText (Get-Content $instructionFile -Raw -Encoding UTF8) } else { "(empty)" }
 
-    # Ã‡ok uzun sonuçları kırp (token limiti aşmasın)
+    # Cok uzun sonuclari kirp (token limiti asmasin)
     if ($resultContent.Length -gt 3000) { $resultContent = $resultContent.Substring(0, 3000) + "`n...(truncated)" }
 
     $prompt = @"
@@ -342,17 +392,13 @@ or
             Start-Sleep -Seconds 15
         }
         try {
-        $env:ANTHROPIC_API_KEY  = $env:BEACHGO_ANTHROPIC_KEY
-        $env:ANTHROPIC_BASE_URL = "http://127.0.0.1:8045"
-        $env:CLAUDE_CONFIG_DIR  = "$env:USERPROFILE\.claude-antigravity"
-
         $body = @{
             model      = $ANALYZER_MODEL
             max_tokens = 200
             messages   = @(@{ role = "user"; content = $prompt })
         } | ConvertTo-Json -Depth 10
 
-        $response = Invoke-RestMethod `
+        $response = Invoke-WebRequest `
             -Uri "http://127.0.0.1:8045/v1/messages" `
             -Method Post `
             -Headers @{
@@ -360,9 +406,31 @@ or
                 "anthropic-version" = "2023-06-01"
                 "content-type"      = "application/json"
             } `
-            -Body ([System.Text.Encoding]::UTF8.GetBytes($body))
+            -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) `
+            -UseBasicParsing
 
-        $raw = $response.content[0].text
+        $stream = $response.RawContentStream
+        if ($stream -eq $null) {
+            Write-Log "Response stream null"
+            continue
+        }
+        $stream.Position = 0
+        $reader = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::UTF8, $true)
+        $responseJson = $reader.ReadToEnd()
+        $reader.Dispose()
+        
+        if ([string]::IsNullOrWhiteSpace($responseJson)) {
+            Write-Log "Response JSON boş"
+            continue
+        }
+        
+        $parsedResponse = $responseJson | ConvertFrom-Json
+        if ($parsedResponse -eq $null -or $parsedResponse.content -eq $null) {
+            Write-Log "Response içeriği parse edilemedi"
+            continue
+        }
+        
+        $raw = Repair-MojibakeText $parsedResponse.content[0].text
         if ($raw -match '(?s)\{.*\}') {
             $parsed = $Matches[0] | ConvertFrom-Json
             # Sadece gecerli decision degerlerini kabul et
@@ -408,7 +476,7 @@ function Invoke-PlannerStep {
     Write-Log "Planner step tamamlandi."
 }
 
-# ─── INITIALIZER KONTROLU ───────────────────────────────────────
+# --- INITIALIZER KONTROLU ---------------------------------------
 if (-not (Test-Path $phasesFile)) {
     Write-Log "phases.txt bulunamadi. Initializer calistiriliyor..."
     & (Join-Path $scriptsDir "run-initializer.ps1")
@@ -425,7 +493,7 @@ $repoRoot = Split-Path $automationDir -Parent
 
 Write-Log "STATE BASLANGIC: iteration=$($state.current_iteration) status=$($state.status) is_complete=$($state.is_complete)"
 
-# phases.txt'ten toplam faz sayısını oku ve state'e yaz
+# phases.txt'ten toplam faz sayisini oku ve state'e yaz
 $phaseCount = 0
 if (Test-Path $phasesFile) {
     $phaseCount = (Select-String -Path $phasesFile -Pattern "^FAZ \d+:").Count
@@ -435,7 +503,7 @@ Set-SP $state "total_phases" $phaseCount
 Save-State $state
 Write-Log "Toplam faz sayisi: $phaseCount (phases.txt'ten okundu)"
 
-# ─── ANA DONGU ──────────────────────────────────────────────────
+# --- ANA DONGU --------------------------------------------------
 $analyzerErrorCount = 0
 
 $startIteration = 1
@@ -463,11 +531,11 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
         break
     }
 
-    # 1) Backend'i durdur ─ Executor kod yazarken restart etmesin
+    # 1) Backend'i durdur - Executor kod yazarken restart etmesin
     Write-Log "Backend durduruluyor (Executor calisacak)..."
     Stop-Backend
 
-    # 2) Executor'i calistir (try/catch ile ─ executor hatasi loop'u kirmaz)
+    # 2) Executor'i calistir (try/catch ile - executor hatasi loop'u kirmaz)
     $executorFailed = $false
     try {
         & (Join-Path $scriptsDir "run-executor.ps1")
@@ -510,7 +578,7 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
         Write-Log "Build hatasi var. Backend baslatilmadi."
     }
 
-    # 4) Analyzer calistir ─ sadece SYSTEM_COMPLETE donerse dur
+    # 4) Analyzer calistir - sadece SYSTEM_COMPLETE donerse dur
     #    Verify/iterate pattern: Analyzer hem ilerleme karari hem de kalite kontrolu yapar
     Write-Host "ANALYZER BASLIYOR"
     $analysis = Invoke-Analyzer
@@ -579,7 +647,7 @@ for ($i = $startIteration; $i -le $MAX_ITERATIONS; $i++) {
     Start-Sleep -Seconds 2
 }
 
-# ─── CIKIS CLEANUP ──────────────────────────────────────────────
+# --- CIKIS CLEANUP ----------------------------------------------
 Stop-Backend
 
 $finalState = Read-State
@@ -600,3 +668,4 @@ if ($finalState.is_complete -eq $true -or $finalState.status -eq "done") {
     Set-SP $finalState "status" "halted"
     Save-State $finalState
 }
+

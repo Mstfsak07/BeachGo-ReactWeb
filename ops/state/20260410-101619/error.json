@@ -1,0 +1,8 @@
+{
+  "status": "error",
+  "message": "Phase phase-2 did not complete successfully.",
+  "details": {
+    "phase": "phase-2"
+  },
+  "timestamp": "2026-04-10T07:30:25.624479+00:00"
+}

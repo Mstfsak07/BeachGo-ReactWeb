@@ -1,0 +1,44 @@
+{
+  "phase_id": "phase-2",
+  "title": "Correctness And Security",
+  "status": "failed",
+  "attempts_used": 3,
+  "max_retries": 3,
+  "timestamp": "2026-04-10T08:38:29.453644+00:00",
+  "task_results": [
+    {
+      "task_id": "phase-2-task-2",
+      "title": "accessToken'ı localStorage'dan çıkar",
+      "executor": "gemini",
+      "attempt": 1,
+      "status": "failed",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-2\\phase-2-task-2\\attempt-1\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-2\\phase-2-task-2\\attempt-1\\stderr.log",
+      "exit_code": 1,
+      "message": "gemini exited with code 1"
+    },
+    {
+      "task_id": "phase-2-task-2",
+      "title": "accessToken'ı localStorage'dan çıkar",
+      "executor": "gemini",
+      "attempt": 2,
+      "status": "failed",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-2\\phase-2-task-2\\attempt-2\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-2\\phase-2-task-2\\attempt-2\\stderr.log",
+      "exit_code": 1,
+      "message": "gemini exited with code 1"
+    },
+    {
+      "task_id": "phase-2-task-2",
+      "title": "accessToken'ı localStorage'dan çıkar",
+      "executor": "gemini",
+      "attempt": 3,
+      "status": "failed",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-2\\phase-2-task-2\\attempt-3\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-2\\phase-2-task-2\\attempt-3\\stderr.log",
+      "exit_code": 1,
+      "message": "gemini exited with code 1"
+    }
+  ],
+  "verification_results": []
+}

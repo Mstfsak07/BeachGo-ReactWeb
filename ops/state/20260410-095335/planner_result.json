@@ -1,0 +1,17 @@
+{
+  "name": "claude",
+  "command": [
+    "powershell",
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-Command",
+    "$prompt = Get-Content -LiteralPath 'C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\20260410-095335\\prompt.txt' -Raw -Encoding UTF8\n$exe = 'C:\\nvm4w\\nodejs\\claude.CMD'\n$args = @('--dangerously-skip-permissions')\n& $exe @args -p $prompt\nexit $LASTEXITCODE"
+  ],
+  "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb",
+  "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\20260410-095335\\planner.stdout.log",
+  "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\20260410-095335\\planner.stderr.log",
+  "exit_code": 0,
+  "status": "dry-run",
+  "message": "Command not executed because mode=dry-run"
+}

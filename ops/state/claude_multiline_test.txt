@@ -1,0 +1,2 @@
+You are a strict assistant.
+Return only: OK_MULTILINE

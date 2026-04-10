@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 
 const ReservationCheck = () => {
   const [code, setCode] = useState('');
+  const [email, setEmail] = useState('');
   const [reservation, setReservation] = useState(null);
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -35,24 +36,24 @@ const ReservationCheck = () => {
 
   const handleCheck = async (e) => {
     e.preventDefault();
-    if (!code.trim()) return;
+    if (!code.trim() || !email.trim()) return;
 
     setLoading(true);
     setReservation(null);
     try {
-      const data = await checkReservation(code);
+      const data = await checkReservation(code, email);
 
       if (data && data.confirmationCode) {
         setReservation(data);
         setMsg('');
       } else {
-        setMsg('🔍 Bu kod ile kayıtlı bir rezervasyon bulunamadı.');
+        setMsg('🔍 Bu kod ve e-posta ile kayıtlı bir rezervasyon bulunamadı.');
       }
     } catch (err) {
       if (err.response && err.response.status === 404) {
-        setMsg('🔍 Bu kod ile kayıtlı bir rezervasyon bulunamadı.');
+        setMsg('🔍 Bu kod ve e-posta ile kayıtlı bir rezervasyon bulunamadı.');
       } else {
-        setMsg('❌ Sorgulama sırasında bir hata oluştu. Kodun doğru olduğundan emin olun.');
+        setMsg('❌ Sorgulama sırasında bir hata oluştu. Bilgilerin doğru olduğundan emin olun.');
       }
     } finally {
       setLoading(false);
@@ -68,7 +69,7 @@ const ReservationCheck = () => {
 
     setCancelLoading(true);
     try {
-      const result = await cancelGuestReservation(reservation.confirmationCode);
+      const result = await cancelGuestReservation(reservation.confirmationCode, email);
       if (result) {
         toast.success('Rezervasyon başarıyla iptal edildi.');
         setReservation({ ...reservation, status: 'Cancelled' });

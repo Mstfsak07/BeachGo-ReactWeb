@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { refreshAccessToken } from './token';
+import { getAccessToken, refreshAccessToken } from './token';
 
 const baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -10,7 +10,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
+    const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -57,6 +57,7 @@ api.interceptors.response.use(
         const data = await refreshAccessToken();
         const { accessToken } = data;
         processQueue(null, accessToken);
+        originalRequest.headers = originalRequest.headers || {};
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {

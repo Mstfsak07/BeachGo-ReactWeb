@@ -467,11 +467,31 @@ class ReviewOrchestrator:
         }
 
     def has_valid_worker_result(self, output: str) -> bool:
+        return self.extract_worker_result(output) is not None
+
+    def extract_worker_result(self, output: str) -> str | None:
         stripped = output.strip()
         if not stripped:
+            return None
+        for line in stripped.splitlines():
+            marker = line.strip()
+            if marker == "RESULT: OK":
+                return "ok"
+            if marker == "RESULT: FAIL":
+                return "fail"
+        return None
+
+    def is_known_gemini_stderr_noise(self, error_output: str) -> bool:
+        normalized = error_output.strip()
+        if not normalized:
             return False
-        first_line = stripped.splitlines()[0].strip()
-        return first_line in {"RESULT: OK", "RESULT: FAIL"}
+        known_markers = (
+            "Unable to determine encoding for windows code page",
+            "AttachConsole failed",
+            "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)",
+            "YOLO mode is enabled. All tool calls will be automatically approved.",
+        )
+        return any(marker in normalized for marker in known_markers)
 
     def parse_json_response(self, raw: str) -> dict[str, Any]:
         parsed = self.safe_parse_json_response(raw)
@@ -707,7 +727,8 @@ class ReviewOrchestrator:
         if result.status == "success":
             output_path = Path(result.stdout_path)
             worker_output = read_text(output_path)
-            if self.is_unusable_executor_output(worker_output) or not self.has_valid_worker_result(worker_output):
+            worker_result = self.extract_worker_result(worker_output)
+            if self.is_unusable_executor_output(worker_output) or worker_result is None:
                 result = CommandResult(
                     name=result.name,
                     command=result.command,
@@ -717,6 +738,43 @@ class ReviewOrchestrator:
                     exit_code=result.exit_code,
                     status="failed",
                     message=f"{result.name} returned invalid worker output contract",
+                )
+            elif worker_result == "fail":
+                result = CommandResult(
+                    name=result.name,
+                    command=result.command,
+                    cwd=result.cwd,
+                    stdout_path=result.stdout_path,
+                    stderr_path=result.stderr_path,
+                    exit_code=result.exit_code,
+                    status="failed",
+                    message=f"{result.name} reported task failure",
+                )
+        elif executor == "gemini":
+            worker_output = read_text(Path(result.stdout_path))
+            worker_result = self.extract_worker_result(worker_output)
+            stderr_output = read_text(Path(result.stderr_path))
+            if worker_result == "ok" and self.is_known_gemini_stderr_noise(stderr_output):
+                result = CommandResult(
+                    name=result.name,
+                    command=result.command,
+                    cwd=result.cwd,
+                    stdout_path=result.stdout_path,
+                    stderr_path=result.stderr_path,
+                    exit_code=0,
+                    status="success",
+                    message="gemini produced a valid worker result despite known Windows CLI shutdown noise",
+                )
+            elif worker_result == "fail":
+                result = CommandResult(
+                    name=result.name,
+                    command=result.command,
+                    cwd=result.cwd,
+                    stdout_path=result.stdout_path,
+                    stderr_path=result.stderr_path,
+                    exit_code=result.exit_code,
+                    status="failed",
+                    message=f"{result.name} reported task failure",
                 )
         return TaskResult(
             task_id=task["task_id"],

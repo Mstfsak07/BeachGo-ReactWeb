@@ -3,13 +3,13 @@ import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, Copy, Search, Home, Calendar, Users, MapPin, CreditCard } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { mockPayGuestReservation } from '../services/reservationService';
+import { payGuestReservation } from '../services/reservationService';
 
 const ReservationSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
-  
+
   // Initialize state once so we can mutate it on mock pay
   const [resState, setResState] = useState(location.state);
   const [payLoading, setPayLoading] = useState(false);
@@ -31,12 +31,12 @@ const ReservationSuccess = () => {
     }
   };
 
-  const handleMockPay = async () => {
+  const handlePay = async () => {
     setPayLoading(true);
     try {
-      const res = await mockPayGuestReservation(confirmationCode);
+      const res = await payGuestReservation(confirmationCode);
       if (res && res.paymentStatus === 'Paid') {
-        toast.success('Ödeme işlemi (Mock) başarılı!');
+        toast.success('Ödeme işlemi başarılı!');
         setResState((prev) => ({ ...prev, paymentStatus: 'Paid' }));
       }
     } catch (err) {
@@ -51,7 +51,6 @@ const ReservationSuccess = () => {
     if (status === 'Failed') return <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Başarısız</span>;
     return <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Ödeme Bekliyor</span>;
   };
-
   return (
     <div className="min-h-screen bg-slate-50 pt-28 pb-20 px-4 flex justify-center items-start">
       <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
@@ -116,11 +115,11 @@ const ReservationSuccess = () => {
 
           {paymentStatus !== 'Paid' && (
             <button
-              onClick={handleMockPay}
+              onClick={handlePay}
               disabled={payLoading}
               className="w-full py-4 bg-emerald-500 text-white font-black rounded-xl uppercase tracking-widest text-sm shadow-xl transition-all flex items-center justify-center gap-2 hover:bg-emerald-600 disabled:opacity-50"
             >
-              <CreditCard size={18} /> {payLoading ? 'Ödeniyor...' : 'Ödemeyi Tamamla (Mock)'}
+              <CreditCard size={18} /> {payLoading ? 'Ödeniyor...' : 'Ödemeyi Tamamla'}
             </button>
           )}
 

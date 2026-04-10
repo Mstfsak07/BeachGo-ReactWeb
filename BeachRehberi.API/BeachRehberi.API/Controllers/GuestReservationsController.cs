@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using BeachRehberi.API.DTOs.Reservation;
 using BeachRehberi.API.Services;
@@ -59,23 +60,24 @@ public class GuestReservationsController : ControllerBase
     }
 
     [HttpGet("{confirmationCode}")]
-    public async Task<IActionResult> GetByConfirmationCode(string confirmationCode)
+    public async Task<IActionResult> GetByConfirmationCode(string confirmationCode, [FromQuery] string email)
     {
-        var result = await _guestReservationService.GetByConfirmationCodeAsync(confirmationCode);
+        var result = await _guestReservationService.GetByConfirmationCodeAsync(confirmationCode, email);
         return result.ToActionResult();
     }
 
     [HttpPost("cancel/{confirmationCode}")]
-    public async Task<IActionResult> Cancel(string confirmationCode)
+    [EnableRateLimiting("guest-cancel")]
+    public async Task<IActionResult> Cancel(string confirmationCode, [FromBody] CancelGuestReservationDto dto)
     {
-        var result = await _guestReservationService.CancelAsync(confirmationCode);
+        var result = await _guestReservationService.CancelAsync(confirmationCode, dto.Email);
         return result.ToActionResult();
     }
 
-    [HttpPost("mock-pay/{confirmationCode}")]
-    public async Task<IActionResult> MockPay(string confirmationCode)
+    [HttpPost("pay/{confirmationCode}")]
+    public async Task<IActionResult> Pay(string confirmationCode)
     {
-        var result = await _guestReservationService.MockPayAsync(confirmationCode);
+        var result = await _guestReservationService.ProcessPaymentAsync(confirmationCode);
         return result.ToActionResult();
     }
 }

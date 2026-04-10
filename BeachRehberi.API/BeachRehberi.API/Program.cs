@@ -44,14 +44,12 @@ if (jwtSecret.Length < 32)
     throw new InvalidOperationException("JWT Secret must be at least 32 characters long.");
 
 // ─────────────────────────────────────────
-// DATABASE CONFIGURATION (SQLite)
+// DATABASE CONFIGURATION (PostgreSQL)
 // ─────────────────────────────────────────
-var dbConn = builder.Configuration.GetConnectionString("DefaultConnection")
-             ?? "Data Source=beachgo.db";
+var dbConn = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<BeachDbContext>(options =>
 {
-    // PostgreSQL entegrasyonu
-    options.UseSqlite(dbConn);
+    options.UseNpgsql(dbConn);
 
     if (builder.Environment.IsDevelopment())
     {
@@ -98,7 +96,7 @@ else
     builder.Services.AddScoped<BeachRehberi.Application.Common.Interfaces.IEmailService, NoOpEmailService>();
 }
 builder.Services.AddScoped<IGuestReservationService, GuestReservationService>();
-builder.Services.AddScoped<IPaymentService, MockPaymentService>();
+builder.Services.AddScoped<IPaymentService, StripePaymentService>();
 
 // Provider Configurations
 // ...
@@ -144,6 +142,13 @@ builder.Services.AddRateLimiter(options =>
     {
         opt.Window = TimeSpan.FromMinutes(1);
         opt.PermitLimit = 20;
+        opt.QueueLimit = 0;
+    });
+
+    options.AddFixedWindowLimiter("guest-cancel", opt =>
+    {
+        opt.Window = TimeSpan.FromMinutes(15);
+        opt.PermitLimit = 5;
         opt.QueueLimit = 0;
     });
 });

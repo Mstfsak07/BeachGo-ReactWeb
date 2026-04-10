@@ -58,6 +58,14 @@ public static class ApiResponseExtensions
         if (result.Message.Contains("bulunamadı", StringComparison.OrdinalIgnoreCase) && !result.Message.Contains("token", StringComparison.OrdinalIgnoreCase))
             return new NotFoundObjectResult(response);
 
+        if (result.Message.Contains("desteklenmiyor", StringComparison.OrdinalIgnoreCase) || 
+            result.Message.Contains("henüz hazır değil", StringComparison.OrdinalIgnoreCase))
+            return new ObjectResult(response) { StatusCode = 501 };
+
+        if (result.Message.Contains("şu an ödeme alınamıyor", StringComparison.OrdinalIgnoreCase) ||
+            result.Message.Contains("geçici olarak", StringComparison.OrdinalIgnoreCase))
+            return new ObjectResult(response) { StatusCode = 503 };
+
         return new BadRequestObjectResult(response);
     }
 }

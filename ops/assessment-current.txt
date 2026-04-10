@@ -1,0 +1,25 @@
+code review raporunu oluşturuyorum.---
+
+İşte acımasız senior reviewer perspektifinden tam değerlendirme:
+
+**Her şey tamam mı?** Hayır. Ciddi yapısal sorunlar var.
+
+**Production'a hazır mı?** Kesinlikle hayır. 6 release bloklayan kritik var.
+
+**Mobile hazır mı?** Kısmen. Temel responsive yapı var ama safe area (notch), sanal klavye overflow ve rezervasyon wizard mobil testleri eksik. "Mobile hazır" diyebilmek için en az 2 haftanın gerekmesi lazım.
+
+---
+
+**Önce bunları çöz (sırayla):**
+
+1. **SQLite → PostgreSQL geç** ve `.db` dosyasını repodan sil — Veri kalıcılığı olmadan deployment anlamsız.
+
+2. **MockPaymentService'i kaldır** — Para almadan rezervasyon sistemi olmaz. Stripe webhook entegrasyonu tamamlanana kadar feature flag ile kapat.
+
+3. **Proje yapısını temizle** — İki ayrı `AuthController`, iki ayrı `Domain/Application` klasörü, `src/pages/` hem kökte hem `beach-ui/src/` altında. Hangisi aktif? docker-compose referans verdiği `./backend` dizini mevcut değil. Bu düzeltilmeden CI/CD kurulamaz.
+
+4. **Admin gelir hesabını gerçekle değiştir** — `totalReservations * 500m` iş kararlarını mahveder.
+
+5. **Guest iptal endpoint'ini koru** — 8 karakterlik confirmation code brute-force edilebilir, herkes başkasının rezervasyonunu iptal edebilir.
+
+6. **accessToken'ı localStorage'dan çıkar** — Backend'in HttpOnly cookie çalışması kasıtlı ve doğru. Ama access token hâlâ localStorage'da, XSS ile çalınabilir.

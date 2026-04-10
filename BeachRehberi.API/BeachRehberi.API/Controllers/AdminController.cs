@@ -27,10 +27,11 @@ namespace BeachRehberi.API.Controllers
             var totalUsers = await _context.BusinessUsers.CountAsync();
             var totalReservations = await _context.Reservations.CountAsync();
             var pendingBeaches = await _context.Beaches.CountAsync(b => !b.IsActive);
-            
-            // Ortalama sepet tutarı 500 TRY varsayımı üzerinden genel ciro hesabı 
-            // (gerçek senaryoda veritabanındaki rezervasyon ödemelerinden çekilebilir)
-            var revenue = totalReservations * 500m; 
+            var revenue = await _context.Reservations
+                .Where(r => r.PaymentStatus == "Paid" &&
+                            r.Status != ReservationStatus.Cancelled &&
+                            r.Status != ReservationStatus.Rejected)
+                .SumAsync(r => r.TotalPrice);
 
             return Ok(new {
                 totalBeaches,

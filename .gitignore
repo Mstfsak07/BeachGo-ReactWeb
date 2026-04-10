@@ -407,3 +407,6 @@ automation.zip/
 
 .claude
 .abacusai
+ops/local/
+ops/state/[0-9]*/
+ops/state/gemini-smoke.txt

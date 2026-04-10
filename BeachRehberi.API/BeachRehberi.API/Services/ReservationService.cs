@@ -8,19 +8,28 @@ using BeachRehberi.API.Models;
 using BeachRehberi.API.DTOs.Reservation;
 using BeachRehberi.API.Models.Enums;
 
+using Microsoft.Extensions.Configuration;
+
 namespace BeachRehberi.API.Services
 {
     public class ReservationService : IReservationService
     {
         private readonly BeachDbContext _context;
+        private readonly IConfiguration _config;
 
-        public ReservationService(BeachDbContext context)
+        public ReservationService(BeachDbContext context, IConfiguration config)
         {
             _context = context;
+            _config = config;
         }
 
         public async Task<ServiceResult<ReservationResponseDto>> CreateAsync(CreateReservationDto dto, int userId)
         {
+            // Ödeme sistemi kontrolü
+            var useReal = _config.GetValue<bool>("Features:UseRealPayment");
+            if (!useReal)
+                return ServiceResult<ReservationResponseDto>.Failure("Şu an ödeme sistemi devre dışı olduğundan rezervasyon yapılamıyor.", 503);
+
             if (dto.ReservationDate.Date < DateTime.UtcNow.Date)
                 return ServiceResult<ReservationResponseDto>.FailureResult("Geçmiş bir tarih için rezervasyon yapılamaz.");
 

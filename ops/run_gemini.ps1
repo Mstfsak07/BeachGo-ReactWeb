@@ -6,7 +6,13 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+$localEnvFile = Join-Path $PSScriptRoot "local\gemini.env.ps1"
+if (Test-Path -LiteralPath $localEnvFile) {
+    . $localEnvFile
+}
+
 $promptText = Get-Content -LiteralPath $PromptFile -Raw -Encoding UTF8
 $gemini = (Get-Command gemini).Source
-& $gemini --approval-mode yolo --model $Model --prompt $promptText
+$promptText | & $gemini --approval-mode yolo --model $Model --prompt " "
 exit $LASTEXITCODE

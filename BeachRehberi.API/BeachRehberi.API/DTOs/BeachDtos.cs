@@ -54,7 +54,7 @@ public class UpdateBeachDto
     public string Website { get; set; } = string.Empty;
     public string Instagram { get; set; } = string.Empty;
     public string InstagramUsername { get; set; } = string.Empty;
-    public string SocialContentSource { get; set; } = "mock";
+    public string SocialContentSource { get; set; } = "official";
     public string OpenTime { get; set; } = string.Empty;
     public string CloseTime { get; set; } = string.Empty;
 

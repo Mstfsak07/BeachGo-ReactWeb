@@ -25,7 +25,7 @@ public class ReservationPayment
     public string? TransactionId { get; set; }
 
     [MaxLength(50)]
-    public string PaymentMethod { get; set; } = "Mock";
+    public string PaymentMethod { get; set; } = "Stripe";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? PaidAt { get; set; }

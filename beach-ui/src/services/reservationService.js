@@ -22,18 +22,18 @@ export const getReservationDetail = async (id) => {
 };
 
 // Guest / Anonymous reservation methods
-export const getGuestReservation = async (code) => {
-  const res = await api.get(`/GuestReservations/${code}`);
+export const getGuestReservation = async (code, email) => {
+  const res = await api.get(`/GuestReservations/${code}`, { params: { email } });
   return unwrapResponse(res.data);
 };
 
-export const cancelGuestReservation = async (code) => {
-  const res = await api.post(`/GuestReservations/cancel/${code}`);
+export const cancelGuestReservation = async (code, email) => {
+  const res = await api.post(`/GuestReservations/cancel/${code}`, { email });
   return unwrapResponse(res.data);
 };
 
-export const mockPayGuestReservation = async (code) => {
-  const res = await api.post(`/GuestReservations/mock-pay/${code}`);
+export const payGuestReservation = async (code) => {
+  const res = await api.post(`/GuestReservations/pay/${code}`);
   return unwrapResponse(res.data);
 };
 
@@ -61,7 +61,7 @@ const reservationService = {
   getReservationDetail,
   getGuestReservation,
   cancelGuestReservation,
-  mockPayGuestReservation,
+  payGuestReservation,
   createGuestReservation,
   getMyReservations,
   cancel,

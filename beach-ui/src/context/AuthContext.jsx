@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
+import { clearAuthSession, hydrateUserFromStorage, refreshAccessToken, setAccessToken } from '../api/token';
 
 const AuthContext = createContext(null);
 
@@ -8,9 +9,7 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     const logout = useCallback(() => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+        clearAuthSession();
         setUser(null);
         window.location.href = '/login';
     }, []);
@@ -18,13 +17,15 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         try {
             const response = await api.post('/Auth/login', { email, password });
-            const { accessToken, refreshToken, data } = response.data;
-            
-            // API response yapısı backend'e göre değişebilir, genellikle data içinde user bilgisi olur
-            const userData = data || response.data.user || { email, role: response.data.role };
+            const responseData = response.data?.data ?? response.data;
+            const accessToken = responseData?.accessToken ?? responseData?.token ?? responseData?.Token;
+            const userData = responseData?.user ?? responseData?.User ?? { email, role: responseData?.role };
 
-            localStorage.setItem('accessToken', accessToken);
-            localStorage.setItem('refreshToken', refreshToken);
+            if (!accessToken) {
+                throw new Error('Access token alınamadı.');
+            }
+
+            setAccessToken(accessToken);
             localStorage.setItem('user', JSON.stringify(userData));
             
             setUser(userData);
@@ -44,21 +45,33 @@ export const AuthProvider = ({ children }) => {
     };
 
     useEffect(() => {
-        const initializeAuth = () => {
-            const storedUser = localStorage.getItem('user');
-            const accessToken = localStorage.getItem('accessToken');
-            
-            if (storedUser && accessToken) {
-                try {
-                    setUser(JSON.parse(storedUser));
-                } catch (error) {
-                    logout();
-                }
+        const initializeAuth = async () => {
+            const storedUser = hydrateUserFromStorage();
+
+            if (!storedUser) {
+                setLoading(false);
+                return;
             }
-            setLoading(false);
+
+            setUser(storedUser);
+
+            try {
+                const authData = await refreshAccessToken();
+                if (authData?.user) {
+                    localStorage.setItem('user', JSON.stringify(authData.user));
+                    setUser(authData.user);
+                }
+            } catch {
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
         };
 
-        initializeAuth();
+        initializeAuth().catch(() => {
+            setUser(null);
+            setLoading(false);
+        });
     }, [logout]);
 
     const value = {

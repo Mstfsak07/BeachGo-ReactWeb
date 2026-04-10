@@ -6,6 +6,8 @@ using BeachRehberi.API.Models;
 using BeachRehberi.API.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
+using Microsoft.Extensions.Configuration;
+
 namespace BeachRehberi.API.Services;
 
 public class GuestReservationService : IGuestReservationService
@@ -13,16 +15,23 @@ public class GuestReservationService : IGuestReservationService
     private readonly BeachDbContext _db;
     private readonly IOtpService _otpService;
     private readonly IPaymentService _paymentService;
+    private readonly IConfiguration _config;
 
-    public GuestReservationService(BeachDbContext db, IOtpService otpService, IPaymentService paymentService)
+    public GuestReservationService(BeachDbContext db, IOtpService otpService, IPaymentService paymentService, IConfiguration config)
     {
         _db = db;
         _otpService = otpService;
         _paymentService = paymentService;
+        _config = config;
     }
 
     public async Task<ServiceResult<GuestReservationResponseDto>> CreateAsync(CreateGuestReservationDto dto)
     {
+        // 0. Ödeme sistemi kontrolü
+        var useReal = _config.GetValue<bool>("Features:UseRealPayment");
+        if (!useReal)
+            return ServiceResult<GuestReservationResponseDto>.Failure("Şu an ödeme sistemi devre dışı olduğundan rezervasyon yapılamıyor.", 503);
+
         // 1. Telefon doğrulaması kontrolü
         var isVerified = await _otpService.IsEmailVerifiedAsync(dto.VerificationId);
         if (!isVerified)
@@ -83,11 +92,11 @@ public class GuestReservationService : IGuestReservationService
         }, "Rezervasyon başarıyla oluşturuldu.");
     }
 
-    public async Task<ServiceResult<GuestReservationDetailDto>> GetByConfirmationCodeAsync(string confirmationCode)
+    public async Task<ServiceResult<GuestReservationDetailDto>> GetByConfirmationCodeAsync(string confirmationCode, string email)
     {
         var reservation = await _db.Reservations
             .Include(r => r.Beach)
-            .FirstOrDefaultAsync(r => r.ConfirmationCode == confirmationCode && r.IsGuest);
+            .FirstOrDefaultAsync(r => r.ConfirmationCode == confirmationCode && r.GuestEmail == email && r.IsGuest);
 
         if (reservation == null)
             return ServiceResult<GuestReservationDetailDto>.FailureResult("Rezervasyon bulunamadı.");
@@ -105,11 +114,14 @@ public class GuestReservationService : IGuestReservationService
         });
     }
 
-    public async Task<ServiceResult<GuestReservationResponseDto>> CancelAsync(string confirmationCode)
+    public async Task<ServiceResult<GuestReservationResponseDto>> CancelAsync(string confirmationCode, string email)
     {
         var reservation = await _db.Reservations.FirstOrDefaultAsync(r => r.ConfirmationCode == confirmationCode && r.IsGuest);
         if (reservation == null)
             return ServiceResult<GuestReservationResponseDto>.FailureResult("Rezervasyon bulunamadı.");
+
+        if (reservation.GuestEmail != email)
+            return ServiceResult<GuestReservationResponseDto>.FailureResult("E-posta adresi uyuşmuyor.");
 
         if (reservation.Status == ReservationStatus.Cancelled)
             return ServiceResult<GuestReservationResponseDto>.FailureResult("Rezervasyon zaten iptal edilmiş.");
@@ -130,7 +142,7 @@ public class GuestReservationService : IGuestReservationService
         }, "Rezervasyon başarıyla iptal edildi.");
     }
 
-    public async Task<ServiceResult<GuestReservationResponseDto>> MockPayAsync(string confirmationCode)
+    public async Task<ServiceResult<GuestReservationResponseDto>> ProcessPaymentAsync(string confirmationCode)
     {
         var reservation = await _db.Reservations.FirstOrDefaultAsync(r => r.ConfirmationCode == confirmationCode && r.IsGuest);
         if (reservation == null)
@@ -142,7 +154,7 @@ public class GuestReservationService : IGuestReservationService
         var paymentResult = await _paymentService.ProcessPaymentAsync(reservation.Id, reservation.TotalPrice);
         
         if (!paymentResult)
-            return ServiceResult<GuestReservationResponseDto>.FailureResult("Ödeme işlemi başarısız oldu.");
+            return ServiceResult<GuestReservationResponseDto>.FailureResult("Ödeme işlemi başarısız oldu veya şu an ödeme alınamıyor.");
 
         reservation.PaymentStatus = "Paid";
         await _db.SaveChangesAsync();
@@ -167,7 +179,7 @@ public class GuestReservationService : IGuestReservationService
     private static string GenerateConfirmationCode()
     {
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        var code = new char[8];
+        var code = new char[12];
         for (int i = 0; i < code.Length; i++)
             code[i] = chars[Random.Shared.Next(chars.Length)];
         return new string(code);

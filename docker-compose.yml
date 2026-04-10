@@ -39,7 +39,7 @@ services:
   # ── Backend API ────────────────────────────────────────
   api:
     build:
-      context: ./backend
+      context: ./BeachRehberi.API/BeachRehberi.API
       dockerfile: Dockerfile
     container_name: beachgo-api
     restart: always
@@ -62,7 +62,7 @@ services:
   # ── Frontend (Web) ─────────────────────────────────────
   ui:
     build:
-      context: ./frontend
+      context: ./beach-ui
       dockerfile: Dockerfile
     container_name: beachgo-ui
     restart: always
@@ -70,20 +70,6 @@ services:
       - api
     ports:
       - "3000:80"
-    environment:
-      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:5143}
-
-  # ── Admin Panel ────────────────────────────────────────
-  admin:
-    build:
-      context: ./admin-panel
-      dockerfile: Dockerfile
-    container_name: beachgo-admin
-    restart: always
-    depends_on:
-      - api
-    ports:
-      - "3001:80"
     environment:
       - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:5143}
 

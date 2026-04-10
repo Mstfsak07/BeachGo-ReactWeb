@@ -123,6 +123,9 @@ class Config:
     def model_policy(self) -> dict[str, Any]:
         return self.data.get("model_policy", {})
 
+    def availability(self) -> dict[str, Any]:
+        return self.data.get("availability", {})
+
 
 class ReviewOrchestrator:
     def __init__(self, args: argparse.Namespace) -> None:
@@ -148,6 +151,7 @@ class ReviewOrchestrator:
         self.executor_timeout_seconds = int(cfg.get("executor_timeout_seconds", 180))
         self.verification_timeout_seconds = int(cfg.get("verification_timeout_seconds", 900))
         self.model_policy = self.config.model_policy()
+        self.availability = self.config.availability()
         self.phase_model_usage: dict[str, dict[str, bool]] = {}
 
         self.guard.assert_write_path(self.run_dir)
@@ -283,14 +287,31 @@ class ReviewOrchestrator:
         if executor != "gemini":
             return None
         task_size = self.describe_task_size(task)
+        gemini_micro = self.model_policy.get("gemini_micro", "gemini-3.1-flash-lite")
         gemini_default = self.model_policy.get("gemini_default", "gemini-3-flash")
-        gemini_escalation = self.model_policy.get("gemini_escalation", "gemini-3-pro")
+        gemini_agent = self.model_policy.get("gemini_agent", "gemini-3-flash-agent")
+        gemini_escalation = self.model_policy.get("gemini_escalation", "gemini-3-flash-agent")
+        text = " ".join(
+            [
+                str(task.get("title", "")),
+                str(task.get("description", "")),
+                str(task.get("reason", "")),
+                " ".join(task.get("areas", [])),
+                purpose,
+            ]
+        ).lower()
         if purpose == "repair":
             phase_usage = self.phase_model_usage.setdefault(phase["phase_id"], {"large_used": False})
-            return gemini_default if phase_usage["large_used"] else gemini_escalation
+            return gemini_default if phase_usage["large_used"] else gemini_agent
         if purpose == "planning":
             return gemini_default
-        return gemini_escalation if task_size == "large" else gemini_default
+        if any(keyword in text for keyword in ("second-pass", "validation", "alternative", "gap", "edge case", "analysis")):
+            return gemini_micro
+        if any(keyword in text for keyword in ("refactor", "migration", "cross-file", "architecture")):
+            return gemini_escalation if task_size == "large" else gemini_agent
+        if "repo" in text:
+            return gemini_agent
+        return gemini_agent if task_size == "large" else gemini_default
 
     def invoke_executor(
         self,
@@ -313,21 +334,35 @@ class ReviewOrchestrator:
             if skip_next:
                 skip_next = False
                 continue
-            if part == "{prompt}":
+            if part in {"{prompt}", "{prompt_file}"}:
                 continue
-            if part in {"-p", "--prompt"} and index + 1 < len(raw_command) and raw_command[index + 1] == "{prompt}":
+            if part in {"-p", "--prompt", "-PromptFile"} and index + 1 < len(raw_command) and raw_command[index + 1] in {"{prompt}", "{prompt_file}"}:
                 skip_next = True
                 continue
-            command_without_prompt.append(part.format(model=model or "", prompt=""))
+            command_without_prompt.append(part.format(model=model or "", prompt="", prompt_file=""))
 
         resolved = shutil.which(command_without_prompt[0]) or command_without_prompt[0]
+        if executor == "gemini" and str(resolved).lower().endswith(".cmd"):
+            ps1_candidate = str(Path(resolved).with_suffix(".ps1"))
+            if Path(ps1_candidate).exists():
+                resolved = ps1_candidate
         command_without_prompt[0] = resolved
         prompt_path = stdout_path.parent / "prompt.txt"
         self.guard.assert_write_path(prompt_path)
         write_text(prompt_path, prompt)
 
         compact_prompt = re.sub(r"\s+", " ", prompt).strip()
-        if os.name == "nt":
+        if executor == "gemini" and os.name == "nt":
+            compact_prompt_path = stdout_path.parent / "prompt.compact.txt"
+            self.guard.assert_write_path(compact_prompt_path)
+            write_text(compact_prompt_path, compact_prompt)
+            command = [
+                arg.format(prompt_file=str(compact_prompt_path), model=model or "", prompt="")
+                for arg in self.config.executor_command(executor)
+            ]
+        elif executor == "gemini":
+            command = [resolved, *command_without_prompt[1:], "--prompt", compact_prompt]
+        elif os.name == "nt":
             compact_prompt_path = stdout_path.parent / "prompt.compact.txt"
             self.guard.assert_write_path(compact_prompt_path)
             write_text(compact_prompt_path, compact_prompt)
@@ -346,7 +381,8 @@ class ReviewOrchestrator:
             command = [resolved, *command_without_prompt[1:], "-p", compact_prompt]
 
         if self.mode == "dry-run":
-            write_text(stdout_path, f"[dry-run] {' '.join(command)}\n")
+            rendered = command if isinstance(command, str) else " ".join(command)
+            write_text(stdout_path, f"[dry-run] {rendered}\n")
             write_text(stderr_path, "")
             return CommandResult(
                 name=executor,
@@ -360,17 +396,31 @@ class ReviewOrchestrator:
             )
 
         try:
-            completed = subprocess.run(
-                command,
-                cwd=str(cwd),
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                capture_output=True,
-                shell=False,
-                env=os.environ.copy(),
-                timeout=timeout_seconds,
-            )
+            if isinstance(command, str):
+                completed = subprocess.run(
+                    command,
+                    cwd=str(cwd),
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    capture_output=True,
+                    shell=True,
+                    executable=shutil.which("powershell") or "powershell.exe",
+                    env=os.environ.copy(),
+                    timeout=timeout_seconds,
+                )
+            else:
+                completed = subprocess.run(
+                    command,
+                    cwd=str(cwd),
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    capture_output=True,
+                    shell=False,
+                    env=os.environ.copy(),
+                    timeout=timeout_seconds,
+                )
         except subprocess.TimeoutExpired as exc:
             write_text(stdout_path, exc.stdout or "")
             write_text(stderr_path, exc.stderr or f"Executor timeout after {timeout_seconds} seconds")
@@ -441,9 +491,16 @@ class ReviewOrchestrator:
 
     def infer_executor(self, text: str) -> str:
         lower = text.lower()
+        if not self.availability.get("claude_enabled", True):
+            return "gemini"
         if any(keyword in lower for keyword in ("sqlite", "postgresql", "mockpayment", "controller", "domain", "docker-compose", "refactor")):
             return "claude"
         return "gemini"
+
+    def resolve_executor(self, executor: str) -> str:
+        if executor == "claude" and not self.availability.get("claude_enabled", True):
+            return "gemini"
+        return executor
 
     def generate_local_plan(self, assessment_text: str) -> dict[str, Any]:
         phases: dict[str, dict[str, Any]] = {
@@ -582,7 +639,7 @@ class ReviewOrchestrator:
         return ordered
 
     def run_phase_task(self, phase: dict[str, Any], task: dict[str, Any], attempt: int) -> TaskResult:
-        executor = task["executor"]
+        executor = self.resolve_executor(task["executor"])
         if executor not in {"claude", "gemini"}:
             self.fail(f"Unsupported executor '{executor}' in task plan.", {"task": task})
 
@@ -822,11 +879,20 @@ class ReviewOrchestrator:
             ),
         )
         repair_dir = self.log_dir / phase["phase_id"] / "repair" / f"attempt-{attempt}"
-        result = self.invoke_executor("claude", prompt, None, repair_dir / "stdout.log", repair_dir / "stderr.log", self.repo_root, self.executor_timeout_seconds)
+        repair_executor = self.resolve_executor("claude")
+        result = self.invoke_executor(
+            repair_executor,
+            prompt,
+            self.select_runtime_model(repair_executor, phase, {"title": phase["title"], "description": "repair verification failures"}, "repair"),
+            repair_dir / "stdout.log",
+            repair_dir / "stderr.log",
+            self.repo_root,
+            self.executor_timeout_seconds,
+        )
         return TaskResult(
             task_id=f"{phase['phase_id']}-repair-{attempt}",
             title=f"Repair verification failures for {phase['phase_id']}",
-            executor="claude",
+            executor=repair_executor,
             attempt=attempt,
             status=result.status,
             stdout_path=result.stdout_path,

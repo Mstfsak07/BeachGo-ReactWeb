@@ -12,6 +12,10 @@ planner_timeout_seconds = 45
 executor_timeout_seconds = 180
 verification_timeout_seconds = 900
 
+[availability]
+claude_enabled = false
+gemini_primary = true
+
 [model_policy]
 default = "gpt-5.4-mini"
 code_execution = "gpt-5.3-codex"
@@ -19,11 +23,13 @@ escalation = "gpt-5.4"
 small_tasks_use_large_model = false
 same_phase_repeat_large_model = false
 mini_first = true
+gemini_micro = "gemini-3.1-flash-lite"
 gemini_default = "gemini-3-flash"
-gemini_escalation = "gemini-3-pro"
+gemini_agent = "gemini-3-flash-agent"
+gemini_escalation = "gemini-3-flash-agent"
 
 [executors.claude]
 command = ["claude", "--dangerously-skip-permissions", "-p", "{prompt}"]
 
 [executors.gemini]
-command = ["gemini", "--approval-mode", "yolo", "--model", "{model}", "-p", "{prompt}"]
+command = ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "ops/run_gemini.ps1", "-Model", "{model}", "-PromptFile", "{prompt_file}"]

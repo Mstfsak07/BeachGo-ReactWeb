@@ -1,0 +1,31 @@
+{
+  "root": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb",
+  "node_projects": [
+    {
+      "path": ".",
+      "name": "BeachGo-ReactWeb",
+      "scripts": {}
+    },
+    {
+      "path": "beach-ui",
+      "name": "beach-ui",
+      "scripts": {
+        "start": "react-scripts start",
+        "build": "react-scripts build"
+      }
+    }
+  ],
+  "python_projects": [],
+  "dotnet_projects": [
+    "BeachRehberi.API\\BeachRehberi.API.csproj",
+    "BeachRehberi.API\\BeachRehberi.API.sln",
+    "BeachRehberi.API\\BeachRehberi.API.slnx",
+    "BeachRehberi.Application\\BeachRehberi.Application.csproj",
+    "BeachRehberi.Domain\\BeachRehberi.Domain.csproj",
+    "BeachRehberi.API\\BeachRehberi.API\\BeachRehberi.API.csproj",
+    "BeachRehberi.API\\BeachRehberi.API\\BeachRehberi.API.sln",
+    "BeachRehberi.API\\BeachRehberi.Application\\BeachRehberi.Application.csproj",
+    "BeachRehberi.API\\BeachRehberi.Domain\\BeachRehberi.Domain.csproj",
+    "BeachRehberi.API\\BeachRehberi.Infrastructure\\BeachRehberi.Infrastructure.csproj"
+  ]
+}

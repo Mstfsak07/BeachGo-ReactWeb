@@ -86,7 +86,8 @@ public class BeachDbContext : DbContext
 
         modelBuilder.Entity<RevokedToken>(entity =>
         {
-            entity.HasKey(x => x.Token);
+            entity.HasKey(x => x.Id);
+            entity.HasIndex(x => x.Token).IsUnique();
         });
     }
 }

@@ -1,0 +1,98 @@
+{
+  "phases": [
+    {
+      "phase_id": "phase-1",
+      "title": "Critical And Blockers",
+      "goal": "Resolve release-blocking issues first.",
+      "depends_on": [],
+      "tasks": [
+        {
+          "task_id": "phase-1-task-1",
+          "title": "SQLite → PostgreSQL geç",
+          "description": "1. **SQLite → PostgreSQL geç** ve `.db` dosyasını repodan sil — Veri kalıcılığı olmadan deployment anlamsız.",
+          "executor": "claude",
+          "reason": "Local fallback planner assigned executor from issue scope.",
+          "depends_on": [],
+          "areas": [
+            "repo"
+          ]
+        },
+        {
+          "task_id": "phase-1-task-2",
+          "title": "MockPaymentService'i kaldır",
+          "description": "2. **MockPaymentService'i kaldır** — Para almadan rezervasyon sistemi olmaz. Stripe webhook entegrasyonu tamamlanmana kadar feature flag ile kapat.",
+          "executor": "claude",
+          "reason": "Local fallback planner assigned executor from issue scope.",
+          "depends_on": [],
+          "areas": [
+            "repo"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": "phase-2",
+      "title": "Correctness And Security",
+      "goal": "Fix correctness and security defects after blockers.",
+      "depends_on": [
+        "phase-1"
+      ],
+      "tasks": [
+        {
+          "task_id": "phase-2-task-1",
+          "title": "Guest iptal endpoint'ini koru",
+          "description": "5. **Guest iptal endpoint'ini koru** — 8 karakterlik confirmation code brute-force edilebilir, herkes başkasının rezervasyonunu iptal edebilir.",
+          "executor": "gemini",
+          "reason": "Local fallback planner assigned executor from issue scope.",
+          "depends_on": [],
+          "areas": [
+            "repo"
+          ]
+        },
+        {
+          "task_id": "phase-2-task-2",
+          "title": "accessToken'ı localStorage'dan çıkar",
+          "description": "6. **accessToken'ı localStorage'dan çıkar** — Backend'in HttpOnly cookie çalışması kasıtlı ve doğru. Ama access token hâlâ localStorage'da, XSS ile çalınabilir.",
+          "executor": "gemini",
+          "reason": "Local fallback planner assigned executor from issue scope.",
+          "depends_on": [],
+          "areas": [
+            "backend"
+          ]
+        }
+      ]
+    },
+    {
+      "phase_id": "phase-3",
+      "title": "Maintainability And Refactor",
+      "goal": "Clean structural issues without expanding scope.",
+      "depends_on": [
+        "phase-2"
+      ],
+      "tasks": [
+        {
+          "task_id": "phase-3-task-1",
+          "title": "Proje yapısını temizle",
+          "description": "3. **Proje yapısını temizle** — İki ayrı `AuthController`, iki ayrı `Domain/Application` klasörü, `src/pages/` hem kökte hem `beach-ui/src/` altında. Hangisi aktif? docker-compose referans verdiği `./backend` dizini mevcut değil. Bu düzeltilmeden CI/CD kurulamaz.",
+          "executor": "claude",
+          "reason": "Local fallback planner assigned executor from issue scope.",
+          "depends_on": [],
+          "areas": [
+            "repo"
+          ]
+        },
+        {
+          "task_id": "phase-3-task-2",
+          "title": "Admin gelir hesabını gerçekle değiştir",
+          "description": "4. **Admin gelir hesabını gerçekle değiştir** — `totalReservations * 500m` iş kararlarını mahveder.",
+          "executor": "gemini",
+          "reason": "Local fallback planner assigned executor from issue scope.",
+          "depends_on": [],
+          "areas": [
+            "repo"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "detected": {
+    "claude": "C:\\nvm4w\\nodejs\\claude.CMD",
+    "gemini": "C:\\nvm4w\\nodejs\\gemini.CMD"
+  },
+  "missing": [],
+  "timestamp": "2026-04-10T07:01:23.645163+00:00"
+}

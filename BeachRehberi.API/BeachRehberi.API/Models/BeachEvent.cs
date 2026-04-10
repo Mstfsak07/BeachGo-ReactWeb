@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using BeachRehberi.API.Exceptions;
 
 namespace BeachRehberi.API.Models;
 

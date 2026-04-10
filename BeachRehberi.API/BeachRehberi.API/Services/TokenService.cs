@@ -16,6 +16,8 @@ public class TokenService : ITokenService
     private readonly IMemoryCache _cache;
     private readonly ILogger<TokenService> _logger;
     private readonly string _jwtSecret;
+    private readonly int _accessTokenExpiryMinutes;
+    private readonly int _refreshTokenExpiryDays;
     private const string BlacklistCachePrefix = "bl_";
 
     public TokenService(BeachDbContext db, IMemoryCache cache, IConfiguration configuration, ILogger<TokenService> logger)
@@ -24,8 +26,13 @@ public class TokenService : ITokenService
         _cache = cache;
         _logger = logger;
         _jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET")
+                     ?? configuration["JwtSettings:SecretKey"]
                      ?? configuration["Jwt:SecretKey"]
                      ?? throw new InvalidOperationException("JWT Secret is missing!");
+        
+        var jwtSettings = configuration.GetSection("JwtSettings");
+        _accessTokenExpiryMinutes = jwtSettings.GetValue<int?>("AccessTokenExpiryMinutes") ?? configuration.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 15);
+        _refreshTokenExpiryDays = jwtSettings.GetValue<int?>("RefreshTokenExpiryDays") ?? configuration.GetValue<int>("Jwt:RefreshTokenExpiryDays", 7);
     }
 
     public string GenerateAccessToken(BusinessUser user)
@@ -49,7 +56,7 @@ public class TokenService : ITokenService
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddMinutes(15),
+            Expires = DateTime.UtcNow.AddMinutes(_accessTokenExpiryMinutes),
             Issuer = "BeachRehberi.API",
             Audience = "BeachRehberi.App",
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -67,19 +74,143 @@ public class TokenService : ITokenService
         return Convert.ToBase64String(randomNumber);
     }
 
-    public async Task BlacklistTokenAsync(string token, DateTime expiry)
+    public async Task RevokeAccessToken(string jti)
     {
-        _logger.LogInformation("Blacklisting token expiring at {Expiry}", expiry);
+        if (string.IsNullOrEmpty(jti)) return;
 
-        if (!await _db.RevokedTokens.AnyAsync(r => r.Token == token))
+        if (!await _db.RevokedTokens.AnyAsync(r => r.Token == jti))
         {
-            _db.RevokedTokens.Add(new RevokedToken { Token = token, ExpiryDate = expiry });
+            _db.RevokedTokens.Add(new RevokedToken { Token = jti, RevokedAt = DateTime.UtcNow });
             await _db.SaveChangesAsync();
         }
 
-        var cacheEntryOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(expiry);
-        _cache.Set(BlacklistCachePrefix + token, true, cacheEntryOptions);
+        _cache.Set(BlacklistCachePrefix + jti, true, TimeSpan.FromMinutes(_accessTokenExpiryMinutes));
     }
+
+    public async Task<bool> IsTokenRevoked(string jti)
+    {
+        if (string.IsNullOrEmpty(jti)) return true;
+
+        if (_cache.TryGetValue(BlacklistCachePrefix + jti, out bool isRevoked))
+        {
+            return isRevoked;
+        }
+
+        var inDb = await _db.RevokedTokens.AnyAsync(r => r.Token == jti);
+        if (inDb)
+        {
+            _cache.Set(BlacklistCachePrefix + jti, true, TimeSpan.FromMinutes(_accessTokenExpiryMinutes));
+        }
+
+        return inDb;
+    }
+
+    public async Task<AuthResult> RefreshTokenAsync(string refreshToken)
+    {
+        var hashedToken = RefreshToken.HashToken(refreshToken);
+        var tokenEntity = await _db.RefreshTokens
+            .FirstOrDefaultAsync(rt => rt.TokenHash == hashedToken);
+
+        if (tokenEntity == null || !tokenEntity.IsActive)
+            return AuthResult.Failure("Geçersiz veya süresi dolmuş refresh token.");
+
+        var user = await _db.BusinessUsers.FindAsync(tokenEntity.UserId);
+        if (user == null)
+            return AuthResult.Failure("Kullanıcı bulunamadı.");
+
+        // Rotate: Eski token'ı revoke et
+        var newRefreshToken = GenerateRefreshToken();
+        tokenEntity.RevokeAndReplace(newRefreshToken);
+
+        var newAccessToken = GenerateAccessToken(user);
+        var newRefreshTokenEntity = new RefreshToken(
+            user.Id, 
+            newRefreshToken, 
+            DateTime.UtcNow.AddDays(_refreshTokenExpiryDays),
+            tokenEntity.CreatedByIp,
+            tokenEntity.CreatedByUserAgent);
+
+        _db.RefreshTokens.Add(newRefreshTokenEntity);
+        await _db.SaveChangesAsync();
+
+        return AuthResult.SuccessResult(user, newAccessToken, newRefreshToken);
+    }
+
+    public async Task RevokeRefreshToken(string token)
+    {
+        if (string.IsNullOrEmpty(token)) return;
+
+        var hashedToken = RefreshToken.HashToken(token);
+        var tokenEntity = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == hashedToken);
+        if (tokenEntity != null)
+        {
+            tokenEntity.Revoke("manual_revoke");
+            await _db.SaveChangesAsync();
+        }
+    }
+
+    public async Task RevokeAccessTokenAsync(string token)
+    {
+        if (string.IsNullOrEmpty(token)) return;
+
+        if (!await _db.RevokedTokens.AnyAsync(r => r.Token == token))
+        {
+            _db.RevokedTokens.Add(new RevokedToken { Token = token, RevokedAt = DateTime.UtcNow });
+            await _db.SaveChangesAsync();
+        }
+
+        _cache.Set(BlacklistCachePrefix + token, true, TimeSpan.FromMinutes(_accessTokenExpiryMinutes));
+    }
+
+    public async Task<bool> IsTokenRevokedAsync(string token)
+    {
+        if (string.IsNullOrEmpty(token)) return true;
+
+        if (_cache.TryGetValue(BlacklistCachePrefix + token, out bool isRevoked))
+        {
+            return isRevoked;
+        }
+
+        var inDb = await _db.RevokedTokens.AnyAsync(r => r.Token == token);
+        if (inDb)
+        {
+            _cache.Set(BlacklistCachePrefix + token, true, TimeSpan.FromMinutes(_accessTokenExpiryMinutes));
+        }
+
+        return inDb;
+    }
+
+    public async Task RevokeRefreshTokenAsync(string refreshToken) => await RevokeRefreshToken(refreshToken);
+
+    // Compatibility methods
+    public async Task BlacklistTokenAsync(string token, DateTime expiry) => await RevokeAccessToken(token);
+    public async Task<bool> IsTokenBlacklistedAsync(string token) => await IsTokenRevoked(token);
+
+    public async Task<bool> ValidateRefreshTokenAsync(int userId, string refreshToken)
+    {
+        var hashedToken = RefreshToken.HashToken(refreshToken);
+        var token = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == hashedToken && rt.UserId == userId);
+        return token != null && token.IsActive;
+    }
+
+    public async Task RevokeRefreshTokenAsync(int userId, string refreshToken)
+    {
+        var hashedToken = RefreshToken.HashToken(refreshToken);
+        var token = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == hashedToken && rt.UserId == userId);
+        if (token != null)
+        {
+            token.Revoke("manual_revoke");
+            await _db.SaveChangesAsync();
+        }
+    }
+
+    public async Task SaveRefreshTokenAsync(int userId, string refreshToken, DateTime expiry)
+    {
+        var tokenEntity = new RefreshToken(userId, refreshToken, expiry, "unknown", "unknown");
+        _db.RefreshTokens.Add(tokenEntity);
+        await _db.SaveChangesAsync();
+    }
+
     public ClaimsPrincipalResult? ValidateExpiredAccessToken(string accessToken)
     {
         try
@@ -92,7 +223,7 @@ public class TokenService : ITokenService
                 ValidateIssuer = true,
                 ValidateAudience = true,
                 ValidateIssuerSigningKey = true,
-                ValidateLifetime = false, // ← intentional: expired token kabul et
+                ValidateLifetime = false,
                 ValidIssuer = "BeachRehberi.API",
                 ValidAudience = "BeachRehberi.App",
                 IssuerSigningKey = new SymmetricSecurityKey(key),
@@ -114,22 +245,6 @@ public class TokenService : ITokenService
             };
         }
         catch { return null; }
-    }
-
-    public async Task<bool> IsTokenBlacklistedAsync(string token)
-    {
-        if (_cache.TryGetValue(BlacklistCachePrefix + token, out bool isBlacklisted))
-        {
-            return isBlacklisted;
-        }
-
-        var inDb = await _db.RevokedTokens.AnyAsync(r => r.Token == token);
-        if (inDb)
-        {
-            _cache.Set(BlacklistCachePrefix + token, true, TimeSpan.FromMinutes(15));
-        }
-
-        return inDb;
     }
 
     public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
@@ -160,30 +275,5 @@ public class TokenService : ITokenService
         {
             return null;
         }
-    }
-
-    public async Task<bool> ValidateRefreshTokenAsync(int userId, string refreshToken)
-    {
-        var hashedToken = RefreshToken.HashToken(refreshToken);
-        var token = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == hashedToken && rt.UserId == userId);
-        return token != null && token.IsActive;
-    }
-
-    public async Task RevokeRefreshTokenAsync(int userId, string refreshToken)
-    {
-        var hashedToken = RefreshToken.HashToken(refreshToken);
-        var token = await _db.RefreshTokens.FirstOrDefaultAsync(rt => rt.TokenHash == hashedToken && rt.UserId == userId);
-        if (token != null)
-        {
-            token.Revoke("manual_revoke");
-            await _db.SaveChangesAsync();
-        }
-    }
-
-    public async Task SaveRefreshTokenAsync(int userId, string refreshToken, DateTime expiry)
-    {
-        var tokenEntity = new RefreshToken(userId, refreshToken, expiry, "unknown", "unknown");
-        _db.RefreshTokens.Add(tokenEntity);
-        await _db.SaveChangesAsync();
     }
 }

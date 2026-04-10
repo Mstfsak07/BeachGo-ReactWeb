@@ -85,7 +85,7 @@ const Login = () => {
                             <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 block">E-posta Adresi</label>
                             <input
                                 type="email"
-                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.email ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition`}
+                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.email ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition placeholder-slate-400 dark:placeholder-slate-500`}
                                 placeholder="e-posta@adresiniz.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -97,11 +97,11 @@ const Login = () => {
                         <div>
                             <div className="flex justify-between mb-1">
                                 <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Şifre</label>
-                                <Link to="/forgot-password" id="forgot-password" className="text-xs font-bold text-blue-500 hover:underline">Şifremi Unuttum</Link>
+                                <Link to="/forgot-password" id="forgot-password" className="text-xs font-bold text-blue-500 dark:text-blue-400 hover:underline">Şifremi Unuttum</Link>
                             </div>
                             <input
                                 type="password"
-                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.password ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition`}
+                                className={`w-full px-4 py-3 rounded-xl border ${validationErrors.password ? 'border-red-500' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-900 text-slate-800 dark:text-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-900 outline-none transition placeholder-slate-400 dark:placeholder-slate-500`}
                                 placeholder="Şifre"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -121,7 +121,7 @@ const Login = () => {
 
                     <div className="mt-10 pt-6 border-t border-slate-100 dark:border-slate-700 text-center">
                         <p className="text-slate-400 dark:text-slate-500 text-sm font-medium italic">
-                            Henüz bir hesabınız yok mu? <Link to="/register" className="text-blue-500 font-bold hover:underline">Şimdi Kaydolun</Link>
+                            Henüz bir hesabınız yok mu? <Link to="/register" className="text-blue-500 dark:text-blue-400 font-bold hover:underline">Şimdi Kaydolun</Link>
                         </p>
                     </div>
                 </div>

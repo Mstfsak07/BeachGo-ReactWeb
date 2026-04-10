@@ -43,7 +43,7 @@ const GuestOnlyRoute = ({ children }) => {
 };
 
 const Spinner = () => (
-  <div className="min-h-screen flex items-center justify-center">
+  <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
   </div>
 );
@@ -53,9 +53,9 @@ const AppContent = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <div className="ml-4 font-bold text-slate-600">Yukleniyor...</div>
+        <div className="ml-4 font-bold text-slate-600 dark:text-slate-400">Yukleniyor...</div>
       </div>
     );
   }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using BeachRehberi.API.Models;
+using BeachRehberi.API.Exceptions;
 
 namespace BeachRehberi.API.Extensions;
 
@@ -7,43 +8,42 @@ public static class ApiResponseExtensions
 {
     public static OkObjectResult ToOkApiResponse<T>(this T? data, string message = "İşlem başarılı.")
     {
-        return new OkObjectResult(ApiResponse<T>.SuccessResult(data, message));
+        return new OkObjectResult(ApiResponse<T>.Ok(data!, message));
     }
 
     // Helper for Paginated Results
     public static OkObjectResult ToPagedApiResponse<T>(this PagedResponse<T> pagedData, string message = "Veriler başarıyla getirildi.")
     {
-        return new OkObjectResult(ApiResponse<PagedResponse<T>>.SuccessResult(pagedData, message));
+        return new OkObjectResult(ApiResponse<PagedResponse<T>>.Ok(pagedData, message));
     }
 
     public static BadRequestObjectResult ToBadRequestApiResponse(this string message, List<string>? errors = null)
     {
-        return new BadRequestObjectResult(ApiResponse<object>.FailureResult(message, errors));
+        return new BadRequestObjectResult(ApiResponse<object>.Fail(message, 400, errors));
     }
 
     public static NotFoundObjectResult ToNotFoundApiResponse(this string message)
     {
-        return new NotFoundObjectResult(ApiResponse<object>.FailureResult(message));
+        return new NotFoundObjectResult(ApiResponse<object>.Fail(message));
     }
 
     public static UnauthorizedObjectResult ToUnauthorizedApiResponse(this string message)
     {
-        return new UnauthorizedObjectResult(ApiResponse<object>.FailureResult(message));
+        return new UnauthorizedObjectResult(ApiResponse<object>.Fail(message));
     }
 
     // New: Proper 403 Forbidden handler extension
     public static ObjectResult ToForbiddenApiResponse(this string message)
     {
-        return new ObjectResult(ApiResponse<object>.FailureResult(message)) { StatusCode = 403 };
+        return new ObjectResult(ApiResponse<object>.Fail(message)) { StatusCode = 403 };
     }
 
     public static ActionResult ToActionResult<T>(this ServiceResult<T> result)
     {
-        var response = ApiResponse<T>.SuccessResult(result.Data, result.Message);
-        response.Success = result.Success;
-        response.Errors = result.Errors;
+        if (result.Success) 
+            return new OkObjectResult(ApiResponse<T>.Ok(result.Data!, result.Message));
 
-        if (result.Success) return new OkObjectResult(response);
+        var response = ApiResponse<T>.Fail(result.Message, 400, result.Errors);
 
         // Advanced semantic mapping for API behaviors
         if (result.Message.Contains("yetki", StringComparison.OrdinalIgnoreCase) || 

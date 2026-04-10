@@ -1,0 +1,44 @@
+{
+  "phase_id": "phase-1",
+  "title": "Critical And Blockers",
+  "status": "failed",
+  "attempts_used": 3,
+  "max_retries": 3,
+  "timestamp": "2026-04-10T10:58:25.801686+00:00",
+  "task_results": [
+    {
+      "task_id": "phase-1-task-2",
+      "title": "MockPaymentService'i kaldır",
+      "executor": "gemini",
+      "attempt": 1,
+      "status": "failed",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-1\\phase-1-task-2\\attempt-1\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-1\\phase-1-task-2\\attempt-1\\stderr.log",
+      "exit_code": 1,
+      "message": "gemini exited with code 1"
+    },
+    {
+      "task_id": "phase-1-task-2",
+      "title": "MockPaymentService'i kaldır",
+      "executor": "gemini",
+      "attempt": 2,
+      "status": "failed",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-1\\phase-1-task-2\\attempt-2\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-1\\phase-1-task-2\\attempt-2\\stderr.log",
+      "exit_code": 1,
+      "message": "gemini exited with code 1"
+    },
+    {
+      "task_id": "phase-1-task-2",
+      "title": "MockPaymentService'i kaldır",
+      "executor": "gemini",
+      "attempt": 3,
+      "status": "failed",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-1\\phase-1-task-2\\attempt-3\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-1\\phase-1-task-2\\attempt-3\\stderr.log",
+      "exit_code": 1,
+      "message": "gemini exited with code 1"
+    }
+  ],
+  "verification_results": []
+}

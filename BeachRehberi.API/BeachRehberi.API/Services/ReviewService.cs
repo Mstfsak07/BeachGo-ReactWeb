@@ -1,6 +1,7 @@
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using BeachRehberi.API.DTOs;
+using BeachRehberi.API.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Encodings.Web;
 

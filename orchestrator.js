@@ -15,6 +15,17 @@ const backendDir = path.join(process.cwd(), "BeachRehberi.API", "BeachRehberi.AP
 const AGENT_SCRIPT = path.join(process.cwd(), "automation", "scripts", "run-loop.ps1");
 console.log("Backend dir:", backendDir);
 
+function safeWrite(stream, text) {
+  if (!stream || stream.destroyed || !stream.writable) return;
+  try {
+    stream.write(text);
+  } catch (error) {
+    if (!error || error.code !== "EPIPE") {
+      console.error("[WRITE ERROR]", error);
+    }
+  }
+}
+
 function killProcessTree(pid) {
   try {
     if (process.platform === "win32") {
@@ -96,11 +107,23 @@ function startProcess(name, cmd, args, cwd) {
   processes[name] = proc;
 
   proc.stdout.on("data", (data) => {
-    process.stdout.write(`[${name}] ${data}`);
+    safeWrite(process.stdout, `[${name}] ${data}`);
   });
 
   proc.stderr.on("data", (data) => {
-    process.stderr.write(`[${name} ERROR] ${data}`);
+    safeWrite(process.stderr, `[${name} ERROR] ${data}`);
+  });
+
+  proc.stdout.on("error", (error) => {
+    if (error.code !== "EPIPE") {
+      console.error(`[${name} STDOUT ERROR]`, error);
+    }
+  });
+
+  proc.stderr.on("error", (error) => {
+    if (error.code !== "EPIPE") {
+      console.error(`[${name} STDERR ERROR]`, error);
+    }
   });
 
   proc.on("close", (code) => {

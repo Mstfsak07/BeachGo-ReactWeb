@@ -26,11 +26,13 @@ public class TokenService : ITokenService
         _cache = cache;
         _logger = logger;
         _jwtSecret = Environment.GetEnvironmentVariable("BEACHGO_JWT_SECRET")
+                     ?? configuration["JwtSettings:SecretKey"]
                      ?? configuration["Jwt:SecretKey"]
                      ?? throw new InvalidOperationException("JWT Secret is missing!");
         
-        _accessTokenExpiryMinutes = configuration.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 15);
-        _refreshTokenExpiryDays = configuration.GetValue<int>("Jwt:RefreshTokenExpiryDays", 7);
+        var jwtSettings = configuration.GetSection("JwtSettings");
+        _accessTokenExpiryMinutes = jwtSettings.GetValue<int?>("AccessTokenExpiryMinutes") ?? configuration.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 15);
+        _refreshTokenExpiryDays = jwtSettings.GetValue<int?>("RefreshTokenExpiryDays") ?? configuration.GetValue<int>("Jwt:RefreshTokenExpiryDays", 7);
     }
 
     public string GenerateAccessToken(BusinessUser user)
@@ -147,9 +149,36 @@ public class TokenService : ITokenService
         }
     }
 
-    public async Task RevokeAccessTokenAsync(string token) => await RevokeAccessToken(token);
+    public async Task RevokeAccessTokenAsync(string token)
+    {
+        if (string.IsNullOrEmpty(token)) return;
 
-    public async Task<bool> IsTokenRevokedAsync(string token) => await IsTokenRevoked(token);
+        if (!await _db.RevokedTokens.AnyAsync(r => r.Token == token))
+        {
+            _db.RevokedTokens.Add(new RevokedToken { Token = token, RevokedAt = DateTime.UtcNow });
+            await _db.SaveChangesAsync();
+        }
+
+        _cache.Set(BlacklistCachePrefix + token, true, TimeSpan.FromMinutes(_accessTokenExpiryMinutes));
+    }
+
+    public async Task<bool> IsTokenRevokedAsync(string token)
+    {
+        if (string.IsNullOrEmpty(token)) return true;
+
+        if (_cache.TryGetValue(BlacklistCachePrefix + token, out bool isRevoked))
+        {
+            return isRevoked;
+        }
+
+        var inDb = await _db.RevokedTokens.AnyAsync(r => r.Token == token);
+        if (inDb)
+        {
+            _cache.Set(BlacklistCachePrefix + token, true, TimeSpan.FromMinutes(_accessTokenExpiryMinutes));
+        }
+
+        return inDb;
+    }
 
     public async Task RevokeRefreshTokenAsync(string refreshToken) => await RevokeRefreshToken(refreshToken);
 

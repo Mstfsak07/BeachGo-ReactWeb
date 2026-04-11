@@ -35,6 +35,7 @@ export type BeachDto = {
   phone?: string;
   website?: string;
   instagram?: string;
+  socialContentSource?: string;
   hasBar?: boolean;
   hasWaterSports?: boolean;
   isChildFriendly?: boolean;

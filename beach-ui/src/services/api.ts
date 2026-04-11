@@ -1,7 +1,7 @@
 import api from '../api/axios';
 import { unwrapArrayResponse, unwrapResponse, type BeachDto } from '../types';
 
-type WeatherResponse = {
+export type WeatherResponse = {
   weather?: Record<string, unknown>;
   sea?: Record<string, unknown>;
   [key: string]: unknown;

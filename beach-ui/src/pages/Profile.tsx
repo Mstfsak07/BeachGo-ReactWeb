@@ -1,22 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { User, Mail, Lock, Save, Loader2, Phone, Briefcase } from 'lucide-react';
+import { User, Mail, Lock, Save, Loader2, Briefcase } from 'lucide-react';
 import userService from '../services/userService';
-import { useAuth } from '../context/AuthContext';
+
+type ProfileState = {
+  contactName: string;
+  businessName: string;
+  email: string;
+  role: string;
+};
+
+type PasswordState = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
+
+type ProfileResponse = Partial<ProfileState>;
 
 const Profile = () => {
-  const { user: authUser } = useAuth();
-  const [profile, setProfile] = useState({
+  const [profile, setProfile] = useState<ProfileState>({
     contactName: '',
     businessName: '',
     email: '',
-    role: ''
+    role: '',
   });
-  const [passwordData, setPasswordData] = useState({
+  const [passwordData, setPasswordData] = useState<PasswordState>({
     currentPassword: '',
     newPassword: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -25,43 +38,58 @@ const Profile = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const data = await userService.getProfile();
+        const data = (await userService.getProfile()) as ProfileResponse;
         setProfile({
           contactName: data.contactName || '',
           businessName: data.businessName || '',
           email: data.email || '',
-          role: data.role || ''
+          role: data.role || '',
         });
-      } catch (err) {
+      } catch {
         toast.error('Profil bilgileri yüklenemedi.');
       } finally {
         setLoading(false);
       }
     };
-    fetchProfile();
+
+    void fetchProfile();
   }, []);
 
-  const handleProfileUpdate = async (e) => {
-    e.preventDefault();
+  const handleProfileChange =
+    (field: keyof ProfileState) => (event: ChangeEvent<HTMLInputElement>) => {
+      const { value } = event.target;
+      setProfile((previousProfile) => ({ ...previousProfile, [field]: value }));
+    };
+
+  const handlePasswordDataChange =
+    (field: keyof PasswordState) => (event: ChangeEvent<HTMLInputElement>) => {
+      const { value } = event.target;
+      setPasswordData((previousPasswordData) => ({ ...previousPasswordData, [field]: value }));
+    };
+
+  const handleProfileUpdate = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     setSaving(true);
     try {
       await userService.updateProfile({
         contactName: profile.contactName,
-        businessName: profile.businessName
+        businessName: profile.businessName,
       });
       toast.success('Profil güncellendi.');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Güncelleme başarısız.');
+    } catch {
+      toast.error('Güncelleme başarısız.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
+  const handlePasswordChange = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      return toast.error('Yeni şifreler eşleşmiyor.');
+      toast.error('Yeni şifreler eşleşmiyor.');
+      return;
     }
+
     setSavingPassword(true);
     try {
       await userService.changePassword(passwordData);
@@ -69,10 +97,10 @@ const Profile = () => {
       setPasswordData({
         currentPassword: '',
         newPassword: '',
-        confirmPassword: ''
+        confirmPassword: '',
       });
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Şifre değiştirme başarısız.');
+    } catch {
+      toast.error('Şifre değiştirme başarısız.');
     } finally {
       setSavingPassword(false);
     }
@@ -95,8 +123,7 @@ const Profile = () => {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Profile Information */}
-          <motion.section 
+          <motion.section
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100"
@@ -113,10 +140,10 @@ const Profile = () => {
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Email (Değiştirilemez)</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                  <input 
-                    type="email" 
-                    value={profile.email} 
-                    readOnly 
+                  <input
+                    type="email"
+                    value={profile.email}
+                    readOnly
                     className="w-full pl-12 pr-6 py-4 rounded-2xl border-2 border-slate-50 bg-slate-50 text-slate-400 font-bold outline-none cursor-not-allowed"
                   />
                 </div>
@@ -126,10 +153,10 @@ const Profile = () => {
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Ad Soyad / İletişim Kişisi</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                  <input 
-                    type="text" 
-                    value={profile.contactName} 
-                    onChange={(e) => setProfile({...profile, contactName: e.target.value})}
+                  <input
+                    type="text"
+                    value={profile.contactName}
+                    onChange={handleProfileChange('contactName')}
                     placeholder="Adınız Soyadınız"
                     className="w-full pl-12 pr-6 py-4 rounded-2xl border-2 border-slate-100 bg-white focus:border-blue-500 transition-all text-slate-800 font-bold outline-none"
                   />
@@ -141,10 +168,10 @@ const Profile = () => {
                   <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">İşletme Adı</label>
                   <div className="relative">
                     <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                    <input 
-                      type="text" 
-                      value={profile.businessName} 
-                      onChange={(e) => setProfile({...profile, businessName: e.target.value})}
+                    <input
+                      type="text"
+                      value={profile.businessName}
+                      onChange={handleProfileChange('businessName')}
                       placeholder="İşletme Adı"
                       className="w-full pl-12 pr-6 py-4 rounded-2xl border-2 border-slate-100 bg-white focus:border-blue-500 transition-all text-slate-800 font-bold outline-none"
                     />
@@ -152,8 +179,8 @@ const Profile = () => {
                 </div>
               )}
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={saving}
                 className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-600 transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2"
               >
@@ -162,8 +189,7 @@ const Profile = () => {
             </form>
           </motion.section>
 
-          {/* Password Change */}
-          <motion.section 
+          <motion.section
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100"
@@ -180,10 +206,10 @@ const Profile = () => {
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Mevcut Şifre</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                  <input 
-                    type="password" 
+                  <input
+                    type="password"
                     value={passwordData.currentPassword}
-                    onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                    onChange={handlePasswordDataChange('currentPassword')}
                     required
                     placeholder="••••••••"
                     className="w-full pl-12 pr-6 py-4 rounded-2xl border-2 border-slate-100 bg-white focus:border-blue-500 transition-all text-slate-800 font-bold outline-none"
@@ -195,10 +221,10 @@ const Profile = () => {
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Yeni Şifre</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                  <input 
-                    type="password" 
+                  <input
+                    type="password"
                     value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                    onChange={handlePasswordDataChange('newPassword')}
                     required
                     placeholder="••••••••"
                     className="w-full pl-12 pr-6 py-4 rounded-2xl border-2 border-slate-100 bg-white focus:border-blue-500 transition-all text-slate-800 font-bold outline-none"
@@ -210,10 +236,10 @@ const Profile = () => {
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Yeni Şifre (Tekrar)</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-                  <input 
-                    type="password" 
+                  <input
+                    type="password"
                     value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                    onChange={handlePasswordDataChange('confirmPassword')}
                     required
                     placeholder="••••••••"
                     className="w-full pl-12 pr-6 py-4 rounded-2xl border-2 border-slate-100 bg-white focus:border-blue-500 transition-all text-slate-800 font-bold outline-none"
@@ -221,8 +247,8 @@ const Profile = () => {
                 </div>
               </div>
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={savingPassword}
                 className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-amber-600 transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2"
               >

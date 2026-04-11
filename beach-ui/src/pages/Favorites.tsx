@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MapPin, Star, Trash2, ChevronRight, Loader2, Sparkles } from 'lucide-react';
+import { Heart, Trash2, ChevronRight, Loader2, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BeachCard from '../components/BeachCard';
 import { getFavorites, removeFavorite as removeFavoriteRequest } from '../services/favoriteService';
 import { toast } from 'react-hot-toast';
+import type { FavoriteDto } from '../types';
 
 const Favorites = () => {
-  const [favorites, setFavorites] = useState([]);
+  const [favorites, setFavorites] = useState<FavoriteDto[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,19 +16,20 @@ const Favorites = () => {
       try {
         const stored = await getFavorites();
         setFavorites(stored);
-      } catch (err) {
+      } catch {
         toast.error('Favoriler yüklenemedi.');
       } finally {
         setLoading(false);
       }
     };
-    loadFavorites();
+
+    void loadFavorites();
   }, []);
 
-  const removeFavorite = async (id) => {
+  const removeFavorite = async (id: number) => {
     try {
       await removeFavoriteRequest(id);
-      setFavorites((prev) => prev.filter((item) => item.id !== id));
+      setFavorites((previousFavorites) => previousFavorites.filter((item) => item.id !== id));
       toast.success('Favorilerden kaldırıldı');
     } catch {
       toast.error('Favori kaldırılırken hata oluştu.');
@@ -66,14 +68,14 @@ const Favorites = () => {
         </div>
 
         {favorites.length === 0 ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="bg-white rounded-[3rem] p-24 text-center shadow-xl shadow-slate-200/50 border border-slate-100 relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 w-64 h-64 bg-rose-50/50 rounded-full -mr-32 -mt-32 blur-3xl" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-50/50 rounded-full -ml-32 -mb-32 blur-3xl" />
-            
+
             <div className="relative z-10">
               <div className="w-28 h-28 bg-rose-50 rounded-[2rem] flex items-center justify-center mx-auto mb-10 rotate-12 group-hover:rotate-0 transition-transform duration-500">
                 <Heart size={48} className="text-rose-500" />
@@ -82,8 +84,8 @@ const Favorites = () => {
               <p className="text-slate-500 text-xl mb-12 max-w-lg mx-auto leading-relaxed font-medium">
                 Gezdiğiniz plajları kalbe tıklayarak buraya ekleyebilir, hayalinizdeki tatili planlayabilirsiniz.
               </p>
-              <Link 
-                to="/beaches" 
+              <Link
+                to="/beaches"
                 className="inline-flex items-center gap-4 bg-slate-900 text-white px-12 py-6 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-600 transition-all shadow-2xl active:scale-95"
               >
                 Keşfetmeye Başla <ChevronRight size={20} />
@@ -93,18 +95,18 @@ const Favorites = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             <AnimatePresence>
-              {favorites.map((beach, index) => (
+              {favorites.map((favoriteBeach, index) => (
                 <motion.div
-                  key={beach.id}
+                  key={favoriteBeach.id ?? index}
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
                   transition={{ delay: index * 0.1 }}
                   className="relative group"
                 >
-                  <BeachCard beach={beach} />
+                  <BeachCard beach={favoriteBeach} />
                   <button
-                    onClick={() => removeFavorite(beach.id)}
+                    onClick={() => favoriteBeach.id && removeFavorite(favoriteBeach.id)}
                     className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-md p-3 rounded-2xl text-rose-500 shadow-xl opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-rose-500 hover:text-white"
                     title="Favorilerden Kaldır"
                   >
@@ -116,17 +118,18 @@ const Favorites = () => {
           </div>
         )}
 
-        {/* Suggestion Section */}
         <section className="mt-32">
           <div className="flex items-center gap-4 mb-10">
             <Sparkles className="text-blue-500" />
             <h2 className="text-2xl font-bold text-slate-800 uppercase tracking-widest">Sizin İçin Önerilenler</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 opacity-60 grayscale hover:grayscale-0 transition-all duration-700">
-            {/* Mock suggestion skeletons or small cards */}
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="bg-white p-6 rounded-3xl border border-slate-100 h-40 flex items-center justify-center text-slate-300 font-bold italic">
-                Popüler Seçim #{i}
+            {[1, 2, 3, 4].map((itemNumber) => (
+              <div
+                key={itemNumber}
+                className="bg-white p-6 rounded-3xl border border-slate-100 h-40 flex items-center justify-center text-slate-300 font-bold italic"
+              >
+                Popüler Seçim #{itemNumber}
               </div>
             ))}
           </div>

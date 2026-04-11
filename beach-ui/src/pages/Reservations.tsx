@@ -1,73 +1,94 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import reservationService from '../services/reservationService';
-import { 
-  Calendar, 
-  MapPin, 
-  Trash2, 
-  Clock, 
-  Users, 
-  CreditCard, 
+import {
+  Calendar,
+  Trash2,
+  Clock,
+  Users,
+  CreditCard,
   ChevronRight,
-  AlertCircle,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import type { ReservationDto } from '../types';
+
+type ReservationWithCompat = ReservationDto & {
+  reservationId?: number;
+  beachName?: string;
+  personCount?: number;
+  sunbedCount?: number;
+  totalPrice?: number;
+  beachId?: number;
+};
 
 const Reservations = () => {
-  const [reservations, setReservations] = useState([]);
+  const [reservations, setReservations] = useState<ReservationWithCompat[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cancellingId, setCancellingId] = useState(null);
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchReservations();
+    const fetchReservations = async () => {
+      try {
+        const data = await reservationService.getMyReservations();
+        setReservations(data as ReservationWithCompat[]);
+      } catch {
+        toast.error('Rezervasyonlarınız yüklenemedi.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void fetchReservations();
   }, []);
 
-  const fetchReservations = async () => {
-    try {
-      const data = await reservationService.getMyReservations();
-      setReservations(data);
-    } catch (err) {
-      toast.error('Rezervasyonlarınız yüklenemedi.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCancel = async (id) => {
-    if (!window.confirm("Bu rezervasyonu iptal etmek istediğinizden emin misiniz?")) {
+  const handleCancel = async (id: number) => {
+    if (!window.confirm('Bu rezervasyonu iptal etmek istediğinizden emin misiniz?')) {
       return;
     }
+
     setCancellingId(id);
     try {
       await reservationService.cancelReservation(id);
-      setReservations((prev) => prev.filter((r) => (r.id ?? r.reservationId) !== id));
-      toast.success("Rezervasyon iptal edildi");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Rezervasyon iptal edilirken hata oluştu");
+      setReservations((previousReservations) =>
+        previousReservations.filter((reservationItem) => (reservationItem.id ?? reservationItem.reservationId) !== id)
+      );
+      toast.success('Rezervasyon iptal edildi');
+    } catch {
+      toast.error('Rezervasyon iptal edilirken hata oluştu');
     } finally {
       setCancellingId(null);
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status?: string) => {
     switch (status?.toLowerCase()) {
-      case 'approved': return 'bg-emerald-100 text-emerald-700';
-      case 'pending': return 'bg-amber-100 text-amber-700';
-      case 'cancelled': return 'bg-rose-100 text-rose-700';
-      case 'completed': return 'bg-blue-100 text-blue-700';
-      default: return 'bg-slate-100 text-slate-700';
+      case 'approved':
+        return 'bg-emerald-100 text-emerald-700';
+      case 'pending':
+        return 'bg-amber-100 text-amber-700';
+      case 'cancelled':
+        return 'bg-rose-100 text-rose-700';
+      case 'completed':
+        return 'bg-blue-100 text-blue-700';
+      default:
+        return 'bg-slate-100 text-slate-700';
     }
   };
 
-  const getStatusText = (status) => {
+  const getStatusText = (status?: string) => {
     switch (status?.toLowerCase()) {
-      case 'approved': return 'Onaylandı';
-      case 'pending': return 'Beklemede';
-      case 'cancelled': return 'İptal Edildi';
-      case 'completed': return 'Tamamlandı';
-      default: return status || 'Bilinmiyor';
+      case 'approved':
+        return 'Onaylandı';
+      case 'pending':
+        return 'Beklemede';
+      case 'cancelled':
+        return 'İptal Edildi';
+      case 'completed':
+        return 'Tamamlandı';
+      default:
+        return status || 'Bilinmiyor';
     }
   };
 
@@ -96,7 +117,7 @@ const Reservations = () => {
         </div>
 
         {reservations.length === 0 ? (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-[3rem] p-20 text-center shadow-sm border border-slate-100"
@@ -108,8 +129,8 @@ const Reservations = () => {
             <p className="text-slate-500 text-lg mb-10 max-w-md mx-auto leading-relaxed">
               Antalya'nın en güzel plajlarında yerinizi ayırtarak yazın tadını çıkarmaya başlayın.
             </p>
-            <Link 
-              to="/beaches" 
+            <Link
+              to="/beaches"
               className="inline-flex items-center gap-3 bg-slate-900 text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-600 transition-all shadow-xl"
             >
               Plajları Keşfet <ChevronRight size={20} />
@@ -118,13 +139,18 @@ const Reservations = () => {
         ) : (
           <div className="grid grid-cols-1 gap-6">
             <AnimatePresence>
-              {reservations.map((res, index) => {
-                const resId = res.id ?? res.reservationId;
-                const isPending = res.status?.toLowerCase() === 'pending' || res.status?.toLowerCase() === 'approved';
-                
+              {reservations.map((reservationItem, index) => {
+                const reservationId = reservationItem.id ?? reservationItem.reservationId;
+                const reservationStatus = reservationItem.status?.toLowerCase();
+                const isPending = reservationStatus === 'pending' || reservationStatus === 'approved';
+
+                if (!reservationId) {
+                  return null;
+                }
+
                 return (
                   <motion.div
-                    key={resId}
+                    key={reservationId}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
@@ -138,30 +164,40 @@ const Reservations = () => {
                         </div>
                         <div className="space-y-3">
                           <div className="flex flex-wrap items-center gap-3">
-                            <h3 className="text-2xl font-black text-slate-800 tracking-tight">{res.beachName}</h3>
-                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusColor(res.status)}`}>
-                              {getStatusText(res.status)}
+                            <h3 className="text-2xl font-black text-slate-800 tracking-tight">
+                              {reservationItem.beachName}
+                            </h3>
+                            <span
+                              className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusColor(reservationItem.status)}`}
+                            >
+                              {getStatusText(reservationItem.status)}
                             </span>
                           </div>
-                          
+
                           <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm text-slate-500 font-bold">
                             <div className="flex items-center gap-2">
                               <Calendar size={16} className="text-blue-500" />
-                              {new Date(res.reservationDate).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                              {reservationItem.reservationDate
+                                ? new Date(reservationItem.reservationDate).toLocaleDateString('tr-TR', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric',
+                                  })
+                                : '-'}
                             </div>
                             <div className="flex items-center gap-2">
                               <Users size={16} className="text-emerald-500" />
-                              {res.personCount} Kişi
+                              {reservationItem.personCount ?? 0} Kişi
                             </div>
-                            {res.sunbedCount > 0 && (
+                            {(reservationItem.sunbedCount ?? 0) > 0 && (
                               <div className="flex items-center gap-2">
                                 <CreditCard size={16} className="text-amber-500" />
-                                {res.sunbedCount} Şezlong
+                                {reservationItem.sunbedCount} Şezlong
                               </div>
                             )}
                             <div className="flex items-center gap-2">
                               <Clock size={16} className="text-slate-400" />
-                              ID: #{resId}
+                              ID: #{reservationId}
                             </div>
                           </div>
                         </div>
@@ -169,24 +205,32 @@ const Reservations = () => {
 
                       <div className="flex items-center gap-4 border-t lg:border-t-0 pt-6 lg:pt-0">
                         <div className="flex-1 lg:text-right mr-8">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Toplam Tutar</p>
-                          <p className="text-2xl font-black text-slate-900">{res.totalPrice || 0} TL</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">
+                            Toplam Tutar
+                          </p>
+                          <p className="text-2xl font-black text-slate-900">{reservationItem.totalPrice || 0} TL</p>
                         </div>
-                        
+
                         {isPending && (
                           <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={() => handleCancel(resId)}
-                            disabled={cancellingId === resId}
+                            onClick={() => void handleCancel(reservationId)}
+                            disabled={cancellingId === reservationId}
                             className="flex items-center justify-center gap-3 px-8 py-4 bg-rose-50 text-rose-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all shadow-lg shadow-rose-100"
                           >
-                            {cancellingId === resId ? <Loader2 className="animate-spin" size={18} /> : <><Trash2 size={18} /> İptal Et</>}
+                            {cancellingId === reservationId ? (
+                              <Loader2 className="animate-spin" size={18} />
+                            ) : (
+                              <>
+                                <Trash2 size={18} /> İptal Et
+                              </>
+                            )}
                           </motion.button>
                         )}
-                        
-                        <Link 
-                          to={`/beaches/${res.beachId}`}
+
+                        <Link
+                          to={`/beaches/${reservationItem.beachId}`}
                           className="p-4 bg-slate-50 text-slate-400 rounded-2xl hover:bg-blue-50 hover:text-blue-600 transition-all"
                         >
                           <ChevronRight size={24} />

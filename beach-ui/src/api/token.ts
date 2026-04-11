@@ -1,10 +1,25 @@
 import axios from 'axios';
+import type { AppUser } from '../types';
 
 const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-let accessTokenMemory = null;
+type AuthPayload = {
+  accessToken?: string | null;
+  token?: string | null;
+  Token?: string | null;
+  user?: AppUser | null;
+  User?: AppUser | null;
+  data?: AuthPayload | null;
+};
 
-const normalizeAuthPayload = (payload) => {
+export type NormalizedAuthPayload = {
+  accessToken: string | null;
+  user: AppUser | null;
+};
+
+let accessTokenMemory: string | null = null;
+
+const normalizeAuthPayload = (payload: AuthPayload | null | undefined): NormalizedAuthPayload | null => {
   const data = payload?.data ?? payload;
   if (!data) return null;
 
@@ -14,22 +29,25 @@ const normalizeAuthPayload = (payload) => {
   };
 };
 
-export const getAccessToken = () => accessTokenMemory;
-export const setAccessToken = (token) => {
+export const getAccessToken = (): string | null => accessTokenMemory;
+
+export const setAccessToken = (token: string | null | undefined): void => {
   accessTokenMemory = token || null;
 };
-export const clearAuthSession = () => {
+
+export const clearAuthSession = (): void => {
   accessTokenMemory = null;
   localStorage.removeItem('user');
 };
 
-export const refreshAccessToken = async () => {
+export const refreshAccessToken = async (): Promise<NormalizedAuthPayload> => {
   try {
-    const response = await axios.post(
+    const response = await axios.post<AuthPayload>(
       `${baseURL}/Auth/refresh`,
       {},
       { withCredentials: true }
     );
+
     const authData = normalizeAuthPayload(response.data);
 
     if (authData?.accessToken) {
@@ -48,12 +66,12 @@ export const refreshAccessToken = async () => {
   }
 };
 
-export const hydrateUserFromStorage = () => {
+export const hydrateUserFromStorage = (): AppUser | null => {
   const storedUser = localStorage.getItem('user');
   if (!storedUser) return null;
 
   try {
-    return JSON.parse(storedUser);
+    return JSON.parse(storedUser) as AppUser;
   } catch {
     localStorage.removeItem('user');
     return null;

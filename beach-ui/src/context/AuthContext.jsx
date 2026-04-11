@@ -15,33 +15,20 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = async (email, password) => {
-        try {
-            const response = await api.post('/Auth/login', { email, password });
-            const responseData = response.data?.data ?? response.data;
-            const accessToken = responseData?.accessToken ?? responseData?.token ?? responseData?.Token;
-            const userData = responseData?.user ?? responseData?.User ?? { email, role: responseData?.role };
+        const response = await api.post('/Auth/login', { email, password });
+        const responseData = response.data?.data ?? response.data;
+        const accessToken = responseData?.accessToken ?? responseData?.token ?? responseData?.Token;
+        const userData = responseData?.user ?? responseData?.User ?? { email, role: responseData?.role };
 
-            if (!accessToken) {
-                throw new Error('Access token alınamadı.');
-            }
-
-            setAccessToken(accessToken);
-            localStorage.setItem('user', JSON.stringify(userData));
-            
-            setUser(userData);
-            return response.data;
-        } catch (error) {
-            throw error;
+        if (!accessToken) {
+            throw new Error('Access token alınamadı.');
         }
-    };
 
-    const register = async (name, email, password) => {
-        try {
-            const response = await api.post('/Auth/register', { name, email, password });
-            return response.data;
-        } catch (error) {
-            throw error;
-        }
+        setAccessToken(accessToken);
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+
+        return response.data;
     };
 
     useEffect(() => {
@@ -73,6 +60,11 @@ export const AuthProvider = ({ children }) => {
             setLoading(false);
         });
     }, [logout]);
+
+    const register = async (name, email, password) => {
+        const response = await api.post('/Auth/register', { name, email, password });
+        return response.data;
+    };
 
     const value = {
         user,

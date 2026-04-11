@@ -16,6 +16,7 @@
   "scripts": {
     "start": "vite",
     "build": "vite build",
+    "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test"
   },
   "browserslist": {
@@ -31,11 +32,14 @@
     ]
   },
   "devDependencies": {
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
     "@vitejs/plugin-react": "^5.1.0",
     "@playwright/test": "^1.59.1",
     "autoprefixer": "^10.4.18",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
+    "typescript": "^5.9.3",
     "vite": "^7.2.1"
   }
 }

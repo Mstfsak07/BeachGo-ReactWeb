@@ -1,7 +1,14 @@
 const { chromium } = require('playwright');
-const assert = require('assert');
 
 (async () => {
+    const testCode = process.env.TEST_CONFIRMATION_CODE;
+    const testEmail = process.env.TEST_GUEST_EMAIL;
+
+    if (!testCode || !testEmail) {
+        console.error('Set TEST_CONFIRMATION_CODE and TEST_GUEST_EMAIL before running this script.');
+        process.exit(1);
+    }
+
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -13,14 +20,9 @@ const assert = require('assert');
         await page.goto('http://localhost:3000/reservation-check', { waitUntil: 'load' });
         await page.waitForTimeout(1000);
 
-        // We need an active reservation code. Assuming ST9EAMMS is still Pending.
-        // Alternatively, we can intercept the network to just test the backend endpoints directly 
-        // without relying on UI state, but testing through UI validates the requirements fully.
-
-        const testCode = 'ST9EAMMS';
-
         console.log(`Scenario 1: Testing valid active reservation cancel (${testCode}) ...`);
         await page.fill('input[type="text"]', testCode);
+        await page.fill('input[type="email"]', testEmail);
         await page.locator('button[type="submit"]').click();
         await page.waitForTimeout(2000);
 
@@ -57,14 +59,15 @@ const assert = require('assert');
         console.log("Scenario 2: Testing second cancellation (Zaten iptal edilmiş) ...");
         // To trigger this, we need to bypass the UI button hiding.
         // We can do this by executing a fetch directly in the browser context.
-        const secondCancelRes = await page.evaluate(async (code) => {
+        const secondCancelRes = await page.evaluate(async ({ code, email }) => {
             const res = await fetch(`http://localhost:5144/api/GuestReservations/cancel/${code}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
             });
             const text = await res.text();
             return { status: res.status, body: text };
-        }, testCode);
+        }, { code: testCode, email: testEmail });
 
         if (secondCancelRes.status === 400 && secondCancelRes.body.includes('zaten iptal')) {
             console.log("Scenario 2: PASS - Second cancel returned 400 'zaten iptal edilmiş'.");
@@ -74,14 +77,15 @@ const assert = require('assert');
         }
 
         console.log("Scenario 3: Testing invalid code cancellation ...");
-        const invalidCancelRes = await page.evaluate(async () => {
+        const invalidCancelRes = await page.evaluate(async (email) => {
             const res = await fetch(`http://localhost:5144/api/GuestReservations/cancel/INVALID123`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
             });
             const text = await res.text();
             return { status: res.status, body: text };
-        });
+        }, testEmail);
 
         if (invalidCancelRes.status === 404 && invalidCancelRes.body.includes('bulunamad')) {
             console.log("Scenario 3: PASS - Invalid code returned 404 'bulunamadı'.");

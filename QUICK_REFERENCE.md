@@ -43,14 +43,14 @@ Login → /beaches → See plajlar list
 ```
 POST /api/auth/login
   Request: { email: string, password: string }
-  Response: { token, refreshToken, email, role }
+  Response: { token, refreshToken, user }
 
 POST /api/auth/refresh
-  Request: { refreshToken: string }
-  Response: { token, refreshToken }
+  Request: {} or { refreshToken?: string }
+  Response: { token, refreshToken, user }
 
 POST /api/auth/logout
-  Request: { refreshToken: string }
+  Request: cookie-backed session or optional token payload
   Response: { message: "Logged out" }
 ```
 
@@ -162,14 +162,14 @@ src/
        v
 ┌─────────────────────────────┐
 │ Response:                   │
-│ {token, refreshToken, ...}  │
+│ {token, refreshToken, user} │
 └──────┬──────────────────────┘
        │
        v
 ┌─────────────────────────────┐
 │ Store:                      │
 │ - token (memory)            │
-│ - refreshToken (localStorage)│
+│ - refresh token (cookie)    │
 │ - user (localStorage)       │
 └──────┬──────────────────────┘
        │
@@ -212,7 +212,7 @@ src/
 ⚠️ Development Only
 
 - Self-signed HTTPS cert
-- Refresh token in localStorage
+- Refresh token in HttpOnly cookie
 - Multiple CORS origins
 
 ---
@@ -239,7 +239,7 @@ Before pushing to production:
 - [ ] Change `baseURL` to production API domain
 - [ ] Update `Program.cs` CORS to production domain
 - [ ] Replace self-signed cert with valid SSL
-- [ ] Change refresh token storage (localStorage → HttpOnly cookie)
+- [x] Refresh token uses HttpOnly cookie
 - [ ] Set appropriate token expiry times
 - [ ] Enable CSRF protection if using cookies
 - [ ] Add rate limiting (already configured in backend)
@@ -253,14 +253,11 @@ Before pushing to production:
 
 ### Chrome DevTools Console
 ```javascript
-// Check if logged in
-localStorage.getItem('refreshToken')
-
 // Check user data
 JSON.parse(localStorage.getItem('user'))
 
-// Clear all auth
-localStorage.clear()
+// Clear persisted user data
+localStorage.removeItem('user')
 ```
 
 ### Network Tab

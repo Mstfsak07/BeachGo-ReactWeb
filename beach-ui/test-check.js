@@ -1,6 +1,14 @@
 const { chromium } = require('playwright');
 
 (async () => {
+  const testCode = process.env.TEST_CONFIRMATION_CODE;
+  const testEmail = process.env.TEST_GUEST_EMAIL;
+
+  if (!testCode || !testEmail) {
+    console.error('Set TEST_CONFIRMATION_CODE and TEST_GUEST_EMAIL before running this script.');
+    process.exit(1);
+  }
+
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   
@@ -11,16 +19,17 @@ const { chromium } = require('playwright');
       await page.goto('http://localhost:3000/reservation-check', { waitUntil: 'load' });
       await page.waitForTimeout(1000);
 
-      console.log("Scenario 1: Testing valid confirmation code (ST9EAMMS) ...");
-      await page.fill('input[type="text"]', 'ST9EAMMS');
+      console.log(`Scenario 1: Testing valid confirmation code (${testCode}) ...`);
+      await page.fill('input[type="text"]', testCode);
+      await page.fill('input[type="email"]', testEmail);
       await page.locator('button[type="submit"]').click();
       
       // wait for result to appear
       await page.waitForTimeout(2000);
       
       // Look for the beach name or guest name
-      const hasGuestName = await page.locator('text=Murat Test').count();
-      if (hasGuestName > 0) {
+      const hasReservationCard = await page.locator('text=Rezervasyon Durumu').count();
+      if (hasReservationCard > 0) {
           console.log("Scenario 1: PASS - Reservation details shown.");
           passedCount++;
       } else {
@@ -29,6 +38,7 @@ const { chromium } = require('playwright');
 
       console.log("Scenario 2: Testing invalid confirmation code (INVALID123) ...");
       await page.fill('input[type="text"]', 'INVALID123');
+      await page.fill('input[type="email"]', testEmail);
       await page.locator('button[type="submit"]').click();
       
       await page.waitForTimeout(2000);

@@ -1,31 +1,12 @@
 const { chromium } = require('playwright');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-
-// Database connection
-const dbPath = path.resolve(__dirname, '../BeachRehberi.API/BeachRehberi.API/beachrehberi.db');
-const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
-    if (err) {
-        console.error("Database Error:", err.message);
-    } else {
-        console.log("Connected to the SQLite database.");
-    }
-});
-
-function getOtpCodeFromDb(phone) {
-    return new Promise((resolve, reject) => {
-        const query = `SELECT Code FROM VerificationCodes WHERE Phone = ? ORDER BY Id DESC LIMIT 1`;
-        db.get(query, [phone], (err, row) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(row ? row.Code : null);
-            }
-        });
-    });
-}
 
 (async () => {
+  const otpCode = process.env.TEST_OTP_CODE;
+  if (!otpCode || otpCode.length !== 6) {
+      console.error('Set TEST_OTP_CODE to the current 6-digit OTP before running this script.');
+      process.exit(1);
+  }
+
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   
@@ -129,14 +110,7 @@ function getOtpCodeFromDb(phone) {
 
       // Step 3: Verify OTP
       console.log("Step 3: OTP Doğrulanıyor...");
-      const phoneToSearch = '+905551234567';
-      const otpCode = await getOtpCodeFromDb(phoneToSearch);
-      
-      if (!otpCode) {
-          logFailure('OTP Okuma DB', '', '', '', 'DB de OTP kodu bulunamadı.');
-          throw new Error("DB Error");
-      }
-      console.log(`DB'den okunan OTP Kodu: ${otpCode}`);
+      console.log(`Kullanılan OTP Kodu: ${otpCode}`);
 
       // OTP has 6 digits, we need to fill them
       for (let i = 0; i < 6; i++) {
@@ -167,6 +141,5 @@ function getOtpCodeFromDb(phone) {
       }
   } finally {
       await browser.close();
-      db.close();
   }
 })();

@@ -1,10 +1,10 @@
 # 🏖️ BeachGo - JWT Authentication Complete Setup
 
-## 🎯 Mission: COMPLETED ✅
+## 🎯 Mission: Updated
 
-Complete JWT authentication system implemented for React + .NET Core backend.
+JWT authentication flow is implemented for the React frontend and .NET backend.
 
-**System Status**: ✅ Production Ready (with development setup)
+**Current Status**: Development-ready. Do not treat this file as a production hardening checklist without the notes below.
 
 ---
 
@@ -22,13 +22,10 @@ Complete JWT authentication system implemented for React + .NET Core backend.
   - Request: Adds Bearer token automatically
   - Response: 401 handling with auto-refresh
   - Error: Formatted logging, auto logout on failure
-- **authService.js**: Complete auth methods
-  - `login()` - Email/password authentication
-  - `logout()` - Token cleanup
-  - `isAuthenticated()` - Boolean check
-  - `getUser()` - User data retrieval
-- **api.js**: All endpoints wrapped
-  - Beaches, Events, Reservations, Reviews, Business
+- **token.js**: In-memory access token helpers
+  - `setAccessToken()` - Stores access token in memory only
+  - `refreshAccessToken()` - Refreshes via backend cookie
+  - `clearAuthSession()` - Clears in-memory token + persisted user
 
 ### 3. ✅ Frontend UI Components
 - **Login.jsx**: Basic login form
@@ -116,7 +113,8 @@ Visit `http://localhost:3000/login` → Login → View beaches
 
 ✅ **Token Management**
 - Access token: Memory storage
-- Refresh token: localStorage
+- Refresh token: HttpOnly cookie from backend
+- Only non-sensitive user data stays in `localStorage`
 - Auto refresh on 401
 - Token queue during refresh
 
@@ -195,17 +193,16 @@ App
 - CORS whitelist
 - Error message filtering
 
-### Dev Only
-- Self-signed HTTPS cert
-- Refresh token in localStorage
-- Multiple localhost origins
+### Dev Notes
+- Self-signed HTTPS cert may still be used locally
+- Refresh token is expected from backend cookie support
+- Multiple localhost origins are still enabled for development
 
 ### To Do (Production)
 - [ ] Real HTTPS certificate
-- [ ] HttpOnly cookie for refresh token
 - [ ] Reduce CORS origins
 - [ ] CSRF protection
-- [ ] Rate limiting
+- [ ] Expand rate limiting coverage beyond the current sensitive endpoints
 - [ ] Token rotation
 - [ ] Audit logging
 
@@ -270,21 +267,21 @@ See `SETUP_JWT_AUTH.md` for more troubleshooting
 ```javascript
 Request: { email: string, password: string }
 Response: { 
-  data: { token, refreshToken, email, role }
+  data: { token, refreshToken, user }
 }
 ```
 
 **POST /auth/refresh**
 ```javascript
-Request: { refreshToken: string }
+Request: {} or { refreshToken?: string }
 Response: { 
-  data: { token, refreshToken }
+  data: { token, refreshToken, user }
 }
 ```
 
 **POST /auth/logout**
 ```javascript
-Request: { refreshToken: string }
+Request: cookie-backed session or optional token payload
 Response: { message: "Logged out" }
 ```
 
@@ -365,7 +362,7 @@ await authService.logout();
 - [ ] Update axios baseURL in frontend
 - [ ] Update CORS policy to production domains
 - [ ] Use real HTTPS certificate (not self-signed)
-- [ ] Move refresh token to HttpOnly cookie
+- [x] Use HttpOnly cookie for refresh token
 - [ ] Set appropriate token expiry (15m access, 7d refresh)
 - [ ] Enable HTTPS strict mode
 - [ ] Add rate limiting to login endpoint
@@ -418,7 +415,7 @@ await authService.logout();
 - **Frontend Errors**: Check DevTools Console
 - **Backend Errors**: Check terminal output
 - **API Errors**: Check Network tab → Response
-- **Auth Issues**: Check localStorage in DevTools
+- **Auth Issues**: Check cookies + `localStorage.user` in DevTools
 - **Token Issues**: Decode at jwt.io
 - **CORS Issues**: Check Program.cs CORS policy
 
@@ -434,8 +431,6 @@ await authService.logout();
 
 ---
 
-**System is fully operational! 🎉**
-
-Login → Beaches → Logout flow ready for use.
+Login → protected request → refresh → logout flow is aligned with the current frontend implementation.
 
 See individual markdown files for detailed information on setup, implementation, testing, and troubleshooting.

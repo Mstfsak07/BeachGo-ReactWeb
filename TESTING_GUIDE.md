@@ -42,8 +42,7 @@ Password: Test@1234
      "data": {
        "token": "eyJhbGciOi...",
        "refreshToken": "refresh_...",
-       "email": "test@example.com",
-       "role": "user"
+       "user": { "email": "test@example.com", "role": "user" }
      },
      "message": "Success",
      "isSuccess": true
@@ -117,7 +116,7 @@ Expected: 401 Unauthorized
 ---
 
 ### Test 4: Frontend - Login Success
-**Purpose**: Verify login flow and token storage
+**Purpose**: Verify login flow and session storage
 
 **Steps:**
 ```
@@ -131,15 +130,15 @@ Expected: 401 Unauthorized
 
 4. Check Results:
    - Should redirect to /beaches
-   - Browser DevTools → Application → localStorage
-     → "refreshToken" key present
-     → "user" key present with { email, role }
+   - Browser DevTools → Application
+     → `localStorage.user` present
+     → refresh token cookie present
    - DevTools → Console → No errors
 ```
 
 **Expected:**
 - ✅ Redirected to /beaches
-- ✅ localStorage has auth data
+- ✅ user data is persisted and token is not persisted in localStorage
 - ✅ No console errors
 
 ---
@@ -206,16 +205,15 @@ Expected: 401 Unauthorized
 
 3. Check:
    - Redirected to /
-   - localStorage empty:
+   - persisted user data cleared:
      DevTools → Application → localStorage
-     → refreshToken GONE
      → user GONE
    - Navbar shows Login/Register buttons
 ```
 
 **Expected:**
 - ✅ Redirected to home
-- ✅ localStorage cleared
+- ✅ persisted user data cleared
 - ✅ isAuthenticated = false
 
 ---
@@ -261,7 +259,8 @@ Expected: 401 Unauthorized
 4. Or manually test:
    curl -X POST http://localhost:5144/api/auth/refresh \
      -H "Content-Type: application/json" \
-     -d '{"refreshToken":"refresh_token_from_test_1"}'
+     -b "refreshToken=refresh_token_from_test_1" \
+     -d '{}'
 
    Expected Response:
    {
@@ -356,8 +355,7 @@ Expected: 401 Unauthorized
 ### 1. Check Token in Memory
 ```javascript
 // DevTools Console
-import { getAccessToken } from './api/axios'
-console.log(getAccessToken())
+JSON.parse(localStorage.getItem('user'))
 ```
 
 ### 2. Decode JWT
@@ -402,12 +400,12 @@ console.log(user, isAuthenticated)
 - [ ] Login works with valid credentials
 - [ ] Login fails with invalid credentials
 - [ ] Redirects to /beaches on success
-- [ ] Token stored in localStorage
+- [ ] Access token kept out of localStorage
 - [ ] Token sent in Authorization header
 - [ ] Beaches data displays
 - [ ] User email shown in navbar
 - [ ] Logout button works
-- [ ] localStorage cleared after logout
+- [ ] localStorage.user cleared after logout
 - [ ] Cannot access /beaches without login
 - [ ] Protected route redirects properly
 - [ ] Error messages display correctly
@@ -416,7 +414,7 @@ console.log(user, isAuthenticated)
 
 ### Security
 - [ ] Token in Authorization header (not URL)
-- [ ] Refresh token in localStorage
+- [ ] Refresh token provided via cookie
 - [ ] Auto logout on 401
 - [ ] CORS restricted to localhost
 - [ ] No tokens in console output
@@ -496,9 +494,7 @@ Name: Refresh Token
 Method: POST
 URL: {{api_url}}/auth/refresh
 Body (raw JSON):
-{
-  "refreshToken": "{{refresh_token}}"
-}
+{}
 ```
 
 ---

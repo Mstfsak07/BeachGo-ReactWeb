@@ -12,6 +12,40 @@ export type AppUser = {
   [key: string]: unknown;
 };
 
+export type BeachDto = {
+  id?: number;
+  name?: string;
+  location?: string;
+  [key: string]: unknown;
+};
+
+export type FavoriteDto = {
+  id?: number;
+  beachId?: number;
+  beach?: BeachDto | null;
+  [key: string]: unknown;
+};
+
+export type ReservationDto = {
+  id?: number;
+  status?: string;
+  paymentStatus?: string;
+  reservationDate?: string;
+  [key: string]: unknown;
+};
+
+export type BusinessReservationDto = ReservationDto & {
+  customerName?: string;
+  beachName?: string;
+};
+
+export type BusinessStatsDto = {
+  totalReservations?: number;
+  totalRevenue?: number;
+  pendingReservations?: number;
+  [key: string]: unknown;
+};
+
 export function unwrapResponse<T>(responseData: ApiEnvelope<T> | T | null | undefined): T | null {
   if (!responseData) return null;
 

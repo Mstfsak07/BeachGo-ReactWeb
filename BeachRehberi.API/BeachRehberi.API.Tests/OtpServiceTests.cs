@@ -62,6 +62,27 @@ public class OtpServiceTests
         Assert.True(await service.IsEmailVerifiedAsync(verification.Id.ToString()));
     }
 
+    [Fact]
+    public async Task VerifyOtpAsync_rejects_expired_code()
+    {
+        await using var db = CreateDbContext();
+        var verification = new VerificationCode
+        {
+            Email = "guest@example.com",
+            CodeHash = ComputeSha256Hash("999999"),
+            Purpose = OtpPurpose.EmailVerification,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(-1),
+            IsUsed = false
+        };
+        db.VerificationCodes.Add(verification);
+        await db.SaveChangesAsync();
+
+        var service = new OtpService(db, NullLogger<OtpService>.Instance);
+
+        Assert.False(await service.VerifyOtpAsync(verification.Id.ToString(), "999999"));
+        Assert.False(await service.IsEmailVerifiedAsync(verification.Id.ToString()));
+    }
+
     private static BeachDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<BeachDbContext>()

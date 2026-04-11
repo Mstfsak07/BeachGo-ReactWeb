@@ -24,7 +24,6 @@ using BeachRehberi.API.Models;
 using Resend;
 
 using BeachRehberi.Domain.Interfaces;
-using BeachRehberi.Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -117,7 +116,6 @@ builder.Services.AddScoped<IPaymentService, StripePaymentService>();
 // ─────────────────────────────────────────
 builder.Services.AddMediatR(cfg => {
     cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
-    cfg.RegisterServicesFromAssembly(typeof(BeachRehberi.Application.DependencyInjection).Assembly);
 });
 
 // ─────────────────────────────────────────

@@ -84,9 +84,9 @@ if ($review -match "BLOCK") {
 
 ## 5. Uygulama Katmanı Gerçeklik Notu
 
-Bu repoda `BeachRehberi.Application/` ve `BeachRehberi.API/Features/` altında benzer command/query isimleri bulunuyor. Bugünkü çalışma düzeninde aktif HTTP yürütme yolu `BeachRehberi.API/Features/` ve `BeachRehberi.API/Services/` kombinasyonudur; `BeachRehberi.Application/` altındaki birçok dosya placeholder/stub niteliğindedir.
+Bu repoda `BeachRehberi.Application/` ve `BeachRehberi.API/Features/` altında benzer command/query isimleri bulunuyordu. Aktif HTTP yürütme yolu `BeachRehberi.API/Features/` ve `BeachRehberi.API/Services/` kombinasyonudur; Application altındaki boş auth command/validator stubları kaldırıldı ve MediatR scan yalnızca API assembly'sine indirildi.
 
 Bu nedenle:
 - Yeni davranış eklerken önce `BeachRehberi.API/Features/` ve ilgili servisleri kaynak gerçeklik olarak kabul edin.
-- `BeachRehberi.Application/` altında aynı isimli stub dosyaları davranış referansı olarak kullanmayın.
-- Orta vadede ya Application katmanı gerçek handler/DTO içeriğiyle doldurulmalı ya da bu çift tanım kaldırılmalıdır.
+- `BeachRehberi.Application/` altında kalan ortak DTO/command/query tipleri aktif HTTP handler kaynağı değildir.
+- Orta vadede Application katmanı gerçek handler/DTO içeriğiyle doldurulmalı ya da kalan ortak tipler de API/Doman sınırına taşınmalıdır.

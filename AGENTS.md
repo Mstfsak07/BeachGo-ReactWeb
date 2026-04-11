@@ -1,5 +1,5 @@
 # AGENTS.md
-
+<!-- dikkate alma
 Bu repo için çalışma modeli:
 
 1. İlk iş: verilen review/assessment dosyasını oku.
@@ -22,4 +22,4 @@ Bu repo için çalışma modeli:
 8. Tüm işlemleri state dosyalarına ve loglara yaz.
 9. Kapsam dışı değişiklik yapma.
 10. Her aşamada en küçük güvenli diff'i tercih et.
-11. Oluşturulan ve güncellenen tüm dosyalarda UTF-8 kullan, Türkçe karakterleri bozma.
+11. Oluşturulan ve güncellenen tüm dosyalarda UTF-8 kullan, Türkçe karakterleri bozma. -->

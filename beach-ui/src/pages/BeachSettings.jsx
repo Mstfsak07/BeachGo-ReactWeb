@@ -392,7 +392,7 @@ const BeachSettings = () => {
         </div>
       </main>
     
-      <CameraContentPreviewModal
+      <InstagramContentPreviewModal
         isOpen={isPreviewModalOpen}
         onClose={() => setIsPreviewModalOpen(false)}
         username={beach.instagramUsername}

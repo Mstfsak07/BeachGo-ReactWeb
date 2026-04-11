@@ -15,7 +15,7 @@
       "stdout_path": "C:\\dev\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-2\\phase-2-task-1\\attempt-1\\stdout.log",
       "stderr_path": "C:\\dev\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-2\\phase-2-task-1\\attempt-1\\stderr.log",
       "exit_code": 0,
-      "message": "guest-cancel rate limit policy active and configured at 5 requests / 15 minutes by IP."
+      "message": "guest-reservation-lookup: sliding 1 min / 10 permit per IP; guest-reservation-mutation (cancel+pay): fixed 1 min / 5 per IP; OnRejected loglama (RateLimiting.GuestReservation)."
     },
     {
       "task_id": "phase-2-task-2",
@@ -38,6 +38,17 @@
       "stderr_path": null,
       "exit_code": 0,
       "message": "ApiResponseExtensions artık explicit ServiceResult.StatusCode değerlerini önce uygular. Guest payment akışı payment feature kapalıyken 503, gerçek Stripe akışı açılmış ama entegrasyon hazır değilken 501 döndürüyor."
+    },
+    {
+      "task_id": "phase-2-task-4",
+      "title": "Stripe webhook imza doğrulaması ve ödeme operasyon notları",
+      "executor": "cursor-agent",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "POST /api/stripe/webhook: Stripe.net EventUtility.ConstructEvent ile imza doğrulaması; secret yoksa 503, başarılı doğrulamada 200. ops/payment-stripe-operational-notes.md eklendi."
     }
   ],
   "verification_results": [

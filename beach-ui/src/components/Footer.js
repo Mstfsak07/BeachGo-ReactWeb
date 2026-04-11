@@ -78,7 +78,10 @@ const Footer = () => {
 
         {/* Alt Bar */}
         <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 text-sm font-bold text-slate-500">
-          <p> 2023 BeachGo. Tüm hakları saklıdır.</p>
+          <p>
+            {' '}
+            {currentYear} BeachGo. Tüm hakları saklıdır.
+          </p>
           <div className="flex gap-8">
             <span className="hover:text-white cursor-pointer">Gizlilik</span>
             <span className="hover:text-white cursor-pointer">KVKK</span>

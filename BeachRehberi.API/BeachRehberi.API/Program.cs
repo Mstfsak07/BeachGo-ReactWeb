@@ -17,6 +17,7 @@ using Mapster;
 using MapsterMapper;
 using MediatR;
 using System.Threading.RateLimiting;
+using System.Globalization;
 using BCrypt.Net;
 using System.Security.Claims;
 using BeachRehberi.API.Models;
@@ -136,6 +137,30 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        var logger = context.HttpContext.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("RateLimiting.GuestReservation");
+        var ip = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        logger.LogWarning(
+            "Rate limit aşıldı. {Method} {Path}, IP={IP}",
+            context.HttpContext.Request.Method,
+            context.HttpContext.Request.Path.Value,
+            ip);
+
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                ((int)retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
+        }
+
+        await context.HttpContext.Response.WriteAsync(
+            "Too many requests. Please try again later.",
+            cancellationToken);
+    };
+
     // Global Sliding Window - preventing burst and sustained abuse
     options.AddSlidingWindowLimiter("fixed", opt =>
     {
@@ -153,15 +178,30 @@ builder.Services.AddRateLimiter(options =>
         opt.QueueLimit = 0;
     });
 
-    options.AddPolicy("guest-cancel", httpContext => 
+    // Misafir uçları — lookup: 10 istek / 1 dk / IP (sliding, 4 segment); cancel+pay: 5 istek / 1 dk / IP (fixed).
+    // Reddedilen istekler RateLimiting.GuestReservation log kategorisiyle uyarı olarak yazılır.
+    options.AddPolicy("guest-reservation-lookup", httpContext =>
+        RateLimitPartition.GetSlidingWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "global-guest-lookup",
+            factory: _ => new SlidingWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 10,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1),
+                SegmentsPerWindow = 4
+            }));
+
+    // İptal ve ödeme uçları: daha sıkı (aynı IP ile toplu deneme)
+    options.AddPolicy("guest-reservation-mutation", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
-            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "global-guest-cancel",
-            factory: partition => new FixedWindowRateLimiterOptions
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "global-guest-mutation",
+            factory: _ => new FixedWindowRateLimiterOptions
             {
                 AutoReplenishment = true,
                 PermitLimit = 5,
                 QueueLimit = 0,
-                Window = TimeSpan.FromMinutes(15)
+                Window = TimeSpan.FromMinutes(1)
             }));
 });
 

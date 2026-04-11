@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import { getBeachById } from '../../services/api';
 import reservationService from '../../services/reservationService';
 import { AlertCircle, MapPin, Calendar, Clock, Users, Check } from 'lucide-react';
-import type { AppUser, BeachDto, ReservationDto } from '../../types';
+import type { BeachDto, ReservationDto } from '../../types';
 import StepPersonalInfo from './StepPersonalInfo';
 import StepEmailVerify from './StepEmailVerify';
 import StepSuccess from './StepSuccess';
@@ -29,7 +29,7 @@ const GuestReservation = () => {
   const { beachId } = useParams<{ beachId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const auth = useAuth() as { user: AppUser | null; isAuthenticated: boolean; loading: boolean };
+  const auth = useAuth();
   const reservationState = (location.state ?? {}) as ReservationLocationState;
 
   const [beach, setBeach] = useState<BeachDto | null>(null);

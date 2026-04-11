@@ -14,23 +14,21 @@ const VerifyEmail = () => {
   const [resending, setResending] = useState(false);
 
   useEffect(() => {
-    if (token) {
-      handleVerify();
-    } else {
+    if (!token) {
       setStatus('error');
+      return;
     }
+    (async () => {
+      try {
+        await verifyEmail(token);
+        setStatus('success');
+        toast.success('E-posta adresiniz doğrulandı!');
+      } catch {
+        setStatus('error');
+        toast.error('Doğrulama başarısız oldu.');
+      }
+    })();
   }, [token]);
-
-  const handleVerify = async () => {
-    try {
-      await verifyEmail(token);
-      setStatus('success');
-      toast.success('E-posta adresiniz doğrulandı!');
-    } catch (error) {
-      setStatus('error');
-      toast.error('Doğrulama başarısız oldu.');
-    }
-  };
 
   const handleResend = async (e) => {
     e.preventDefault();

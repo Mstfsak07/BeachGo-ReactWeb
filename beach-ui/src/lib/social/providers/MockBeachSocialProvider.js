@@ -8,7 +8,7 @@ export class MockBeachSocialProvider {
    * @param {object} beach
    * @returns {Promise<BeachSocialContent>}
    */
-  async getContent(beach) {
+  async getContent(_beach) {
     // In a real mock scenario, we could filter by beachId if needed
     // For now, we return the static mock objects
     return {

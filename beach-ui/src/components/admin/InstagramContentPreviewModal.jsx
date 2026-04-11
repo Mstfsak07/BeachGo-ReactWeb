@@ -33,7 +33,7 @@ const InstagramContentPreviewModal = ({ isOpen, onClose, username, beachId }) =>
       setData(null);
       setError(null);
     }
-    
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchPreview yalnızca isOpen/username ile tetiklenir
   }, [isOpen, username]);
 
   const fetchPreview = async () => {

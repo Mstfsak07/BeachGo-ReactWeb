@@ -1,17 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { getBeaches } from '../services/api';
-import BeachCard from '../components/BeachCard';
-import { BeachCardSkeleton } from '../components/ui/Skeleton';
-import { useAuth } from '../context/AuthContext';
+import { motion, type Variants } from 'framer-motion';
+import type { LucideIcon } from 'lucide-react';
 import {
   Search,
   MapPin,
   Calendar,
   Users,
   ChevronRight,
-  Umbrella,
   Palmtree,
   Waves,
   Wind,
@@ -19,13 +15,25 @@ import {
   Sparkles,
   TrendingUp,
   ShieldCheck,
-  Star
+  Star,
 } from 'lucide-react';
+import { getBeaches } from '../services/api';
+import BeachCard from '../components/BeachCard';
+import { BeachCardSkeleton } from '../components/ui/Skeleton';
+import { useAuth } from '../context/AuthContext';
+import type { BeachDto } from '../types';
+
+type CategoryItem = {
+  name: string;
+  icon: LucideIcon;
+  color: string;
+  bg: string;
+};
 
 const Home = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const [featuredBeaches, setFeaturedBeaches] = useState([]);
+  const [featuredBeaches, setFeaturedBeaches] = useState<BeachDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -34,7 +42,7 @@ const Home = () => {
       try {
         const data = await getBeaches();
         setFeaturedBeaches(data.slice(0, 3));
-      } catch (err) {
+      } catch {
         // Fetch failed
       } finally {
         setLoading(false);
@@ -43,7 +51,7 @@ const Home = () => {
     fetchBeaches();
   }, []);
 
-  const categories = [
+  const categories: CategoryItem[] = [
     { name: 'Popüler', icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-50' },
     { name: 'Sakin', icon: Wind, color: 'text-blue-500', bg: 'bg-blue-50' },
     { name: 'Aile', icon: Users, color: 'text-emerald-500', bg: 'bg-emerald-50' },
@@ -52,18 +60,18 @@ const Home = () => {
     { name: 'Restoran', icon: Coffee, color: 'text-orange-500', bg: 'bg-orange-50' },
   ];
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0, y: 30 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { duration: 0.8, staggerChildren: 0.2 }
-    }
+      transition: { duration: 0.8, staggerChildren: 0.2 },
+    },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
+    visible: { opacity: 1, y: 0 },
   };
 
   return (
@@ -73,10 +81,8 @@ const Home = () => {
       variants={containerVariants}
       className="min-h-screen bg-white font-sans selection:bg-blue-100 selection:text-blue-900"
     >
-
       {/* Immersive Hero Section */}
       <section className="relative min-h-[85vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden bg-slate-900 pt-20">
-        {/* Cinematic Background */}
         <div className="absolute inset-0 z-0">
           <img
             src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80"
@@ -86,7 +92,6 @@ const Home = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60"></div>
         </div>
 
-        {/* Hero Content */}
         <div className="container mx-auto px-4 sm:px-6 relative z-10 text-center space-y-8 md:space-y-10">
           <div className="space-y-4 md:space-y-6 max-w-5xl mx-auto">
             <motion.div
@@ -110,11 +115,7 @@ const Home = () => {
             </motion.p>
           </div>
 
-          {/* Floating Magic Search Bar */}
-          <motion.div
-            variants={itemVariants}
-            className="max-w-5xl mx-auto w-full"
-          >
+          <motion.div variants={itemVariants} className="max-w-5xl mx-auto w-full">
             <div className="bg-white/90 backdrop-blur-2xl p-3 sm:p-4 rounded-[2rem] sm:rounded-[2.5rem] shadow-3xl shadow-black/30 border border-white/30 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 group">
               <div className="min-w-0 flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 md:py-3 xl:py-2 border-b md:border-b-0 md:border-r border-slate-200 group-hover:bg-slate-50 transition-colors rounded-[1.5rem] sm:rounded-[2rem]">
                 <MapPin className="text-blue-600 shrink-0" size={24} />
@@ -144,7 +145,7 @@ const Home = () => {
                 </div>
               </div>
               <motion.button
-                whileHover={{ scale: 1.05, boxShadow: "0 0 25px rgba(37, 99, 235, 0.5)" }}
+                whileHover={{ scale: 1.05, boxShadow: '0 0 25px rgba(37, 99, 235, 0.5)' }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => navigate(`/beaches?q=${searchQuery}`)}
                 className="w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-5 md:px-6 md:py-6 rounded-[1.5rem] sm:rounded-[2rem] shadow-xl shadow-blue-500/40 transition-all flex items-center justify-center gap-3 md:col-span-2 xl:col-span-1"
@@ -156,36 +157,38 @@ const Home = () => {
           </motion.div>
         </div>
 
-        {/* Scroll Indicator */}
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/50 animate-bounce">
           <span className="text-[10px] font-black uppercase tracking-[0.3em]">Kaydır</span>
           <div className="w-0.5 h-12 bg-gradient-to-b from-white/50 to-transparent"></div>
         </div>
       </section>
 
-      {/* Modern Categories Section */}
       <section className="py-20 container mx-auto px-6">
         <div className="flex flex-wrap justify-center gap-4 md:gap-8">
-          {categories.map((cat, i) => (
-            <motion.button
-              key={i}
-              variants={itemVariants}
-              whileHover={{ y: -8, scale: 1.1 }}
-              onClick={() => navigate('/beaches?category=' + encodeURIComponent(cat.name))}
-              className="group flex flex-col items-center gap-4 min-w-[100px] md:min-w-[120px]"
-            >
-              <div className={`${cat.bg} ${cat.color} p-6 rounded-[2.5rem] shadow-sm group-hover:shadow-xl group-hover:rotate-6 transition-all duration-500`}>
-                <cat.icon size={32} strokeWidth={2.5} />
-              </div>
-              <span className="text-sm font-bold text-slate-500 group-hover:text-blue-600 transition-colors uppercase tracking-widest">
-                {cat.name}
-              </span>
-            </motion.button>
-          ))}
+          {categories.map((cat, i) => {
+            const Icon = cat.icon;
+            return (
+              <motion.button
+                key={i}
+                variants={itemVariants}
+                whileHover={{ y: -8, scale: 1.1 }}
+                onClick={() => navigate('/beaches?category=' + encodeURIComponent(cat.name))}
+                className="group flex flex-col items-center gap-4 min-w-[100px] md:min-w-[120px]"
+              >
+                <div
+                  className={`${cat.bg} ${cat.color} p-6 rounded-[2.5rem] shadow-sm group-hover:shadow-xl group-hover:rotate-6 transition-all duration-500`}
+                >
+                  <Icon size={32} strokeWidth={2.5} />
+                </div>
+                <span className="text-sm font-bold text-slate-500 group-hover:text-blue-600 transition-colors uppercase tracking-widest">
+                  {cat.name}
+                </span>
+              </motion.button>
+            );
+          })}
         </div>
       </section>
 
-      {/* Featured Beaches Section */}
       <section className="py-24 bg-slate-50/50">
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
@@ -198,7 +201,10 @@ const Home = () => {
               </h2>
             </div>
             <motion.div whileHover={{ x: 5 }}>
-              <Link to="/beaches" className="group flex items-center gap-4 bg-white px-8 py-5 rounded-[2rem] shadow-xl shadow-slate-200/50 text-slate-900 font-bold hover:bg-blue-600 hover:text-white transition-all duration-500 border border-slate-100">
+              <Link
+                to="/beaches"
+                className="group flex items-center gap-4 bg-white px-8 py-5 rounded-[2rem] shadow-xl shadow-slate-200/50 text-slate-900 font-bold hover:bg-blue-600 hover:text-white transition-all duration-500 border border-slate-100"
+              >
                 Tüm Plajları Gör
                 <div className="bg-slate-100 group-hover:bg-white/20 p-1 rounded-full transition-colors">
                   <ChevronRight size={20} />
@@ -208,26 +214,23 @@ const Home = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-            {loading ? (
-              [...Array(3)].map((_, i) => <BeachCardSkeleton key={i} />)
-            ) : (
-              featuredBeaches.map((beach, i) => (
-                <motion.div
-                  key={beach.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                >
-                  <BeachCard beach={beach} />
-                </motion.div>
-              ))
-            )}
+            {loading
+              ? [...Array(3)].map((_, i) => <BeachCardSkeleton key={i} />)
+              : featuredBeaches.map((beach, i) => (
+                  <motion.div
+                    key={beach.id ?? i}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                  >
+                    <BeachCard beach={beach} />
+                  </motion.div>
+                ))}
           </div>
         </div>
       </section>
 
-      {/* Premium Stats Section */}
       <section className="py-32 relative overflow-hidden bg-slate-900">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/20 blur-[150px] -mr-64 -mt-64"></div>
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-indigo-600/20 blur-[150px] -ml-64 -mb-64"></div>
@@ -264,19 +267,15 @@ const Home = () => {
                 { val: '50+', label: 'Özel Plaj', color: 'text-blue-400' },
                 { val: '12K+', label: 'Mutlu Ziyaretçi', color: 'text-emerald-400' },
                 { val: '15+', label: 'Haftalık Etkinlik', color: 'text-purple-400' },
-                { val: '24/7', label: 'Canlı Destek', color: 'text-rose-400' }
+                { val: '24/7', label: 'Canlı Destek', color: 'text-rose-400' },
               ].map((stat, i) => (
                 <motion.div
                   key={i}
-                  whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }}
+                  whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }}
                   className="bg-white/5 backdrop-blur-2xl border border-white/10 p-10 rounded-[3rem] group transition-all duration-500"
                 >
-                  <div className={`text-6xl font-bold mb-2 tracking-tighter ${stat.color}`}>
-                    {stat.val}
-                  </div>
-                  <div className="text-slate-400 text-xs font-black uppercase tracking-[0.2em]">
-                    {stat.label}
-                  </div>
+                  <div className={`text-6xl font-bold mb-2 tracking-tighter ${stat.color}`}>{stat.val}</div>
+                  <div className="text-slate-400 text-xs font-black uppercase tracking-[0.2em]">{stat.label}</div>
                 </motion.div>
               ))}
             </div>
@@ -284,7 +283,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Call to Action */}
       <section className="py-24 container mx-auto px-6">
         <motion.div
           whileHover={{ scale: 1.01 }}
@@ -302,16 +300,25 @@ const Home = () => {
             </div>
             <div className="flex flex-col sm:flex-row gap-6 shrink-0">
               {!isAuthenticated && (
-                <motion.div whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }} whileTap={{ scale: 0.95 }}>
-                  <Link to="/register" className="bg-white text-blue-600 px-12 py-6 rounded-[2rem] font-black uppercase tracking-widest text-sm hover:bg-blue-50 transition-all shadow-2xl block text-center">
+                <motion.div
+                  whileHover={{ scale: 1.05, boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Link
+                    to="/register"
+                    className="bg-white text-blue-600 px-12 py-6 rounded-[2rem] font-black uppercase tracking-widest text-sm hover:bg-blue-50 transition-all shadow-2xl block text-center"
+                  >
                     Üye Ol
                   </Link>
                 </motion.div>
               )}
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/beaches" className="bg-white text-blue-600 px-12 py-6 
+                <Link
+                  to="/beaches"
+                  className="bg-white text-blue-600 px-12 py-6 
                     rounded-[2rem] font-black uppercase tracking-widest text-sm hover:bg-gray-100 
-                    transition-all block text-center shadow-lg border border-blue-600">
+                    transition-all block text-center shadow-lg border border-blue-600"
+                >
                   Plajları Gez
                 </Link>
               </motion.div>

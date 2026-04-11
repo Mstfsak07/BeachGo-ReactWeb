@@ -27,7 +27,7 @@ import { BeachDetailSkeleton } from '../components/ui/Skeleton';
 import ReviewSection from '../components/ReviewSection';
 import BeachStoryBar from '../components/beach/BeachStoryBar';
 import BeachGallery from '../components/beach/BeachGallery';
-import type { AppUser, BeachDto } from '../types';
+import type { BeachDto } from '../types';
 
 type SocialContent = {
   stories: unknown[];
@@ -54,7 +54,7 @@ const BeachDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const auth = useAuth() as { user: AppUser | null; isAuthenticated: boolean };
+  const auth = useAuth();
 
   const [beach, setBeach] = useState<BeachDto | null>(null);
   const [loading, setLoading] = useState(true);

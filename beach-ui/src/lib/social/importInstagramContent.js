@@ -5,7 +5,7 @@
  * @param {string} username 
  * @returns {Promise<{success: boolean, message: string}>}
  */
-export async function importInstagramContent(beachId, username) {
+export async function importInstagramContent(_beachId, _username) {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({ 

@@ -46,7 +46,14 @@ if (jwtSecret.Length < 32)
 // ─────────────────────────────────────────
 // DATABASE CONFIGURATION (PostgreSQL)
 // ─────────────────────────────────────────
-var dbConn = builder.Configuration.GetConnectionString("DefaultConnection");
+var dbConn = Environment.GetEnvironmentVariable("BEACHGO_DB_CONN")
+             ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(dbConn))
+{
+    throw new InvalidOperationException("Database connection string is missing. Set BEACHGO_DB_CONN or ConnectionStrings:DefaultConnection.");
+}
+
 builder.Services.AddDbContext<BeachDbContext>(options =>
 {
     options.UseNpgsql(dbConn);
@@ -81,8 +88,9 @@ builder.Services.AddHttpClient<IWeatherService, WeatherService>();
 // Auth support services (OTP + Email)
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<BeachRehberi.Application.Common.Interfaces.IOtpService, OtpService>();
-// Email service: use NoOp in dev (no Resend API key), ResendEmailService in production
-var resendApiKey = builder.Configuration["Resend:ApiKey"];
+// Email service: use Resend whenever a key is configured, regardless of environment.
+var resendApiKey = Environment.GetEnvironmentVariable("RESEND_API_KEY")
+                   ?? builder.Configuration["Resend:ApiKey"];
 if (!string.IsNullOrWhiteSpace(resendApiKey))
 {
     builder.Services.Configure<ResendClientOptions>(o => o.ApiToken = resendApiKey);
@@ -326,7 +334,15 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<BeachDbContext>();
     try
     {
-        await db.Database.MigrateAsync();
+        var pendingMigrations = (await db.Database.GetPendingMigrationsAsync()).ToList();
+        if (pendingMigrations.Count > 0)
+        {
+            await db.Database.MigrateAsync();
+        }
+        else
+        {
+            await db.Database.EnsureCreatedAsync();
+        }
 
         // Seed data
         if (!await db.Beaches.AnyAsync())
@@ -392,21 +408,33 @@ using (var scope = app.Services.CreateScope())
         {
             var adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD");
             if (string.IsNullOrWhiteSpace(adminPassword))
-                throw new InvalidOperationException("ADMIN_PASSWORD environment variable is not set. Cannot seed admin user.");
-
-            var adminUser = new BeachRehberi.API.Models.BusinessUser(
-                "admin@beachgo.com",
-                BCrypt.Net.BCrypt.HashPassword(adminPassword),
-                BeachRehberi.API.Models.UserRoles.Admin
-            );
-            adminUser.UpdateProfile("Admin User", "BeachGo Admin");
-            db.BusinessUsers.Add(adminUser);
-            await db.SaveChangesAsync();
+            {
+                if (app.Environment.IsDevelopment())
+                {
+                    Console.WriteLine("ADMIN_PASSWORD environment variable is not set. Skipping admin user seed in development.");
+                }
+                else
+                {
+                    throw new InvalidOperationException("ADMIN_PASSWORD environment variable is not set. Cannot seed admin user.");
+                }
+            }
+            else
+            {
+                var adminUser = new BeachRehberi.API.Models.BusinessUser(
+                    "admin@beachgo.com",
+                    BCrypt.Net.BCrypt.HashPassword(adminPassword),
+                    BeachRehberi.API.Models.UserRoles.Admin
+                );
+                adminUser.UpdateProfile("Admin User", "BeachGo Admin");
+                db.BusinessUsers.Add(adminUser);
+                await db.SaveChangesAsync();
+            }
         }
     }
     catch (Exception ex)
     {
         Console.WriteLine($"An error occurred during PostgreSQL migration: {ex.Message}");
+        throw;
     }
 }
 

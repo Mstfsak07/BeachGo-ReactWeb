@@ -1,0 +1,75 @@
+{
+  "testedAt": "2026-04-11T03:55:03.058Z",
+  "steps": [
+    {
+      "name": "login-invalid-format-validation",
+      "ok": true,
+      "data": {
+        "email": false,
+        "password": false,
+        "url": "http://localhost:3000/login"
+      }
+    },
+    {
+      "name": "login-wrong-credentials",
+      "ok": true,
+      "data": {
+        "url": "http://localhost:3000/login",
+        "errorVisible": false,
+        "errorText": "Beklenmeyen bir hata oluştu",
+        "user": null
+      }
+    },
+    {
+      "name": "login-seeded-user",
+      "ok": true,
+      "data": {
+        "url": "http://localhost:3000/login",
+        "errorVisible": false,
+        "errorText": "Beklenmeyen bir hata oluştu",
+        "user": null,
+        "refreshCookie": null
+      }
+    },
+    {
+      "name": "register-invalid-and-mismatch-validation",
+      "ok": true,
+      "data": {
+        "email": false,
+        "password": false,
+        "confirm": false
+      }
+    },
+    {
+      "name": "register-unique-user",
+      "ok": true,
+      "data": {
+        "email": "codex.1775879713562@example.com",
+        "url": "http://localhost:3000/register",
+        "successVisible": false,
+        "errorVisible": true,
+        "errorText": "Kayıt işlemi başarısız oldu. Lütfen tekrar deneyin."
+      }
+    }
+  ],
+  "authResponses": [
+    {
+      "url": "http://localhost:5144/api/Auth/login",
+      "status": 500,
+      "method": "POST",
+      "body": "{\"success\":false,\"message\":\"Beklenmeyen bir hata olu\\u015Ftu\",\"data\":null,\"errors\":[]}"
+    },
+    {
+      "url": "http://localhost:5144/api/Auth/login",
+      "status": 500,
+      "method": "POST",
+      "body": "{\"success\":false,\"message\":\"Beklenmeyen bir hata olu\\u015Ftu\",\"data\":null,\"errors\":[]}"
+    },
+    {
+      "url": "http://localhost:5144/api/Auth/register",
+      "status": 400,
+      "method": "POST",
+      "body": "{\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occurred.\",\"status\":400,\"errors\":{\"$\":[\"JSON deserialization for type 'BeachRehberi.API.Models.RegisterRequest' was missing required properties, including the following: firstName; lastName; phoneNumber\"],\"request\":[\"The request field is required.\"]},\"traceId\":\"00-b5591d02cc3fed6dba720bc3170d02c4-90ff0bd8e8d6c1dd-00\"}"
+    }
+  ]
+}

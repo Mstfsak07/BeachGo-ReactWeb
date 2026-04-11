@@ -101,7 +101,7 @@ const Register = () => {
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                         <div>
                             <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 block">Ad Soyad</label>
                             <input
@@ -172,6 +172,12 @@ const Register = () => {
                             Zaten hesabınız var mı?{' '}
                             <Link to="/login" className="text-blue-500 dark:text-blue-400 font-bold hover:underline">
                                 Giriş Yap
+                            </Link>
+                        </p>
+                        <p className="mt-3 text-slate-400 dark:text-slate-500 text-sm italic font-medium">
+                            İşletme hesabı mı oluşturacaksınız?{' '}
+                            <Link to="/business-register" className="text-blue-500 dark:text-blue-400 font-bold hover:underline">
+                                İşletme kaydına gidin
                             </Link>
                         </p>
                     </div>

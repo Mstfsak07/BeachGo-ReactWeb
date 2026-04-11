@@ -9,30 +9,19 @@ public class ResendEmailService : BeachRehberi.Application.Common.Interfaces.IEm
     private readonly IResend _resend;
     private readonly IConfiguration _config;
     private readonly ILogger<ResendEmailService> _logger;
-    private readonly IHostEnvironment _env;
-
     private const string FromAddress = "BeachGo <noreply@beachgo.net>";
 
-    public ResendEmailService(IResend resend, IConfiguration config, ILogger<ResendEmailService> logger, IHostEnvironment env)
+    public ResendEmailService(IResend resend, IConfiguration config, ILogger<ResendEmailService> logger)
     {
         _resend = resend;
         _config = config;
         _logger = logger;
-        _env = env;
     }
 
     public async Task SendEmailVerificationAsync(string toEmail, string toName, string token, CancellationToken cancellationToken = default)
     {
-        var appUrl = _config["App:Url"] ?? "http://localhost:5173";
+        var appUrl = GetAppUrl();
         var verifyLink = $"{appUrl}/verify-email?token={Uri.EscapeDataString(token)}";
-
-        if (_env.IsDevelopment())
-        {
-            _logger.LogInformation(
-                "[DEV] Email verification link for {Email}: {Link}",
-                toEmail, verifyLink);
-            return;
-        }
 
         var message = new EmailMessage
         {
@@ -59,16 +48,8 @@ public class ResendEmailService : BeachRehberi.Application.Common.Interfaces.IEm
 
     public async Task SendPasswordResetAsync(string toEmail, string toName, string token, CancellationToken cancellationToken = default)
     {
-        var appUrl = _config["App:Url"] ?? "http://localhost:5173";
+        var appUrl = GetAppUrl();
         var resetLink = $"{appUrl}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(toEmail)}";
-
-        if (_env.IsDevelopment())
-        {
-            _logger.LogInformation(
-                "[DEV] Password reset link for {Email}: {Link}",
-                toEmail, resetLink);
-            return;
-        }
 
         var message = new EmailMessage
         {
@@ -126,6 +107,13 @@ public class ResendEmailService : BeachRehberi.Application.Common.Interfaces.IEm
         {
             _logger.LogError(ex, "Failed to send email to {Email}", toEmail);
         }
+    }
+
+    private string GetAppUrl()
+    {
+        return Environment.GetEnvironmentVariable("APP_URL")
+               ?? _config["App:Url"]
+               ?? "http://localhost:3000";
     }
 
     private static string BuildVerificationHtml(string name, string link) => $"""

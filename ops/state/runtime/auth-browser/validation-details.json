@@ -1,0 +1,45 @@
+{
+  "testedAt": "2026-04-11T03:55:47.808Z",
+  "validations": [
+    {
+      "name": "login-native-invalid-email",
+      "ok": true,
+      "data": {
+        "validationMessage": "Please include an '@' in the email address. 'bad-email' is missing an '@'.",
+        "url": "http://localhost:3000/login"
+      }
+    },
+    {
+      "name": "login-react-short-password",
+      "ok": true,
+      "data": {
+        "shortPasswordVisible": true,
+        "url": "http://localhost:3000/login"
+      }
+    },
+    {
+      "name": "register-native-invalid-email",
+      "ok": true,
+      "data": {
+        "validationMessage": "Please include an '@' in the email address. 'bad-email' is missing an '@'.",
+        "url": "http://localhost:3000/register"
+      }
+    },
+    {
+      "name": "register-react-short-password",
+      "ok": true,
+      "data": {
+        "shortPasswordVisible": true,
+        "url": "http://localhost:3000/register"
+      }
+    },
+    {
+      "name": "register-react-mismatch-password",
+      "ok": true,
+      "data": {
+        "mismatchVisible": true,
+        "url": "http://localhost:3000/register"
+      }
+    }
+  ]
+}

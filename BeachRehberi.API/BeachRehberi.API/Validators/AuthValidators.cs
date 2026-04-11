@@ -18,16 +18,40 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
             .MaximumLength(50).WithMessage("Şifre en fazla 50 karakter olabilir.");
 
         RuleFor(x => x.FirstName)
-            .NotEmpty().WithMessage("Ad zorunludur.")
-            .MaximumLength(50).WithMessage("Ad en fazla 50 karakter olabilir.");
+            .MaximumLength(50).WithMessage("Ad en fazla 50 karakter olabilir.")
+            .When(x => !string.IsNullOrWhiteSpace(x.FirstName));
 
         RuleFor(x => x.LastName)
-            .NotEmpty().WithMessage("Soyad zorunludur.")
-            .MaximumLength(50).WithMessage("Soyad en fazla 50 karakter olabilir.");
-            
+            .MaximumLength(50).WithMessage("Soyad en fazla 50 karakter olabilir.")
+            .When(x => !string.IsNullOrWhiteSpace(x.LastName));
+
+        RuleFor(x => x.Name)
+            .MaximumLength(100).WithMessage("Ad soyad en fazla 100 karakter olabilir.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Name));
+
+        RuleFor(x => x.ContactName)
+            .MaximumLength(100).WithMessage("İletişim kişisi en fazla 100 karakter olabilir.")
+            .When(x => !string.IsNullOrWhiteSpace(x.ContactName));
+
+        RuleFor(x => x.BusinessName)
+            .MaximumLength(150).WithMessage("İşletme adı en fazla 150 karakter olabilir.")
+            .When(x => !string.IsNullOrWhiteSpace(x.BusinessName));
+
         RuleFor(x => x.PhoneNumber)
-            .NotEmpty().WithMessage("Telefon numarası zorunludur.")
-            .MaximumLength(20).WithMessage("Telefon numarası en fazla 20 karakter olabilir.");
+            .MaximumLength(20).WithMessage("Telefon numarası en fazla 20 karakter olabilir.")
+            .When(x => !string.IsNullOrWhiteSpace(x.PhoneNumber));
+
+        RuleFor(x => x)
+            .Must(HasSupportedNamePayload)
+            .WithMessage("Ad soyad veya işletme bilgileri zorunludur.");
+    }
+
+    private static bool HasSupportedNamePayload(RegisterRequest request)
+    {
+        var hasFullName = !string.IsNullOrWhiteSpace(request.Name);
+        var hasSeparatedName = !string.IsNullOrWhiteSpace(request.FirstName) && !string.IsNullOrWhiteSpace(request.LastName);
+        var hasBusinessProfile = !string.IsNullOrWhiteSpace(request.BusinessName) && !string.IsNullOrWhiteSpace(request.ContactName);
+        return hasFullName || hasSeparatedName || hasBusinessProfile;
     }
 }
 

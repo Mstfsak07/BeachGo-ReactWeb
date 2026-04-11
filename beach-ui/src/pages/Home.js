@@ -75,7 +75,7 @@ const Home = () => {
     >
 
       {/* Immersive Hero Section */}
-      <section className="relative h-[85vh] md:h-[90vh] flex items-center justify-center overflow-hidden bg-slate-900 pt-20">
+      <section className="relative min-h-[85vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden bg-slate-900 pt-20">
         {/* Cinematic Background */}
         <div className="absolute inset-0 z-0">
           <img
@@ -87,24 +87,24 @@ const Home = () => {
         </div>
 
         {/* Hero Content */}
-        <div className="container mx-auto px-6 relative z-10 text-center space-y-12">
-          <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="container mx-auto px-4 sm:px-6 relative z-10 text-center space-y-8 md:space-y-10">
+          <div className="space-y-4 md:space-y-6 max-w-5xl mx-auto">
             <motion.div
               variants={itemVariants}
-              className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-xl border border-white/20 px-6 py-2 rounded-full text-white text-sm font-bold tracking-widest uppercase"
+              className="inline-flex max-w-full items-center gap-2 bg-white/10 backdrop-blur-xl border border-white/20 px-4 sm:px-6 py-2 rounded-full text-white text-[11px] sm:text-sm font-bold tracking-[0.2em] uppercase whitespace-normal sm:whitespace-nowrap"
             >
               <Sparkles size={16} className="text-amber-400" /> Antalya'nın Premium Plaj Rehberi
             </motion.div>
             <motion.h1
               variants={itemVariants}
-              className="text-6xl md:text-8xl lg:text-9xl font-bold text-white tracking-tight leading-[0.85] drop-shadow-2xl"
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl font-bold text-white tracking-tight leading-[0.9] md:leading-[0.85] drop-shadow-2xl"
             >
               Yazın <br />
               <span className="text-blue-400 italic">Ruhunu</span> Keşfet.
             </motion.h1>
             <motion.p
               variants={itemVariants}
-              className="text-xl md:text-2xl text-white/90 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-lg"
+              className="text-base sm:text-lg md:text-xl xl:text-2xl text-white/90 font-medium max-w-3xl mx-auto leading-relaxed drop-shadow-lg"
             >
               Mavi bayraklı plajlar, canlı doluluk oranları ve en özel etkinlikler tek bir platformda.
             </motion.p>
@@ -115,42 +115,42 @@ const Home = () => {
             variants={itemVariants}
             className="max-w-5xl mx-auto w-full"
           >
-            <div className="bg-white/90 backdrop-blur-2xl p-4 md:p-3 rounded-[2.5rem] shadow-3xl shadow-black/30 border border-white/30 flex flex-col md:flex-row items-center gap-2 group">
-              <div className="flex-1 w-full flex items-center gap-4 px-6 py-4 md:py-2 border-b md:border-b-0 md:border-r border-slate-200 group-hover:bg-slate-50 transition-colors rounded-[2rem]">
+            <div className="bg-white/90 backdrop-blur-2xl p-3 sm:p-4 rounded-[2rem] sm:rounded-[2.5rem] shadow-3xl shadow-black/30 border border-white/30 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 group">
+              <div className="min-w-0 flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 md:py-3 xl:py-2 border-b md:border-b-0 md:border-r border-slate-200 group-hover:bg-slate-50 transition-colors rounded-[1.5rem] sm:rounded-[2rem]">
                 <MapPin className="text-blue-600 shrink-0" size={24} />
                 <div className="text-left flex-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nereye?</p>
                   <input
                     type="text"
                     placeholder="Plaj veya konum ara..."
-                    className="bg-transparent border-none outline-none w-full text-slate-800 font-bold placeholder:text-slate-400"
+                    className="bg-transparent border-none outline-none w-full min-w-0 text-sm sm:text-base text-slate-800 font-bold placeholder:text-slate-400"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
               </div>
-              <div className="flex-1 w-full hidden lg:flex items-center gap-4 px-6 py-2 border-r border-slate-200 group-hover:bg-slate-50 transition-colors rounded-[2rem]">
+              <div className="min-w-0 flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 md:py-3 xl:py-2 md:border-r border-slate-200 group-hover:bg-slate-50 transition-colors rounded-[1.5rem] sm:rounded-[2rem]">
                 <Calendar className="text-blue-600 shrink-0" size={24} />
                 <div className="text-left flex-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ne Zaman?</p>
-                  <p className="text-slate-800 font-bold">Tarih Ekle</p>
+                  <p className="text-sm sm:text-base text-slate-800 font-bold">Tarih Ekle</p>
                 </div>
               </div>
-              <div className="flex-1 w-full hidden md:flex items-center gap-4 px-6 py-2 group-hover:bg-slate-50 transition-colors rounded-[2rem]">
+              <div className="min-w-0 flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 md:py-3 xl:py-2 group-hover:bg-slate-50 transition-colors rounded-[1.5rem] sm:rounded-[2rem]">
                 <Users className="text-blue-600 shrink-0" size={24} />
                 <div className="text-left flex-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kaç Kişi?</p>
-                  <p className="text-slate-800 font-bold">Misafir Ekle</p>
+                  <p className="text-sm sm:text-base text-slate-800 font-bold">Misafir Ekle</p>
                 </div>
               </div>
               <motion.button
                 whileHover={{ scale: 1.05, boxShadow: "0 0 25px rgba(37, 99, 235, 0.5)" }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => navigate(`/beaches?q=${searchQuery}`)}
-                className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white p-5 md:p-6 rounded-[2rem] shadow-xl shadow-blue-500/40 transition-all flex items-center justify-center gap-3"
+                className="w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-5 md:px-6 md:py-6 rounded-[1.5rem] sm:rounded-[2rem] shadow-xl shadow-blue-500/40 transition-all flex items-center justify-center gap-3 md:col-span-2 xl:col-span-1"
               >
                 <Search size={24} strokeWidth={3} />
-                <span className="md:hidden font-black uppercase tracking-widest">Ara</span>
+                <span className="font-black uppercase tracking-widest text-sm">Ara</span>
               </motion.button>
             </div>
           </motion.div>

@@ -57,6 +57,8 @@ public class LoginHandler : IRequestHandler<LoginCommand, AuthResult>
                 FirstName = user.FirstName ?? "",
                 LastName = user.LastName ?? "",
                 PhoneNumber = user.PhoneNumber ?? "",
+                Role = user.Role,
+                BeachId = user.BeachId,
                 IsEmailVerified = user.IsEmailVerified
             }
         };

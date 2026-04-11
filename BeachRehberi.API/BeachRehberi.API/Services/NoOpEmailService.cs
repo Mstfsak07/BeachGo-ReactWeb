@@ -11,22 +11,26 @@ public class NoOpEmailService :
     BeachRehberi.API.Services.IEmailService
 {
     private readonly ILogger<NoOpEmailService> _logger;
+    private readonly IConfiguration _configuration;
 
-    public NoOpEmailService(ILogger<NoOpEmailService> logger)
+    public NoOpEmailService(ILogger<NoOpEmailService> logger, IConfiguration configuration)
     {
         _logger = logger;
+        _configuration = configuration;
     }
 
     // API.Services.IEmailService methods
     public Task SendEmailVerificationAsync(string toEmail, string toName, string token)
     {
-        _logger.LogInformation("[NoOp Email] Verification email to {Email} ({Name}): token={Token}", toEmail, toName, token);
+        var verifyLink = $"{GetAppUrl()}/verify-email?token={Uri.EscapeDataString(token)}";
+        _logger.LogInformation("[NoOp Email] Verification email to {Email} ({Name}): link={Link}", toEmail, toName, verifyLink);
         return Task.CompletedTask;
     }
 
     public Task SendPasswordResetAsync(string toEmail, string toName, string token)
     {
-        _logger.LogInformation("[NoOp Email] Password reset email to {Email} ({Name}): token={Token}", toEmail, toName, token);
+        var resetLink = $"{GetAppUrl()}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(toEmail)}";
+        _logger.LogInformation("[NoOp Email] Password reset email to {Email} ({Name}): link={Link}", toEmail, toName, resetLink);
         return Task.CompletedTask;
     }
 
@@ -51,13 +55,15 @@ public class NoOpEmailService :
 
     public Task SendEmailVerificationAsync(string toEmail, string fullName, string token, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("[NoOp Email] Verification email to {Email} ({Name}): token={Token}", toEmail, fullName, token);
+        var verifyLink = $"{GetAppUrl()}/verify-email?token={Uri.EscapeDataString(token)}";
+        _logger.LogInformation("[NoOp Email] Verification email to {Email} ({Name}): link={Link}", toEmail, fullName, verifyLink);
         return Task.CompletedTask;
     }
 
     public Task SendPasswordResetAsync(string toEmail, string fullName, string token, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("[NoOp Email] Password reset email to {Email} ({Name}): token={Token}", toEmail, fullName, token);
+        var resetLink = $"{GetAppUrl()}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(toEmail)}";
+        _logger.LogInformation("[NoOp Email] Password reset email to {Email} ({Name}): link={Link}", toEmail, fullName, resetLink);
         return Task.CompletedTask;
     }
 
@@ -65,5 +71,12 @@ public class NoOpEmailService :
     {
         _logger.LogInformation("[NoOp Email] Generic email to {Email}: subject={Subject}", toEmail, subject);
         return Task.CompletedTask;
+    }
+
+    private string GetAppUrl()
+    {
+        return Environment.GetEnvironmentVariable("APP_URL")
+               ?? _configuration["App:Url"]
+               ?? "http://localhost:3000";
     }
 }

@@ -80,7 +80,7 @@ const Login = () => {
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                         <div>
                             <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 block">E-posta Adresi</label>
                             <input
@@ -122,6 +122,9 @@ const Login = () => {
                     <div className="mt-10 pt-6 border-t border-slate-100 dark:border-slate-700 text-center">
                         <p className="text-slate-400 dark:text-slate-500 text-sm font-medium italic">
                             Henüz bir hesabınız yok mu? <Link to="/register" className="text-blue-500 dark:text-blue-400 font-bold hover:underline">Şimdi Kaydolun</Link>
+                        </p>
+                        <p className="mt-3 text-slate-400 dark:text-slate-500 text-sm font-medium italic">
+                            İşletme hesabınız mı var? <Link to="/business-register" className="text-blue-500 dark:text-blue-400 font-bold hover:underline">İşletme kaydına gidin</Link>
                         </p>
                     </div>
                 </div>

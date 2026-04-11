@@ -38,6 +38,7 @@ const Navbar = () => {
     { name: "Favorilerim", path: "/favorites" },
   ];
 
+
   const isHomePage = location.pathname === "/";
   const shouldShowSolid = isScrolled || !isHomePage;
 

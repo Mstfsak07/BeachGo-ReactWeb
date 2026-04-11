@@ -13,17 +13,21 @@ public static class UserRoles
 
 public class RegisterRequest
 {
-    public required string Email { get; set; }
-    public required string Password { get; set; }
-    public required string FirstName { get; set; }
-    public required string LastName { get; set; }
-    public required string PhoneNumber { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? PhoneNumber { get; set; }
+    public string? BusinessName { get; set; }
+    public string? ContactName { get; set; }
+    public int? BeachId { get; set; }
 }
 
 public class LoginRequest
 {
-    public required string Email { get; set; }
-    public required string Password { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
 }
 
 public class LoginResponse
@@ -108,6 +112,8 @@ public class AuthResult
                 FirstName = user.FirstName ?? string.Empty,
                 LastName = user.LastName ?? string.Empty,
                 PhoneNumber = user.PhoneNumber ?? string.Empty,
+                Role = user.Role,
+                BeachId = user.BeachId,
                 IsEmailVerified = user.IsEmailVerified
             }
         };
@@ -129,6 +135,8 @@ public class UserDto
     public required string FirstName { get; set; }
     public required string LastName { get; set; }
     public required string PhoneNumber { get; set; }
+    public required string Role { get; set; }
+    public int? BeachId { get; set; }
     public bool IsEmailVerified { get; set; }
 }
 

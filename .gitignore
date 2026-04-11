@@ -407,6 +407,19 @@ automation.zip/
 
 .claude
 .abacusai
+.playwright-mcp/
+cliproxyapi/
+path/
 ops/local/
 ops/state/[0-9]*/
+ops/state/logs/
+ops/state/runtime/
+ops/state/claude*_test.txt
+ops/state/claude*_prompt*.txt
+ops/state/gemini*_test.txt
+ops/state/gemini*_prompt*.txt
+ops/state/gemini-fix-frontend-runtime.txt
 ops/state/gemini-smoke.txt
+beach-ui/.claude/
+beach-ui/.env
+beach-ui/test-results/

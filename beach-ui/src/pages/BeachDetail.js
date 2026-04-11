@@ -28,6 +28,7 @@ import ReviewSection from '../components/ReviewSection';
 import BeachStoryBar from '../components/beach/BeachStoryBar';
 import BeachGallery from '../components/beach/BeachGallery';
 import { getBeachSocialProvider } from '../lib/social/getBeachSocialProvider';
+import { addFavorite, getFavorites, removeFavorite } from '../services/favoriteService';
 
 const BeachDetail = () => {
   const { id } = useParams();
@@ -66,10 +67,25 @@ const BeachDetail = () => {
 
   useEffect(() => {
     fetchBeach();
-    // Check if beach is in favorites
-    const stored = JSON.parse(localStorage.getItem('beach_favorites') || '[]');
-    setIsFavorite(stored.some(f => f.id === parseInt(id)));
   }, [fetchBeach, id]);
+
+  useEffect(() => {
+    const syncFavoriteState = async () => {
+      if (!isAuthenticated) {
+        setIsFavorite(false);
+        return;
+      }
+
+      try {
+        const favorites = await getFavorites();
+        setIsFavorite(favorites.some((item) => item.id === parseInt(id, 10)));
+      } catch {
+        setIsFavorite(false);
+      }
+    };
+
+    syncFavoriteState();
+  }, [id, isAuthenticated]);
 
   useEffect(() => {
     if (id) {
@@ -77,28 +93,25 @@ const BeachDetail = () => {
     }
   }, [id]);
 
-  const toggleFavorite = () => {
-    const stored = JSON.parse(localStorage.getItem('beach_favorites') || '[]');
-    let updated;
-    if (isFavorite) {
-      updated = stored.filter(f => f.id !== beach.id);
-      toast.success('Favorilerden kaldırıldı');
-    } else {
-      updated = [...stored, { 
-        id: beach.id, 
-        name: beach.name, 
-        address: beach.address, 
-        imageUrl: beach.imageUrl, 
-        rating: beach.rating,
-        reviewCount: beach.reviewCount,
-        sunbedPrice: beach.sunbedPrice,
-        entryFee: beach.entryFee,
-        hasEntryFee: beach.hasEntryFee
-      }];
-      toast.success('Favorilere eklendi');
+  const toggleFavorite = async () => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: location } });
+      return;
     }
-    localStorage.setItem('beach_favorites', JSON.stringify(updated));
-    setIsFavorite(!isFavorite);
+
+    try {
+      if (isFavorite) {
+        await removeFavorite(beach.id);
+        setIsFavorite(false);
+        toast.success('Favorilerden kaldırıldı');
+      } else {
+        await addFavorite(beach.id);
+        setIsFavorite(true);
+        toast.success('Favorilere eklendi');
+      }
+    } catch {
+      toast.error('Favori işlemi başarısız.');
+    }
   };
 
   const handleReservation = (e) => {

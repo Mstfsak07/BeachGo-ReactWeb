@@ -1,16 +1,17 @@
 import api from '../api/axios';
+import { unwrapArrayResponse, unwrapResponse } from '../types';
 
 export const getFavorites = async () => {
   const response = await api.get('/users/favorites');
-  return response.data;
+  return unwrapArrayResponse(response.data);
 };
 
 export const addFavorite = async (beachId) => {
   const response = await api.post('/users/favorites', { beachId });
-  return response.data;
+  return unwrapResponse(response.data);
 };
 
 export const removeFavorite = async (beachId) => {
   const response = await api.delete(`/users/favorites/${beachId}`);
-  return response.data;
+  return unwrapResponse(response.data);
 };

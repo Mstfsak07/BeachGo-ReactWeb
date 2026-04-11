@@ -13,6 +13,7 @@ public class BeachDbContext : DbContext
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<BeachPhoto> Photos => Set<BeachPhoto>();
     public DbSet<BusinessUser> BusinessUsers => Set<BusinessUser>();
+    public DbSet<Favorite> Favorites => Set<Favorite>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<RevokedToken> RevokedTokens => Set<RevokedToken>();
     public DbSet<VerificationCode> VerificationCodes => Set<VerificationCode>();
@@ -42,6 +43,22 @@ public class BeachDbContext : DbContext
                 .HasForeignKey(d => d.BeachId)
                 .OnDelete(DeleteBehavior.SetNull)
                 .IsRequired(false);
+        });
+
+        modelBuilder.Entity<Favorite>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.UserId, e.BeachId }).IsUnique();
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Beach)
+                .WithMany()
+                .HasForeignKey(e => e.BeachId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // --- Beach Configuration ---

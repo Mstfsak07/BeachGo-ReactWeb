@@ -3,19 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, MapPin, Star, Trash2, ChevronRight, Loader2, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BeachCard from '../components/BeachCard';
+import { getFavorites, removeFavorite as removeFavoriteRequest } from '../services/favoriteService';
+import { toast } from 'react-hot-toast';
 
 const Favorites = () => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // For now using localStorage as backend doesn't have Favorites API yet
-    const loadFavorites = () => {
+    const loadFavorites = async () => {
       try {
-        const stored = JSON.parse(localStorage.getItem('beach_favorites') || '[]');
+        const stored = await getFavorites();
         setFavorites(stored);
       } catch (err) {
-        console.error('Favorites load error:', err);
+        toast.error('Favoriler yüklenemedi.');
       } finally {
         setLoading(false);
       }
@@ -23,10 +24,14 @@ const Favorites = () => {
     loadFavorites();
   }, []);
 
-  const removeFavorite = (id) => {
-    const updated = favorites.filter(f => f.id !== id);
-    setFavorites(updated);
-    localStorage.setItem('beach_favorites', JSON.stringify(updated));
+  const removeFavorite = async (id) => {
+    try {
+      await removeFavoriteRequest(id);
+      setFavorites((prev) => prev.filter((item) => item.id !== id));
+      toast.success('Favorilerden kaldırıldı');
+    } catch {
+      toast.error('Favori kaldırılırken hata oluştu.');
+    }
   };
 
   if (loading) {

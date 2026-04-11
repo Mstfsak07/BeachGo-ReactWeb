@@ -1,17 +1,15 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { User, Phone, Mail, ChevronLeft, MessageSquare } from 'lucide-react';
+import type { GuestReservationStepProps } from './types';
 
-const normalizePhone = (raw) => {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.startsWith('90') && digits.length === 12) return '+' + digits;
-  if (digits.startsWith('0') && digits.length === 11) return '+9' + digits;
-  if (digits.length === 10 && digits.startsWith('5')) return '+90' + digits;
-  return '+90' + digits;
+type StepPersonalInfoProps = GuestReservationStepProps & {
+  onNext: (email: string) => Promise<void> | void;
+  onBack: () => void;
+  loading: boolean;
 };
 
-const StepPersonalInfo = ({ formData, updateForm, onNext, onBack, loading }) => {
+const StepPersonalInfo = ({ formData, updateForm, onNext, onBack, loading }: StepPersonalInfoProps) => {
   const validate = () => {
     if (!formData.firstName.trim()) return toast.error('Lütfen adınızı girin.');
     if (!formData.lastName.trim()) return toast.error('Lütfen soyadınızı girin.');
@@ -21,7 +19,7 @@ const StepPersonalInfo = ({ formData, updateForm, onNext, onBack, loading }) => 
       return toast.error('Geçerli bir e-posta adresi girin.');
     }
 
-    onNext(formData.email);
+    return onNext(formData.email);
   };
 
   return (
@@ -45,7 +43,7 @@ const StepPersonalInfo = ({ formData, updateForm, onNext, onBack, loading }) => 
           <input
             type="text"
             value={formData.firstName}
-            onChange={(e) => updateForm({ firstName: e.target.value })}
+            onChange={(event) => updateForm({ firstName: event.target.value })}
             placeholder="Adınız"
             required
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-slate-800 font-bold"
@@ -58,7 +56,7 @@ const StepPersonalInfo = ({ formData, updateForm, onNext, onBack, loading }) => 
           <input
             type="text"
             value={formData.lastName}
-            onChange={(e) => updateForm({ lastName: e.target.value })}
+            onChange={(event) => updateForm({ lastName: event.target.value })}
             placeholder="Soyadınız"
             required
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-slate-800 font-bold"
@@ -73,7 +71,7 @@ const StepPersonalInfo = ({ formData, updateForm, onNext, onBack, loading }) => 
         <input
           type="tel"
           value={formData.phone}
-          onChange={(e) => updateForm({ phone: e.target.value })}
+          onChange={(event) => updateForm({ phone: event.target.value })}
           placeholder="+90 5XX XXX XX XX"
           required
           className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-slate-800 font-bold"
@@ -87,12 +85,11 @@ const StepPersonalInfo = ({ formData, updateForm, onNext, onBack, loading }) => 
         <input
           type="email"
           value={formData.email}
-          onChange={(e) => updateForm({ email: e.target.value })}
+          onChange={(event) => updateForm({ email: event.target.value })}
           placeholder="ornek@email.com"
           className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-slate-800 font-bold"
         />
       </div>
-
 
       <div>
         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-1 block">
@@ -100,7 +97,7 @@ const StepPersonalInfo = ({ formData, updateForm, onNext, onBack, loading }) => 
         </label>
         <textarea
           value={formData.note}
-          onChange={(e) => updateForm({ note: e.target.value })}
+          onChange={(event) => updateForm({ note: event.target.value })}
           placeholder="Özel istekleriniz veya notunuz..."
           rows={3}
           className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-slate-800 font-bold resize-none"

@@ -1,5 +1,11 @@
 import api from '../api/axios';
-import { unwrapArrayResponse, unwrapResponse, type ReservationDto } from '../types';
+import {
+  unwrapArrayResponse,
+  unwrapResponse,
+  type ReservationDto,
+  type SendOtpResponse,
+  type VerifyOtpResponse,
+} from '../types';
 
 type ReservationPayload = Record<string, unknown>;
 
@@ -48,9 +54,14 @@ export const cancel = cancelReservation;
 export const create = createReservation;
 export const checkReservation = getGuestReservation;
 
-export const sendOtp = async (email: string): Promise<unknown> => {
+export const sendOtp = async (email: string): Promise<SendOtpResponse | null> => {
   const response = await api.post('/Auth/send-otp', { email });
-  return unwrapResponse(response.data);
+  return unwrapResponse<SendOtpResponse>(response.data);
+};
+
+export const verifyOtp = async (verificationId: string, code: string): Promise<VerifyOtpResponse | null> => {
+  const response = await api.post('/GuestReservations/verify-otp', { verificationId, code });
+  return unwrapResponse<VerifyOtpResponse>(response.data);
 };
 
 const reservationService = {
@@ -67,6 +78,7 @@ const reservationService = {
   create,
   checkReservation,
   sendOtp,
+  verifyOtp,
 };
 
 export default reservationService;

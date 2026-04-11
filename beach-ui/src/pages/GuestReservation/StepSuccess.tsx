@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, Copy, Search, Home, Calendar, Clock, Users, MapPin } from 'lucide-react';
+import { CheckCircle, Copy, Search, Home, Calendar, Users, MapPin } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import type { GuestReservationSuccessProps } from './types';
 
-const StepSuccess = ({ formData, beach }) => {
+const StepSuccess = ({ formData, beach }: GuestReservationSuccessProps) => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
 
@@ -26,7 +27,6 @@ const StepSuccess = ({ formData, beach }) => {
       transition={{ duration: 0.5 }}
       className="space-y-6 text-center"
     >
-      {/* Success Icon */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -41,13 +41,12 @@ const StepSuccess = ({ formData, beach }) => {
         <p className="text-sm text-slate-500 font-medium">Aşağıdaki onay kodunu saklayın.</p>
       </div>
 
-      {/* Confirmation Code */}
       <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Onay Kodu</p>
         <div className="flex items-center justify-center gap-3">
           <span className="text-3xl font-black text-slate-900 tracking-widest">{formData.confirmationCode || 'XXXXXX'}</span>
           <button
-            onClick={handleCopy}
+            onClick={() => void handleCopy()}
             className="p-2 rounded-lg bg-white border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-200 transition"
           >
             <Copy size={18} />
@@ -56,7 +55,6 @@ const StepSuccess = ({ formData, beach }) => {
         {copied && <p className="text-xs text-emerald-500 font-bold mt-1">Kopyalandı!</p>}
       </div>
 
-      {/* Summary */}
       <div className="bg-white rounded-2xl p-5 space-y-3 border border-slate-100 text-left">
         <div className="flex items-center gap-3 text-sm">
           <MapPin size={16} className="text-blue-500" />
@@ -72,7 +70,6 @@ const StepSuccess = ({ formData, beach }) => {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={() => navigate('/reservation-check')}

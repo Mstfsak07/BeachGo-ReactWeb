@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -6,30 +6,42 @@ import { toast } from 'react-hot-toast';
 import { getBeachById } from '../../services/api';
 import reservationService from '../../services/reservationService';
 import { AlertCircle, MapPin, Calendar, Clock, Users, Check } from 'lucide-react';
-
+import type { AppUser, BeachDto, ReservationDto } from '../../types';
 import StepPersonalInfo from './StepPersonalInfo';
 import StepEmailVerify from './StepEmailVerify';
 import StepSuccess from './StepSuccess';
+import type { GuestReservationFormData } from './types';
 
 const STEP_LABELS = ['Bilgiler', 'Doğrulama', 'Onay'];
 
-const GuestReservation = () => {
-  const { beachId } = useParams();
-  const navigate = useNavigate();
+type ReservationLocationState = {
+  reservationDate?: string;
+  personCount?: number;
+};
 
-  const [beach, setBeach] = useState(null);
+type GuestReservationResult = ReservationDto & {
+  confirmationCode?: string;
+  paymentStatus?: string;
+  totalPrice?: number;
+};
+
+const GuestReservation = () => {
+  const { beachId } = useParams<{ beachId: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const auth = useAuth() as { user: AppUser | null; isAuthenticated: boolean; loading: boolean };
+  const reservationState = (location.state ?? {}) as ReservationLocationState;
+
+  const [beach, setBeach] = useState<BeachDto | null>(null);
   const [beachLoading, setBeachLoading] = useState(true);
-  const [beachError, setBeachError] = useState(null);
+  const [beachError, setBeachError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-
-  const location = useLocation();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const [formData, setFormData] = useState({
-    reservationDate: location.state?.reservationDate || new Date().toISOString().split('T')[0],
+  const [formData, setFormData] = useState<GuestReservationFormData>({
+    reservationDate: reservationState.reservationDate || new Date().toISOString().split('T')[0],
     reservationTime: '10:00',
     reservationType: 'Standart',
-    personCount: location.state?.personCount || 1,
+    personCount: reservationState.personCount || 1,
     note: '',
     firstName: '',
     lastName: '',
@@ -44,22 +56,34 @@ const GuestReservation = () => {
   });
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && user) {
-       setFormData(prev => ({
-         ...prev,
-         firstName: prev.firstName || user.firstName || (user.contactName ? user.contactName.split(' ')[0] : ''),
-         lastName: prev.lastName || user.lastName || (user.contactName ? user.contactName.split(' ').slice(1).join(' ') : ''),
-         email: prev.email || user.email || ''
-       }));
+    if (!auth.loading && auth.isAuthenticated && auth.user) {
+      setFormData((previousFormData) => ({
+        ...previousFormData,
+        firstName:
+          previousFormData.firstName ||
+          (typeof auth.user?.firstName === 'string' ? auth.user.firstName : '') ||
+          (typeof auth.user?.contactName === 'string' ? auth.user.contactName.split(' ')[0] : ''),
+        lastName:
+          previousFormData.lastName ||
+          (typeof auth.user?.lastName === 'string' ? auth.user.lastName : '') ||
+          (typeof auth.user?.contactName === 'string' ? auth.user.contactName.split(' ').slice(1).join(' ') : ''),
+        email: previousFormData.email || (typeof auth.user?.email === 'string' ? auth.user.email : ''),
+      }));
     }
-  }, [authLoading, isAuthenticated, user]);
+  }, [auth.isAuthenticated, auth.loading, auth.user]);
 
-  const updateForm = useCallback((fields) => {
-    setFormData((prev) => ({ ...prev, ...fields }));
+  const updateForm = useCallback((fields: Partial<GuestReservationFormData>) => {
+    setFormData((previousFormData) => ({ ...previousFormData, ...fields }));
   }, []);
 
   useEffect(() => {
     const fetchBeach = async () => {
+      if (!beachId) {
+        setBeachError('Plaj bilgileri yüklenemedi.');
+        setBeachLoading(false);
+        return;
+      }
+
       try {
         const data = await getBeachById(beachId);
         if (data) {
@@ -73,18 +97,18 @@ const GuestReservation = () => {
         setBeachLoading(false);
       }
     };
-    fetchBeach();
+
+    void fetchBeach();
   }, [beachId]);
 
-  const handleNext = () => setStep((s) => Math.min(s + 1, 5));
-  const handleBack = () => setStep((s) => Math.max(s - 1, 1));
+  const handleNext = () => setStep((currentStep) => Math.min(currentStep + 1, 3));
+  const handleBack = () => setStep((currentStep) => Math.max(currentStep - 1, 1));
 
-  // Step 2 → 3: Send OTP then advance
-  const handlePersonalInfoNext = async (email) => {
+  const handlePersonalInfoNext = async (email: string) => {
     setLoading(true);
     try {
       const result = await reservationService.sendOtp(email);
-      updateForm({ verificationId: result.verificationId, email: email });
+      updateForm({ verificationId: result?.verificationId || '', email });
       handleNext();
     } catch {
       toast.error('Doğrulama kodu gönderilemedi. Lütfen tekrar deneyin.');
@@ -93,12 +117,16 @@ const GuestReservation = () => {
     }
   };
 
-  // Step 4 → 5: Create guest reservation
   const handleCreateReservation = async () => {
+    if (!beachId) {
+      toast.error('Geçersiz plaj bilgisi.');
+      return;
+    }
+
     setLoading(true);
     try {
       const dto = {
-        beachId: parseInt(beachId),
+        beachId: parseInt(beachId, 10),
         reservationDate: formData.reservationDate,
         reservationTime: formData.reservationTime,
         reservationType: formData.reservationType,
@@ -110,18 +138,18 @@ const GuestReservation = () => {
         email: formData.email || undefined,
         verificationId: formData.verificationId,
       };
-      const result = await reservationService.createGuestReservation(dto);
+      const result = (await reservationService.createGuestReservation(dto)) as GuestReservationResult | null;
       navigate('/reservation-success', {
         state: {
-          confirmationCode: result.confirmationCode,
-          beachName: beach.name,
+          confirmationCode: result?.confirmationCode,
+          beachName: beach?.name,
           reservationDate: formData.reservationDate,
           reservationTime: formData.reservationTime,
           personCount: formData.personCount,
           reservationType: formData.reservationType,
-          paymentStatus: result.paymentStatus,
-          totalPrice: result.totalPrice
-        }
+          paymentStatus: result?.paymentStatus,
+          totalPrice: result?.totalPrice,
+        },
       });
     } catch {
       toast.error('Rezervasyon oluşturulamadı. Lütfen tekrar deneyin.');
@@ -130,7 +158,6 @@ const GuestReservation = () => {
     }
   };
 
-  // Loading state
   if (beachLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -139,7 +166,6 @@ const GuestReservation = () => {
     );
   }
 
-  // Error state
   if (beachError || !beach) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -163,46 +189,25 @@ const GuestReservation = () => {
   return (
     <div className="min-h-screen bg-slate-50 pt-28 pb-20 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-8">
-
-        {/* Main Column */}
         <div className="lg:col-span-3">
-          {/* Progress Bar */}
           <div className="flex items-center justify-between mb-8">
-            {STEP_LABELS.map((label, i) => {
-              const stepNum = i + 1;
-              const isCompleted = step > stepNum;
-              const isActive = step === stepNum;
+            {STEP_LABELS.map((label, index) => {
+              const stepNumber = index + 1;
+              const isCompleted = step > stepNumber;
+              const isActive = step === stepNumber;
               return (
-                <React.Fragment key={stepNum}>
-                  <div className="flex flex-col items-center gap-1">
-                    <div
-                      className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-black transition-all ${
-                        isCompleted
-                          ? 'bg-blue-600 text-white'
-                          : isActive
-                          ? 'bg-blue-600 text-white ring-4 ring-blue-200'
-                          : 'bg-slate-100 text-slate-400'
-                      }`}
-                    >
-                      {isCompleted ? <Check size={16} /> : stepNum}
-                    </div>
-                    <span className={`text-[9px] font-bold uppercase tracking-wider hidden sm:block ${
-                      isActive ? 'text-blue-600' : 'text-slate-400'
-                    }`}>
-                      {label}
-                    </span>
-                  </div>
-                  {stepNum < 5 && (
-                    <div className={`flex-1 h-0.5 mx-1 rounded-full ${
-                      step > stepNum ? 'bg-blue-600' : 'bg-slate-200'
-                    }`} />
-                  )}
-                </React.Fragment>
+                <StepIndicator
+                  key={stepNumber}
+                  currentStep={step}
+                  stepNumber={stepNumber}
+                  isCompleted={isCompleted}
+                  isActive={isActive}
+                  label={label}
+                />
               );
             })}
           </div>
 
-          {/* Step Content */}
           <div className="bg-white shadow-2xl ring-1 ring-slate-100 rounded-2xl p-6 sm:p-8">
             <AnimatePresence mode="wait">
               {step === 1 && (
@@ -224,18 +229,11 @@ const GuestReservation = () => {
                   onBack={handleBack}
                 />
               )}
-              {step === 3 && (
-                <StepSuccess
-                  key="step3"
-                  formData={formData}
-                  beach={beach}
-                />
-              )}
+              {step === 3 && <StepSuccess key="step3" formData={formData} beach={beach} />}
             </AnimatePresence>
           </div>
         </div>
 
-        {/* Sidebar - Beach Summary */}
         <div className="lg:col-span-2 order-first lg:order-none">
           <div className="lg:sticky lg:top-28">
             <motion.div
@@ -243,7 +241,6 @@ const GuestReservation = () => {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-2xl shadow-xl ring-1 ring-slate-100 overflow-hidden"
             >
-              {/* Beach Image */}
               {beach.imageUrl && (
                 <img
                   src={beach.imageUrl}
@@ -264,7 +261,6 @@ const GuestReservation = () => {
                   )}
                 </div>
 
-                {/* Dynamic Summary */}
                 {(formData.reservationDate || formData.reservationType) && (
                   <div className="border-t border-slate-100 pt-4 space-y-2">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Seçimleriniz</p>
@@ -294,13 +290,12 @@ const GuestReservation = () => {
                   </div>
                 )}
 
-                {/* Price */}
-                {beach.entryFee > 0 && formData.personCount > 0 && (
+                {(beach.entryFee ?? 0) > 0 && formData.personCount > 0 && (
                   <div className="border-t border-slate-100 pt-3">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tahmini</span>
                       <span className="text-lg font-black text-slate-900">
-                        {(beach.entryFee * formData.personCount).toLocaleString('tr-TR')} TL
+                        {((beach.entryFee ?? 0) * formData.personCount).toLocaleString('tr-TR')} TL
                       </span>
                     </div>
                   </div>
@@ -309,10 +304,49 @@ const GuestReservation = () => {
             </motion.div>
           </div>
         </div>
-
       </div>
     </div>
   );
 };
+
+const StepIndicator = ({
+  currentStep,
+  stepNumber,
+  isCompleted,
+  isActive,
+  label,
+}: {
+  currentStep: number;
+  stepNumber: number;
+  isCompleted: boolean;
+  isActive: boolean;
+  label: string;
+}) => (
+  <>
+    <div className="flex flex-col items-center gap-1">
+      <div
+        className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-black transition-all ${
+          isCompleted
+            ? 'bg-blue-600 text-white'
+            : isActive
+              ? 'bg-blue-600 text-white ring-4 ring-blue-200'
+              : 'bg-slate-100 text-slate-400'
+        }`}
+      >
+        {isCompleted ? <Check size={16} /> : stepNumber}
+      </div>
+      <span
+        className={`text-[9px] font-bold uppercase tracking-wider hidden sm:block ${
+          isActive ? 'text-blue-600' : 'text-slate-400'
+        }`}
+      >
+        {label}
+      </span>
+    </div>
+    {stepNumber < STEP_LABELS.length && (
+      <div className={`flex-1 h-0.5 mx-1 rounded-full ${currentStep > stepNumber ? 'bg-blue-600' : 'bg-slate-200'}`} />
+    )}
+  </>
+);
 
 export default GuestReservation;

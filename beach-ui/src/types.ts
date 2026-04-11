@@ -16,6 +16,25 @@ export type BeachDto = {
   id?: number;
   name?: string;
   location?: string;
+  address?: string;
+  imageUrl?: string;
+  entryFee?: number;
+  rating?: number;
+  reviewCount?: number;
+  occupancyPercent?: number;
+  openTime?: string;
+  closeTime?: string;
+  capacity?: number;
+  facilities?: string[];
+  latitude?: number;
+  longitude?: number;
+  description?: string;
+  hasEntryFee?: boolean;
+  isOpen?: boolean;
+  sunbedPrice?: number;
+  phone?: string;
+  website?: string;
+  instagram?: string;
   [key: string]: unknown;
 };
 
@@ -31,6 +50,18 @@ export type ReservationDto = {
   status?: string;
   paymentStatus?: string;
   reservationDate?: string;
+  confirmationCode?: string;
+  totalPrice?: number;
+  [key: string]: unknown;
+};
+
+export type SendOtpResponse = {
+  verificationId?: string;
+  [key: string]: unknown;
+};
+
+export type VerifyOtpResponse = {
+  verified?: boolean;
   [key: string]: unknown;
 };
 

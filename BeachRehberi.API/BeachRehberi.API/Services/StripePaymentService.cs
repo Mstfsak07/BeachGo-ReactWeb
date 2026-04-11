@@ -15,18 +15,18 @@ public class StripePaymentService : IPaymentService
         _config = config;
     }
 
-    public async Task<bool> ProcessPaymentAsync(int reservationId, decimal amount, string paymentMethod = "Stripe")
+    public Task<bool> ProcessPaymentAsync(int reservationId, decimal amount, string paymentMethod = "Stripe")
     {
         var useReal = _config.GetValue<bool>("Features:UseRealPayment");
 
         if (!useReal)
         {
             _logger.LogWarning("[PAYMENT] Payment system is currently DISABLED. Reservation: {ResId}", reservationId);
-            return false;
+            return Task.FromResult(false);
         }
 
         // TODO: Implement Stripe integration
         _logger.LogError("[PAYMENT] Stripe integration is not complete yet. Cannot process payment for Reservation: {ResId}", reservationId);
-        return false;
+        return Task.FromResult(false);
     }
 }

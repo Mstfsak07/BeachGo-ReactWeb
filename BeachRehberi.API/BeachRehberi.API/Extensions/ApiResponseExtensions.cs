@@ -45,6 +45,27 @@ public static class ApiResponseExtensions
 
         var response = ApiResponse<T>.Fail(result.Message, 400, result.Errors);
 
+        if (result.StatusCode == 401)
+            return new UnauthorizedObjectResult(response);
+
+        if (result.StatusCode == 403)
+            return new ObjectResult(response) { StatusCode = 403 };
+
+        if (result.StatusCode == 404)
+            return new NotFoundObjectResult(response);
+
+        if (result.StatusCode == 429)
+            return new ObjectResult(response) { StatusCode = 429 };
+
+        if (result.StatusCode == 501)
+            return new ObjectResult(response) { StatusCode = 501 };
+
+        if (result.StatusCode == 503)
+            return new ObjectResult(response) { StatusCode = 503 };
+
+        if (result.StatusCode >= 400 && result.StatusCode != 400)
+            return new ObjectResult(response) { StatusCode = result.StatusCode };
+
         // Advanced semantic mapping for API behaviors
         if (result.Message.Contains("yetki", StringComparison.OrdinalIgnoreCase) || 
             result.Message.Contains("izniniz", StringComparison.OrdinalIgnoreCase) || 

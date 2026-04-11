@@ -146,6 +146,10 @@ public class GuestReservationService : IGuestReservationService
 
     public async Task<ServiceResult<GuestReservationResponseDto>> ProcessPaymentAsync(string confirmationCode)
     {
+        var useReal = _config.GetValue<bool>("Features:UseRealPayment");
+        if (!useReal)
+            return ServiceResult<GuestReservationResponseDto>.Failure("Şu an ödeme sistemi devre dışı olduğundan ödeme alınamıyor.", 503);
+
         var reservation = await _db.Reservations.FirstOrDefaultAsync(r => r.ConfirmationCode == confirmationCode && r.IsGuest);
         if (reservation == null)
             return ServiceResult<GuestReservationResponseDto>.FailureResult("Rezervasyon bulunamadı.");
@@ -156,7 +160,7 @@ public class GuestReservationService : IGuestReservationService
         var paymentResult = await _paymentService.ProcessPaymentAsync(reservation.Id, reservation.TotalPrice);
         
         if (!paymentResult)
-            return ServiceResult<GuestReservationResponseDto>.FailureResult("Ödeme işlemi başarısız oldu veya şu an ödeme alınamıyor.");
+            return ServiceResult<GuestReservationResponseDto>.Failure("Stripe ödeme entegrasyonu henüz hazır değil.", 501);
 
         reservation.PaymentStatus = "Paid";
         await _db.SaveChangesAsync();

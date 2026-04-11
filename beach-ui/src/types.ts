@@ -35,6 +35,16 @@ export type BeachDto = {
   phone?: string;
   website?: string;
   instagram?: string;
+  hasBar?: boolean;
+  hasWaterSports?: boolean;
+  isChildFriendly?: boolean;
+  hasPool?: boolean;
+  hasRestaurant?: boolean;
+  hasWifi?: boolean;
+  hasParking?: boolean;
+  hasSunbeds?: boolean;
+  hasShower?: boolean;
+  hasDJ?: boolean;
   [key: string]: unknown;
 };
 

@@ -2,9 +2,9 @@
   "phase_id": "phase-3",
   "title": "Maintainability And Refactor",
   "status": "success",
-  "attempts_used": 14,
+  "attempts_used": 15,
   "max_retries": 3,
-  "timestamp": "2026-04-11T12:57:58.9185539+03:00",
+  "timestamp": "2026-04-11T13:04:01.3847436+03:00",
   "task_results": [
     {
       "task_id": "phase-3-task-1",
@@ -148,6 +148,17 @@
       "stderr_path": null,
       "exit_code": 0,
       "message": "services/api ve userService TypeScript'e taşındı; GuestReservation container ve step bileşenleri TSX'e geçirildi. reservationService içine verifyOtp eklendi, ortak DTO tipleri genişletildi ve Playwright config webServer tanımıyla kendi Vite sürecini başlatacak şekilde düzeltildi. Frontend typecheck, build, e2e smoke ve backend build doğrulamaları temiz geçti."
+    },
+    {
+      "task_id": "phase-3-task-14",
+      "title": "BeachCard ve Beaches listeleme yüzeyini TypeScript'e taşı",
+      "executor": "codex",
+      "attempt": 15,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "BeachCard ve Beaches sayfası TSX'e taşındı; listeleme filtre tipleri ve beach facility alanları ortak DTO katmanında netleştirildi. Geçici BeachCard declaration dosyası kaldırıldı; frontend typecheck, build, e2e smoke ve backend build doğrulamaları temiz geçti."
     }
   ],
   "verification_results": [
@@ -155,8 +166,8 @@
       "name": "lint:.",
       "command": [],
       "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb",
-      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\lint\\stdout.log",
-      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\lint\\stderr.log",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\lint\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\lint\\stderr.log",
       "exit_code": null,
       "status": "skipped",
       "message": "No lint script found at repo root"
@@ -165,8 +176,8 @@
       "name": "typecheck:.",
       "command": [],
       "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb",
-      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\typecheck\\stdout.log",
-      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\typecheck\\stderr.log",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\typecheck\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\typecheck\\stderr.log",
       "exit_code": null,
       "status": "skipped",
       "message": "No typecheck script or tsconfig.json found at repo root"
@@ -175,8 +186,8 @@
       "name": "test:.",
       "command": [],
       "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb",
-      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\test\\stdout.log",
-      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\test\\stderr.log",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\test\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\test\\stderr.log",
       "exit_code": null,
       "status": "skipped",
       "message": "No test script found at repo root"
@@ -185,8 +196,8 @@
       "name": "build:.",
       "command": [],
       "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb",
-      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\build\\stdout.log",
-      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\build\\stderr.log",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\build\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\build\\stderr.log",
       "exit_code": null,
       "status": "skipped",
       "message": "No build script found at repo root"
@@ -195,8 +206,8 @@
       "name": "lint:beach-ui",
       "command": [],
       "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\beach-ui",
-      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\lint-beach-ui\\stdout.log",
-      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\lint-beach-ui\\stderr.log",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\lint-beach-ui\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\lint-beach-ui\\stderr.log",
       "exit_code": null,
       "status": "skipped",
       "message": "No lint script found in beach-ui"
@@ -205,8 +216,8 @@
       "name": "typecheck:beach-ui",
       "command": [],
       "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\beach-ui",
-      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\typecheck-beach-ui\\stdout.log",
-      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\typecheck-beach-ui\\stderr.log",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\typecheck-beach-ui\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\typecheck-beach-ui\\stderr.log",
       "exit_code": 0,
       "status": "success",
       "message": "Frontend TypeScript typecheck succeeded."
@@ -219,8 +230,8 @@
         "test:e2e"
       ],
       "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\beach-ui",
-      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\test-beach-ui\\stdout.log",
-      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\test-beach-ui\\stderr.log",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\test-beach-ui\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\test-beach-ui\\stderr.log",
       "exit_code": 0,
       "status": "success",
       "message": "Playwright auth smoke tests passed (4/4)."
@@ -233,8 +244,8 @@
         "build"
       ],
       "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\beach-ui",
-      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\build-beach-ui\\stdout.log",
-      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\build-beach-ui\\stderr.log",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\build-beach-ui\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\build-beach-ui\\stderr.log",
       "exit_code": 0,
       "status": "success",
       "message": "Frontend production build succeeded."
@@ -243,8 +254,8 @@
       "name": "lint:BeachRehberi.API\\BeachRehberi.API\\BeachRehberi.API.sln",
       "command": [],
       "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API\\BeachRehberi.API",
-      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\lint-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stdout.log",
-      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\lint-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stderr.log",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\lint-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\lint-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stderr.log",
       "exit_code": null,
       "status": "skipped",
       "message": "No .NET lint command configured; skipping gracefully"
@@ -258,8 +269,8 @@
         "--nologo"
       ],
       "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API\\BeachRehberi.API",
-      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\typecheck-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stdout.log",
-      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\typecheck-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stderr.log",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\typecheck-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\typecheck-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stderr.log",
       "exit_code": 0,
       "status": "success",
       "message": ".NET solution build/typecheck succeeded."
@@ -268,8 +279,8 @@
       "name": "test:BeachRehberi.API\\BeachRehberi.API\\BeachRehberi.API.sln",
       "command": [],
       "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API\\BeachRehberi.API",
-      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\test-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stdout.log",
-      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\test-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stderr.log",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\test-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\test-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stderr.log",
       "exit_code": null,
       "status": "skipped",
       "message": "No .NET test projects found"
@@ -283,12 +294,13 @@
         "--nologo"
       ],
       "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API\\BeachRehberi.API",
-      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\build-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stdout.log",
-      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-14\\build-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stderr.log",
+      "stdout_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\build-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stdout.log",
+      "stderr_path": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\ops\\state\\logs\\phase-3\\verification\\attempt-15\\build-beachrehberi-api-beachrehberi-api-beachrehberi-api-sln\\stderr.log",
       "exit_code": 0,
       "status": "success",
       "message": ".NET solution build succeeded."
     }
   ]
 }
+
 

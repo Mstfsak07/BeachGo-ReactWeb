@@ -145,12 +145,16 @@ builder.Services.AddRateLimiter(options =>
         opt.QueueLimit = 0;
     });
 
-    options.AddFixedWindowLimiter("guest-cancel", opt =>
-    {
-        opt.Window = TimeSpan.FromMinutes(15);
-        opt.PermitLimit = 5;
-        opt.QueueLimit = 0;
-    });
+    options.AddPolicy("guest-cancel", httpContext => 
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "global-guest-cancel",
+            factory: partition => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                PermitLimit = 5,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(15)
+            }));
 });
 
 // ─────────────────────────────────────────

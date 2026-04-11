@@ -10,7 +10,6 @@ const normalizeAuthPayload = (payload) => {
 
   return {
     accessToken: data.accessToken ?? data.token ?? data.Token ?? null,
-    refreshToken: data.refreshToken ?? data.RefreshToken ?? null,
     user: data.user ?? data.User ?? null,
   };
 };
@@ -22,6 +21,8 @@ export const setAccessToken = (token) => {
 export const clearAuthSession = () => {
   accessTokenMemory = null;
   localStorage.removeItem('user');
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
 };
 
 export const refreshAccessToken = async () => {

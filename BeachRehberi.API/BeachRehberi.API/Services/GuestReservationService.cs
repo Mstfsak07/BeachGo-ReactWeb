@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 using Microsoft.Extensions.Configuration;
 
+using System.Security.Cryptography;
+
 namespace BeachRehberi.API.Services;
 
 public class GuestReservationService : IGuestReservationService
@@ -181,7 +183,9 @@ public class GuestReservationService : IGuestReservationService
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         var code = new char[12];
         for (int i = 0; i < code.Length; i++)
-            code[i] = chars[Random.Shared.Next(chars.Length)];
+        {
+            code[i] = chars[RandomNumberGenerator.GetInt32(chars.Length)];
+        }
         return new string(code);
     }
 }

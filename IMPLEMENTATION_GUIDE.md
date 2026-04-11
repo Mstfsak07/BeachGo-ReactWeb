@@ -70,10 +70,10 @@ LOGIN PAGE
    Request: { email, password }
    Response: { token, refreshToken, email, role }
    ↓
-3. authService.login() stores:
+3. authService.login() / AuthContext stores:
    - Access Token → memory (setAccessToken)
-   - Refresh Token → localStorage
-   - User info → localStorage
+   - Refresh Token → HttpOnly cookie (handled by browser)
+   - User info → localStorage (non-sensitive)
    ↓
 PROTECTED PAGES (Beaches, etc.)
    ↓
@@ -209,14 +209,14 @@ const handleSubmit = async () => {
 ## 🔒 Security Checklist
 
 ### Development
-- ✅ Token stored in memory (XSS some protection)
-- ✅ Refresh token in localStorage (trade-off for UX)
+- ✅ Access token kept in memory
+- ✅ Refresh token in HttpOnly cookies (Security enhancement)
 - ✅ HTTPS self-signed certificate handled
 - ✅ 401 auto logout
 - ✅ CORS restricted to localhost
 
 ### Production TODO
-- [ ] Switch to HttpOnly cookies (refresh token)
+- [x] Switch to HttpOnly cookies (refresh token)
 - [ ] Real HTTPS certificate (not self-signed)
 - [ ] CORS whitelist production domains only
 - [ ] Token rotation (exchange old refresh for new)

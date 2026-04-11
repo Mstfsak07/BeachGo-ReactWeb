@@ -60,6 +60,7 @@ public class GuestReservationsController : ControllerBase
     }
 
     [HttpGet("{confirmationCode}")]
+    [EnableRateLimiting("guest-cancel")]
     public async Task<IActionResult> GetByConfirmationCode(string confirmationCode, [FromQuery] string email)
     {
         var result = await _guestReservationService.GetByConfirmationCodeAsync(confirmationCode, email);
@@ -75,6 +76,7 @@ public class GuestReservationsController : ControllerBase
     }
 
     [HttpPost("pay/{confirmationCode}")]
+    [EnableRateLimiting("guest-cancel")]
     public async Task<IActionResult> Pay(string confirmationCode)
     {
         var result = await _guestReservationService.ProcessPaymentAsync(confirmationCode);

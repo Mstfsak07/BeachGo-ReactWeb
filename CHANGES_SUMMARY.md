@@ -210,7 +210,7 @@ axios POST /auth/login
     ↓
 Response: { token, refreshToken, email, role }
     ↓
-Store: token (memory), refreshToken (localStorage), user (localStorage)
+Store: token (memory), refreshToken (HttpOnly cookie), user (localStorage)
     ↓
 Redirect to /beaches
 ```
@@ -228,7 +228,7 @@ Backend validates token
     └─ Invalid/Expired → 401 response
     ↓
 Response Interceptor (401):
-  ├─ POST /auth/refresh with refreshToken
+  ├─ POST /auth/refresh (browser sends refreshToken cookie)
   │   ├─ Success → New token, retry original request
   │   └─ Fail → trigger logout event
   └─ Return data or error
@@ -242,7 +242,7 @@ User clicks logout button / Token refresh fails
     ↓
 authService.logout()
     ↓
-Clear tokens: memory + localStorage
+Clear tokens: memory + cookies + potential localStorage leftovers
     ↓
 Set user = null in context
     ↓

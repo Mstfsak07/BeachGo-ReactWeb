@@ -58,7 +58,7 @@ policy.WithOrigins(
 
 **Token Storage**:
 - Access Token: Memory'de (refreshToken'dan yenilenir)
-- Refresh Token: localStorage'da
+- Refresh Token: HttpOnly Cookie'de (Backend tarafından set edilir)
 
 ### 2. authService.js - Auth Business Logic
 

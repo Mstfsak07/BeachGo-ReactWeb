@@ -5,6 +5,7 @@ using BeachRehberi.API.Data;
 using BeachRehberi.API.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
 
 namespace BeachRehberi.API.Services;
 
@@ -106,8 +107,7 @@ public class OtpService : BeachRehberi.Application.Common.Interfaces.IOtpService
         foreach(var code in oldCodes)
             code.IsUsed = true;
 
-        var random = new Random();
-        var otpCode = random.Next(100000, 999999).ToString();
+        var otpCode = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
 
         var verificationCode = new VerificationCode
         {

@@ -79,13 +79,24 @@ public class TokenService : ITokenService
     {
         if (string.IsNullOrEmpty(jti)) return;
 
+        var expiresAt = DateTime.UtcNow.AddMinutes(_accessTokenExpiryMinutes);
+        var cacheDuration = expiresAt - DateTime.UtcNow;
+
         if (!await _db.RevokedTokens.AnyAsync(r => r.Token == jti))
         {
-            _db.RevokedTokens.Add(new RevokedToken { Token = jti, RevokedAt = DateTime.UtcNow });
+            _db.RevokedTokens.Add(new RevokedToken
+            {
+                Token = jti,
+                RevokedAt = DateTime.UtcNow,
+                ExpiresAt = expiresAt
+            });
             await _db.SaveChangesAsync();
         }
 
-        _cache.Set(BlacklistCachePrefix + jti, true, TimeSpan.FromMinutes(_accessTokenExpiryMinutes));
+        if (cacheDuration > TimeSpan.Zero)
+        {
+            _cache.Set(BlacklistCachePrefix + jti, true, cacheDuration);
+        }
     }
 
     public async Task<bool> IsTokenRevoked(string jti)
@@ -152,10 +163,10 @@ public class TokenService : ITokenService
 
     public async Task RevokeAccessTokenAsync(string token)
     {
-        var jti = GetJtiFromToken(token);
-        if (!string.IsNullOrEmpty(jti))
+        var tokenMetadata = GetTokenMetadata(token);
+        if (tokenMetadata != null)
         {
-            await RevokeAccessToken(jti);
+            await RevokeAccessToken(tokenMetadata.Value.Jti, tokenMetadata.Value.ExpiresAt);
         }
     }
 
@@ -168,7 +179,14 @@ public class TokenService : ITokenService
     public async Task RevokeRefreshTokenAsync(string refreshToken) => await RevokeRefreshToken(refreshToken);
 
     // Compatibility methods
-    public async Task BlacklistTokenAsync(string token, DateTime expiry) => await RevokeAccessTokenAsync(token);
+    public async Task BlacklistTokenAsync(string token, DateTime expiry)
+    {
+        var tokenMetadata = GetTokenMetadata(token);
+        if (tokenMetadata != null)
+        {
+            await RevokeAccessToken(tokenMetadata.Value.Jti, expiry.ToUniversalTime());
+        }
+    }
     public async Task<bool> IsTokenBlacklistedAsync(string token) => await IsTokenRevokedAsync(token);
 
     public async Task<bool> ValidateRefreshTokenAsync(int userId, string refreshToken)
@@ -262,7 +280,32 @@ public class TokenService : ITokenService
         }
     }
 
-    private string? GetJtiFromToken(string token)
+    private async Task RevokeAccessToken(string jti, DateTime expiresAt)
+    {
+        if (string.IsNullOrWhiteSpace(jti))
+            return;
+
+        var normalizedExpiry = expiresAt.Kind == DateTimeKind.Utc ? expiresAt : expiresAt.ToUniversalTime();
+        var cacheDuration = normalizedExpiry - DateTime.UtcNow;
+
+        if (!await _db.RevokedTokens.AnyAsync(r => r.Token == jti))
+        {
+            _db.RevokedTokens.Add(new RevokedToken
+            {
+                Token = jti,
+                RevokedAt = DateTime.UtcNow,
+                ExpiresAt = normalizedExpiry
+            });
+            await _db.SaveChangesAsync();
+        }
+
+        if (cacheDuration > TimeSpan.Zero)
+        {
+            _cache.Set(BlacklistCachePrefix + jti, true, cacheDuration);
+        }
+    }
+
+    private (string Jti, DateTime ExpiresAt)? GetTokenMetadata(string token)
     {
         if (string.IsNullOrWhiteSpace(token))
             return null;
@@ -272,6 +315,19 @@ public class TokenService : ITokenService
             return null;
 
         var jwt = handler.ReadJwtToken(token);
-        return jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
+        var jti = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
+        if (string.IsNullOrWhiteSpace(jti))
+            return null;
+
+        var expiresAt = jwt.ValidTo == DateTime.MinValue
+            ? DateTime.UtcNow.AddMinutes(_accessTokenExpiryMinutes)
+            : jwt.ValidTo.ToUniversalTime();
+
+        return (jti, expiresAt);
+    }
+
+    private string? GetJtiFromToken(string token)
+    {
+        return GetTokenMetadata(token)?.Jti;
     }
 }

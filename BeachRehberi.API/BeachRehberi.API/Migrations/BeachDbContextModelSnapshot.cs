@@ -648,6 +648,9 @@ namespace BeachRehberi.API.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("RevokedAt")
                         .HasColumnType("timestamp with time zone");
 

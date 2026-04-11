@@ -7,16 +7,11 @@ public sealed class RevokedTokenCleanupService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<RevokedTokenCleanupService> _logger;
-    private readonly int _accessTokenExpiryMinutes;
 
     public RevokedTokenCleanupService(IServiceScopeFactory scopeFactory, IConfiguration configuration, ILogger<RevokedTokenCleanupService> logger)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
-
-        var jwtSettings = configuration.GetSection("JwtSettings");
-        _accessTokenExpiryMinutes = jwtSettings.GetValue<int?>("AccessTokenExpiryMinutes")
-            ?? configuration.GetValue<int>("Jwt:AccessTokenExpiryMinutes", 15);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -36,9 +31,9 @@ public sealed class RevokedTokenCleanupService : BackgroundService
         {
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<BeachDbContext>();
-            var cutoff = DateTime.UtcNow.AddMinutes(-_accessTokenExpiryMinutes);
+            var cutoff = DateTime.UtcNow;
             var expiredTokens = await db.RevokedTokens
-                .Where(x => x.RevokedAt <= cutoff)
+                .Where(x => x.ExpiresAt <= cutoff)
                 .ToListAsync(cancellationToken);
 
             if (expiredTokens.Count == 0)

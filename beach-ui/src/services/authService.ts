@@ -1,6 +1,6 @@
 import api from '../api/axios';
 import { refreshAccessToken as refresh } from '../api/token';
-import type { ApiEnvelope, AppUser } from '../types';
+import type { ApiEnvelope, ApiResult, AppUser } from '../types';
 
 type AuthResponse = {
   accessToken?: string | null;
@@ -16,32 +16,32 @@ export const login = async (email: string, password: string): Promise<ApiEnvelop
   return response.data;
 };
 
-export const register = async (data: RegisterPayload): Promise<unknown> => {
+export const register = async (data: RegisterPayload): Promise<ApiResult> => {
   const response = await api.post('/Auth/register', data);
   return response.data;
 };
 
-export const registerUser = async (data: RegisterPayload): Promise<unknown> => {
+export const registerUser = async (data: RegisterPayload): Promise<ApiResult> => {
   const response = await api.post('/Auth/register-user', data);
   return response.data;
 };
 
-export const forgotPassword = async (email: string): Promise<unknown> => {
+export const forgotPassword = async (email: string): Promise<ApiResult> => {
   const response = await api.post('/Auth/forgot-password', { email });
   return response.data;
 };
 
-export const resetPassword = async (token: string, newPassword: string): Promise<unknown> => {
+export const resetPassword = async (token: string, newPassword: string): Promise<ApiResult> => {
   const response = await api.post('/Auth/reset-password', { token, newPassword });
   return response.data;
 };
 
-export const verifyEmail = async (token: string): Promise<unknown> => {
+export const verifyEmail = async (token: string): Promise<ApiResult> => {
   const response = await api.get(`/Auth/verify-email?token=${token}`);
   return response.data;
 };
 
-export const resendVerification = async (email: string): Promise<unknown> => {
+export const resendVerification = async (email: string): Promise<ApiResult> => {
   const response = await api.post('/Auth/resend-verification', { email });
   return response.data;
 };

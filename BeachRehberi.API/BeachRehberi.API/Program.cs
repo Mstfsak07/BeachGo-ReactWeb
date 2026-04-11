@@ -85,6 +85,7 @@ builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IWeatherService, WeatherService>();
+builder.Services.AddHostedService<RevokedTokenCleanupService>();
 
 // Auth support services (OTP + Email)
 builder.Services.AddScoped<IOtpService, OtpService>();

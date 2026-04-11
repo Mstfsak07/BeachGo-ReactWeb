@@ -1,4 +1,5 @@
 import api from '../api/axios';
+import type { ApiResult } from '../types';
 
 type ProfilePayload = {
   contactName?: string;
@@ -19,11 +20,11 @@ const userService = {
     const response = await api.get('/users/profile');
     return response.data?.data ?? response.data ?? null;
   },
-  updateProfile: async (profileData: ProfilePayload): Promise<unknown> => {
+  updateProfile: async (profileData: ProfilePayload): Promise<ApiResult> => {
     const response = await api.put('/users/profile', profileData);
     return response.data;
   },
-  changePassword: async (passwordData: PasswordPayload): Promise<unknown> => {
+  changePassword: async (passwordData: PasswordPayload): Promise<ApiResult> => {
     const response = await api.put('/users/change-password', passwordData);
     return response.data;
   },

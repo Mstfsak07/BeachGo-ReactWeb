@@ -53,6 +53,8 @@ public class GuestReservationResponseDto
     public string Status { get; set; } = string.Empty;
     public decimal TotalPrice { get; set; }
     public string PaymentStatus { get; set; } = string.Empty;
+    public string? PaymentUrl { get; set; }
+    public string? TransactionId { get; set; }
 }
 
 public class SendOtpDto

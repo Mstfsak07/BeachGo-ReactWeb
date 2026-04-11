@@ -1,18 +1,50 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, Copy, Search, Home, Calendar, Users, MapPin, CreditCard } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { payGuestReservation } from '../services/reservationService';
+import { getReservationByCode, payGuestReservation } from '../services/reservationService';
 
 const ReservationSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  const searchParams = new URLSearchParams(location.search);
+  const confirmationCodeFromQuery = searchParams.get('confirmationCode');
+  const paymentResult = searchParams.get('payment');
 
   // Initialize state once so we can mutate it on mock pay
   const [resState, setResState] = useState(location.state);
   const [payLoading, setPayLoading] = useState(false);
+
+  useEffect(() => {
+    const hydrateFromQuery = async () => {
+      if (resState || !confirmationCodeFromQuery) return;
+
+      try {
+        const reservation = await getReservationByCode(confirmationCodeFromQuery);
+        if (reservation) {
+          setResState({
+            confirmationCode: reservation.confirmationCode || confirmationCodeFromQuery,
+            beachName: reservation.beachName,
+            reservationDate: reservation.reservationDate,
+            reservationTime: reservation.reservationTime,
+            personCount: reservation.pax,
+            reservationType: reservation.reservationType,
+            paymentStatus:
+              paymentResult === 'success'
+                ? 'Paid'
+                : (reservation.paymentStatus || (paymentResult === 'cancel' ? 'Failed' : 'Pending')),
+            totalPrice: reservation.totalPrice,
+          });
+        }
+      } catch {
+        toast.error('Rezervasyon bilgisi alınamadı.');
+      }
+    };
+
+    void hydrateFromQuery();
+  }, [confirmationCodeFromQuery, paymentResult, resState]);
 
   if (!resState) {
     return <Navigate to="/" replace />;
@@ -35,6 +67,10 @@ const ReservationSuccess = () => {
     setPayLoading(true);
     try {
       const res = await payGuestReservation(confirmationCode);
+      if (res?.paymentUrl) {
+        window.location.href = res.paymentUrl;
+        return;
+      }
       if (res && res.paymentStatus === 'Paid') {
         toast.success('Ödeme işlemi başarılı!');
         setResState((prev) => ({ ...prev, paymentStatus: 'Paid' }));

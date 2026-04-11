@@ -78,7 +78,7 @@ public class GuestReservationService : IGuestReservationService
             ConfirmationCode = confirmationCode,
             ReservationType = dto.ReservationType,
             ReservationTime = resTime,
-            PaymentStatus = "Pending"
+            PaymentStatus = PaymentStatus.Pending
         };
 
         _db.Reservations.Add(reservation);
@@ -90,7 +90,7 @@ public class GuestReservationService : IGuestReservationService
             ConfirmationCode = confirmationCode,
             Status = reservation.Status.ToString(),
             TotalPrice = price,
-            PaymentStatus = reservation.PaymentStatus
+            PaymentStatus = reservation.PaymentStatus.ToString()
         }, "Rezervasyon başarıyla oluşturuldu.");
     }
 
@@ -140,7 +140,7 @@ public class GuestReservationService : IGuestReservationService
             ConfirmationCode = reservation.ConfirmationCode ?? string.Empty,
             Status = reservation.Status.ToString(),
             TotalPrice = reservation.TotalPrice,
-            PaymentStatus = reservation.PaymentStatus
+            PaymentStatus = reservation.PaymentStatus.ToString()
         }, "Rezervasyon başarıyla iptal edildi.");
     }
 
@@ -154,15 +154,43 @@ public class GuestReservationService : IGuestReservationService
         if (reservation == null)
             return ServiceResult<GuestReservationResponseDto>.FailureResult("Rezervasyon bulunamadı.");
 
-        if (reservation.PaymentStatus == "Paid")
-            return ServiceResult<GuestReservationResponseDto>.FailureResult("Bu rezervasyon zaten ödenmiş.");
+        if (reservation.PaymentStatus == PaymentStatus.Paid)
+            return ServiceResult<GuestReservationResponseDto>.SuccessResult(new GuestReservationResponseDto
+            {
+                ReservationId = reservation.Id,
+                ConfirmationCode = reservation.ConfirmationCode!,
+                Status = reservation.Status.ToString(),
+                TotalPrice = reservation.TotalPrice,
+                PaymentStatus = reservation.PaymentStatus.ToString()
+            }, "Bu rezervasyon zaten ödenmiş.");
 
-        var paymentResult = await _paymentService.ProcessPaymentAsync(reservation.Id, reservation.TotalPrice);
-        
-        if (!paymentResult)
-            return ServiceResult<GuestReservationResponseDto>.Failure("Stripe ödeme entegrasyonu henüz hazır değil.", 501);
+        var paymentResult = await _paymentService.ProcessPaymentAsync(reservation.Id, reservation.TotalPrice, confirmationCode: reservation.ConfirmationCode);
 
-        reservation.PaymentStatus = "Paid";
+        if (!paymentResult.Success)
+            return ServiceResult<GuestReservationResponseDto>.Failure(paymentResult.Message ?? "Stripe ödeme oturumu oluşturulamadı.", 501);
+
+        var payment = await _db.ReservationPayments.FirstOrDefaultAsync(x => x.ReservationId == reservation.Id);
+        if (payment == null)
+        {
+            payment = new ReservationPayment
+            {
+                ReservationId = reservation.Id,
+                Amount = reservation.TotalPrice,
+                Status = paymentResult.Status,
+                TransactionId = paymentResult.TransactionId,
+                PaymentMethod = "Stripe"
+            };
+            _db.ReservationPayments.Add(payment);
+        }
+        else
+        {
+            payment.Amount = reservation.TotalPrice;
+            payment.Status = paymentResult.Status;
+            payment.TransactionId = paymentResult.TransactionId;
+            payment.PaymentMethod = "Stripe";
+        }
+
+        reservation.PaymentStatus = paymentResult.Status;
         await _db.SaveChangesAsync();
 
         return ServiceResult<GuestReservationResponseDto>.SuccessResult(new GuestReservationResponseDto
@@ -171,8 +199,10 @@ public class GuestReservationService : IGuestReservationService
             ConfirmationCode = reservation.ConfirmationCode!,
             Status = reservation.Status.ToString(),
             TotalPrice = reservation.TotalPrice,
-            PaymentStatus = reservation.PaymentStatus
-        }, "Ödeme başarılı.");
+            PaymentStatus = reservation.PaymentStatus.ToString(),
+            PaymentUrl = paymentResult.RedirectUrl,
+            TransactionId = paymentResult.TransactionId
+        }, paymentResult.Message ?? "Ödeme oturumu hazır.");
     }
 
     private static decimal CalculatePrice(Beach beach, string reservationType, int personCount)

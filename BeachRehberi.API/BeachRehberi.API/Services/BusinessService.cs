@@ -122,7 +122,7 @@ public class BusinessService : IBusinessService
                 GuestName = (r.GuestFirstName + " " + r.GuestLastName).Trim(),
                 GuestPhone = r.GuestPhone ?? "",
                 GuestEmail = r.GuestEmail ?? "",
-                PaymentStatus = r.PaymentStatus ?? "Pending",
+                PaymentStatus = r.PaymentStatus.ToString(),
                 
                 IsGuestReservation = r.IsGuest,
                 ConfirmationCode = r.ConfirmationCode ?? "",

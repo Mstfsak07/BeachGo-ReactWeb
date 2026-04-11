@@ -25,21 +25,21 @@ namespace BeachRehberi.API.Controllers
         }
 
         [HttpGet("beaches")]
-        public async Task<IActionResult> GetAllBeaches()
+        public async Task<IActionResult> GetAllBeaches([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
         {
-            return Ok(await _adminService.GetAllBeachesAsync());
+            return Ok(await _adminService.GetAllBeachesAsync(page, pageSize));
         }
 
         [HttpGet("users")]
-        public async Task<IActionResult> GetAllUsers()
+        public async Task<IActionResult> GetAllUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
         {
-            return Ok(await _adminService.GetAllUsersAsync());
+            return Ok(await _adminService.GetAllUsersAsync(page, pageSize));
         }
 
         [HttpGet("reservations")]
-        public async Task<IActionResult> GetAllReservations()
+        public async Task<IActionResult> GetAllReservations([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
         {
-            return Ok(await _adminService.GetAllReservationsAsync());
+            return Ok(await _adminService.GetAllReservationsAsync(page, pageSize));
         }
 
         [HttpPatch("beaches/{id}/toggle-status")]

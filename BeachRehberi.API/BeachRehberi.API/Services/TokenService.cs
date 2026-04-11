@@ -7,6 +7,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Caching.Memory;
+using System.Linq;
 
 namespace BeachRehberi.API.Services;
 
@@ -151,40 +152,24 @@ public class TokenService : ITokenService
 
     public async Task RevokeAccessTokenAsync(string token)
     {
-        if (string.IsNullOrEmpty(token)) return;
-
-        if (!await _db.RevokedTokens.AnyAsync(r => r.Token == token))
+        var jti = GetJtiFromToken(token);
+        if (!string.IsNullOrEmpty(jti))
         {
-            _db.RevokedTokens.Add(new RevokedToken { Token = token, RevokedAt = DateTime.UtcNow });
-            await _db.SaveChangesAsync();
+            await RevokeAccessToken(jti);
         }
-
-        _cache.Set(BlacklistCachePrefix + token, true, TimeSpan.FromMinutes(_accessTokenExpiryMinutes));
     }
 
     public async Task<bool> IsTokenRevokedAsync(string token)
     {
-        if (string.IsNullOrEmpty(token)) return true;
-
-        if (_cache.TryGetValue(BlacklistCachePrefix + token, out bool isRevoked))
-        {
-            return isRevoked;
-        }
-
-        var inDb = await _db.RevokedTokens.AnyAsync(r => r.Token == token);
-        if (inDb)
-        {
-            _cache.Set(BlacklistCachePrefix + token, true, TimeSpan.FromMinutes(_accessTokenExpiryMinutes));
-        }
-
-        return inDb;
+        var jti = GetJtiFromToken(token);
+        return string.IsNullOrEmpty(jti) || await IsTokenRevoked(jti);
     }
 
     public async Task RevokeRefreshTokenAsync(string refreshToken) => await RevokeRefreshToken(refreshToken);
 
     // Compatibility methods
-    public async Task BlacklistTokenAsync(string token, DateTime expiry) => await RevokeAccessToken(token);
-    public async Task<bool> IsTokenBlacklistedAsync(string token) => await IsTokenRevoked(token);
+    public async Task BlacklistTokenAsync(string token, DateTime expiry) => await RevokeAccessTokenAsync(token);
+    public async Task<bool> IsTokenBlacklistedAsync(string token) => await IsTokenRevokedAsync(token);
 
     public async Task<bool> ValidateRefreshTokenAsync(int userId, string refreshToken)
     {
@@ -275,5 +260,18 @@ public class TokenService : ITokenService
         {
             return null;
         }
+    }
+
+    private string? GetJtiFromToken(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+            return null;
+
+        var handler = new JwtSecurityTokenHandler();
+        if (!handler.CanReadToken(token))
+            return null;
+
+        var jwt = handler.ReadJwtToken(token);
+        return jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
     }
 }

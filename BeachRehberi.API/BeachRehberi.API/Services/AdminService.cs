@@ -24,15 +24,17 @@ public class AdminService : IAdminService
             TotalReservations = await _db.Reservations.CountAsync(),
             PendingBeaches = await _db.Beaches.CountAsync(b => !b.IsActive),
             Revenue = await _db.Reservations
-                .Where(r => r.PaymentStatus == "Paid" &&
+                .Where(r => r.PaymentStatus == PaymentStatus.Paid &&
                             r.Status != ReservationStatus.Cancelled &&
                             r.Status != ReservationStatus.Rejected)
                 .SumAsync(r => r.TotalPrice)
         };
     }
 
-    public async Task<List<AdminBeachListItemDto>> GetAllBeachesAsync()
+    public async Task<List<AdminBeachListItemDto>> GetAllBeachesAsync(int page, int pageSize)
     {
+        (page, pageSize) = NormalizePagination(page, pageSize);
+
         return await _db.Beaches
             .Select(b => new AdminBeachListItemDto
             {
@@ -46,11 +48,16 @@ public class AdminService : IAdminService
                 InstagramUsername = b.InstagramUsername,
                 SocialContentSource = b.SocialContentSource
             })
+            .OrderBy(b => b.Name)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
     }
 
-    public async Task<List<AdminUserListItemDto>> GetAllUsersAsync()
+    public async Task<List<AdminUserListItemDto>> GetAllUsersAsync(int page, int pageSize)
     {
+        (page, pageSize) = NormalizePagination(page, pageSize);
+
         return await _db.BusinessUsers
             .Select(u => new AdminUserListItemDto
             {
@@ -63,11 +70,16 @@ public class AdminService : IAdminService
                 CreatedAt = u.CreatedAt,
                 LastLoginAt = u.LastLoginAt
             })
+            .OrderByDescending(u => u.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
     }
 
-    public async Task<List<AdminReservationListItemDto>> GetAllReservationsAsync()
+    public async Task<List<AdminReservationListItemDto>> GetAllReservationsAsync(int page, int pageSize)
     {
+        (page, pageSize) = NormalizePagination(page, pageSize);
+
         return await _db.Reservations
             .Include(r => r.User)
             .Include(r => r.Beach)
@@ -89,6 +101,8 @@ public class AdminService : IAdminService
                 ConfirmationCode = r.ConfirmationCode,
                 CreatedAt = r.CreatedAt
             })
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
     }
 
@@ -180,5 +194,18 @@ public class AdminService : IAdminService
         beach.HasDJ = dto.HasDJ;
         beach.HasAccessibility = dto.HasAccessibility;
         beach.SetTodaySpecial(dto.TodaySpecial);
+    }
+
+    private static (int page, int pageSize) NormalizePagination(int page, int pageSize)
+    {
+        var safePage = page < 1 ? 1 : page;
+        var safePageSize = pageSize switch
+        {
+            < 1 => 50,
+            > 200 => 200,
+            _ => pageSize
+        };
+
+        return (safePage, safePageSize);
     }
 }

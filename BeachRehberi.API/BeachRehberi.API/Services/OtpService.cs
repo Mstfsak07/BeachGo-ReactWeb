@@ -53,7 +53,7 @@ public class OtpService : BeachRehberi.Application.Common.Interfaces.IOtpService
         _db.VerificationCodes.Add(verificationCode);
         await _db.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Token generated for {Email}, Purpose: {Purpose}, Token: {Token}", email, purpose, token);
+        _logger.LogInformation("Token generated for {Email}, Purpose: {Purpose}", email, purpose);
         
         return token;
     }
@@ -122,7 +122,7 @@ public class OtpService : BeachRehberi.Application.Common.Interfaces.IOtpService
         _db.VerificationCodes.Add(verificationCode);
         await _db.SaveChangesAsync();
 
-        _logger.LogInformation("OTP generated for {Email}, Purpose: {Purpose}, Code: {OtpCode}", email, purpose, otpCode);
+        _logger.LogInformation("OTP generated for {Email}, Purpose: {Purpose}", email, purpose);
         
         return otpCode;
     }
@@ -146,14 +146,20 @@ public class OtpService : BeachRehberi.Application.Common.Interfaces.IOtpService
     // Legacy Support
     public Task<string> SendOtpAsync(string email)
     {
-        return GenerateOtpAsync(email, OtpPurpose.EmailVerification);
+        return CreateVerificationAsync(email, OtpPurpose.EmailVerification);
     }
 
     public async Task<bool> VerifyOtpAsync(string verificationId, string code)
     {
+        if (!int.TryParse(verificationId, out var parsedVerificationId))
+            return false;
+
         var codeHash = ComputeSha256Hash(code);
         var verificationCode = await _db.VerificationCodes
-            .Where(x => x.CodeHash == codeHash && x.Purpose == OtpPurpose.EmailVerification && !x.IsUsed)
+            .Where(x => x.Id == parsedVerificationId
+                        && x.CodeHash == codeHash
+                        && x.Purpose == OtpPurpose.EmailVerification
+                        && !x.IsUsed)
             .FirstOrDefaultAsync();
 
         if (verificationCode == null || verificationCode.ExpiresAt <= DateTime.UtcNow)
@@ -165,9 +171,44 @@ public class OtpService : BeachRehberi.Application.Common.Interfaces.IOtpService
         return true;
     }
 
-    public async Task<bool> IsEmailVerifiedAsync(string email)
+    public async Task<bool> IsEmailVerifiedAsync(string verificationId)
     {
-        return await Task.FromResult(true); 
+        if (!int.TryParse(verificationId, out var parsedVerificationId))
+            return false;
+
+        return await _db.VerificationCodes.AnyAsync(x =>
+            x.Id == parsedVerificationId &&
+            x.Purpose == OtpPurpose.EmailVerification &&
+            x.IsUsed &&
+            x.ExpiresAt > DateTime.UtcNow);
+    }
+
+    private async Task<string> CreateVerificationAsync(string email, OtpPurpose purpose)
+    {
+        var oldCodes = await _db.VerificationCodes
+            .Where(x => x.Email == email && x.Purpose == purpose && !x.IsUsed)
+            .ToListAsync();
+
+        foreach (var code in oldCodes)
+            code.IsUsed = true;
+
+        var otpCode = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+        var verificationCode = new VerificationCode
+        {
+            Email = email,
+            CodeHash = ComputeSha256Hash(otpCode),
+            Purpose = purpose,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(15),
+            IsUsed = false,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.VerificationCodes.Add(verificationCode);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("OTP generated for {Email}, Purpose: {Purpose}", email, purpose);
+
+        return verificationCode.Id.ToString();
     }
     private static string ComputeSha256Hash(string rawData)
     {

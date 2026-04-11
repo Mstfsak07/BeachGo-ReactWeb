@@ -1,5 +1,13 @@
 import api from '../api/axios';
-import { unwrapArrayResponse, unwrapResponse, type BeachDto } from '../types';
+import {
+  unwrapArrayResponse,
+  unwrapResponse,
+  type BeachDto,
+  type BeachReviewDto,
+  type BusinessStatsDto,
+  type CreateReviewRequest,
+  type EventDto,
+} from '../types';
 
 export type WeatherResponse = {
   weather?: Record<string, unknown>;
@@ -27,24 +35,24 @@ export const filterBeaches = async (filters: Record<string, unknown>): Promise<B
   return unwrapArrayResponse<BeachDto>(response.data);
 };
 
-export const getEvents = async (): Promise<unknown[]> => {
+export const getEvents = async (): Promise<EventDto[]> => {
   const response = await api.get('/Events');
-  return unwrapArrayResponse(response.data);
+  return unwrapArrayResponse<EventDto>(response.data);
 };
 
-export const getBeachEvents = async (beachId: string | number): Promise<unknown[]> => {
+export const getBeachEvents = async (beachId: string | number): Promise<EventDto[]> => {
   const response = await api.get(`/Beaches/${beachId}/Events`);
-  return unwrapArrayResponse(response.data);
+  return unwrapArrayResponse<EventDto>(response.data);
 };
 
-export const getBeachReviews = async (beachId: string | number): Promise<unknown[]> => {
+export const getBeachReviews = async (beachId: string | number): Promise<BeachReviewDto[]> => {
   const response = await api.get(`/Beaches/${beachId}/Reviews`);
-  return unwrapArrayResponse(response.data);
+  return unwrapArrayResponse<BeachReviewDto>(response.data);
 };
 
-export const createReview = async (data: Record<string, unknown>): Promise<unknown> => {
+export const createReview = async (data: CreateReviewRequest): Promise<BeachReviewDto | null> => {
   const response = await api.post('/Reviews', data);
-  return unwrapResponse(response.data);
+  return unwrapResponse<BeachReviewDto>(response.data);
 };
 
 export const getBeachWeather = async (beachId: string | number): Promise<WeatherResponse | null> => {
@@ -52,7 +60,7 @@ export const getBeachWeather = async (beachId: string | number): Promise<Weather
   return unwrapResponse<WeatherResponse>(response.data);
 };
 
-export const getBusinessDashboard = async (): Promise<unknown> => {
+export const getBusinessDashboard = async (): Promise<BusinessStatsDto | null> => {
   const response = await api.get('/Business/dashboard');
-  return unwrapResponse(response.data);
+  return unwrapResponse<BusinessStatsDto>(response.data);
 };

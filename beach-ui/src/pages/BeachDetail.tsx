@@ -27,11 +27,11 @@ import { BeachDetailSkeleton } from '../components/ui/Skeleton';
 import ReviewSection from '../components/ReviewSection';
 import BeachStoryBar from '../components/beach/BeachStoryBar';
 import BeachGallery from '../components/beach/BeachGallery';
-import type { BeachDto } from '../types';
+import type { BeachDto, SocialContentItem } from '../types';
 
 type SocialContent = {
-  stories: unknown[];
-  gallery: unknown[];
+  stories: SocialContentItem[];
+  gallery: SocialContentItem[];
 };
 
 type WeatherMetricGroup = {

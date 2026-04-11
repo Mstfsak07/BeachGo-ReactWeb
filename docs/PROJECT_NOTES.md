@@ -79,3 +79,14 @@ if ($review -match "BLOCK") {
 ```
 
 > Not: Bu script henüz aktif bir git hook olarak yapılandırılmamıştır, sadece bir taslaktır.
+
+---
+
+## 5. Uygulama Katmanı Gerçeklik Notu
+
+Bu repoda `BeachRehberi.Application/` ve `BeachRehberi.API/Features/` altında benzer command/query isimleri bulunuyor. Bugünkü çalışma düzeninde aktif HTTP yürütme yolu `BeachRehberi.API/Features/` ve `BeachRehberi.API/Services/` kombinasyonudur; `BeachRehberi.Application/` altındaki birçok dosya placeholder/stub niteliğindedir.
+
+Bu nedenle:
+- Yeni davranış eklerken önce `BeachRehberi.API/Features/` ve ilgili servisleri kaynak gerçeklik olarak kabul edin.
+- `BeachRehberi.Application/` altında aynı isimli stub dosyaları davranış referansı olarak kullanmayın.
+- Orta vadede ya Application katmanı gerçek handler/DTO içeriğiyle doldurulmalı ya da bu çift tanım kaldırılmalıdır.

@@ -2,6 +2,7 @@ import api from '../api/axios';
 import {
   unwrapArrayResponse,
   unwrapResponse,
+  type ApiResult,
   type BeachDto,
   type BusinessReservationDto,
   type BusinessStatsDto,
@@ -13,7 +14,7 @@ export const register = async (
   email: string,
   password: string,
   beachId?: number
-): Promise<unknown> => {
+): Promise<ApiResult | null> => {
   const response = await api.post('/Auth/register', {
     businessName,
     contactName,
@@ -21,7 +22,7 @@ export const register = async (
     password,
     beachId,
   });
-  return unwrapResponse(response.data);
+  return unwrapResponse<ApiResult>(response.data);
 };
 
 export const getBusinessReservations = async (): Promise<BusinessReservationDto[]> => {

@@ -45,7 +45,7 @@ export const payGuestReservation = async (code: string): Promise<ReservationDto 
 };
 
 export const createGuestReservation = async (dto: ReservationPayload): Promise<ReservationDto | null> => {
-  const response = await api.post('/Reservations/guest', dto);
+  const response = await api.post('/GuestReservations', dto);
   return unwrapResponse<ReservationDto>(response.data);
 };
 
@@ -55,8 +55,13 @@ export const create = createReservation;
 export const checkReservation = getGuestReservation;
 
 export const sendOtp = async (email: string): Promise<SendOtpResponse | null> => {
-  const response = await api.post('/Auth/send-otp', { email });
+  const response = await api.post('/GuestReservations/send-otp', { email });
   return unwrapResponse<SendOtpResponse>(response.data);
+};
+
+export const getReservationByCode = async (code: string): Promise<ReservationDto | null> => {
+  const response = await api.get(`/Reservations/check/${code}`);
+  return unwrapResponse<ReservationDto>(response.data);
 };
 
 export const verifyOtp = async (verificationId: string, code: string): Promise<VerifyOtpResponse | null> => {
@@ -77,6 +82,7 @@ const reservationService = {
   cancel,
   create,
   checkReservation,
+  getReservationByCode,
   sendOtp,
   verifyOtp,
 };

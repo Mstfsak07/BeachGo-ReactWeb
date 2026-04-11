@@ -2,7 +2,10 @@ export type ApiEnvelope<T> = {
   success?: boolean;
   message?: string;
   data?: T;
+  errors?: string[];
 };
+
+export type ApiResult = ApiEnvelope<Record<string, unknown>> | Record<string, unknown>;
 
 export type AppUser = {
   id?: number;
@@ -63,6 +66,22 @@ export type ReservationDto = {
   reservationDate?: string;
   confirmationCode?: string;
   totalPrice?: number;
+  paymentUrl?: string;
+  transactionId?: string;
+  beachName?: string;
+  customerName?: string;
+  reservationTime?: string;
+  reservationType?: string;
+  pax?: number;
+  [key: string]: unknown;
+};
+
+export type SocialContentItem = {
+  id?: number | string;
+  imageUrl?: string;
+  photoUrl?: string;
+  videoUrl?: string;
+  caption?: string;
   [key: string]: unknown;
 };
 
@@ -85,6 +104,36 @@ export type BusinessStatsDto = {
   totalReservations?: number;
   totalRevenue?: number;
   pendingReservations?: number;
+  [key: string]: unknown;
+};
+
+export type EventDto = {
+  id?: number | string;
+  startDate?: string;
+  date?: string;
+  title?: string;
+  imageUrl?: string;
+  isActive?: boolean;
+  description?: string;
+  beachName?: string;
+  beachId?: number;
+  [key: string]: unknown;
+};
+
+export type BeachReviewDto = {
+  userName?: string;
+  createdAt?: string;
+  rating?: number;
+  comment?: string;
+  [key: string]: unknown;
+};
+
+export type CreateReviewRequest = {
+  beachId?: number | string;
+  userName?: string;
+  userPhone?: string;
+  rating?: number;
+  comment?: string;
   [key: string]: unknown;
 };
 

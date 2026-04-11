@@ -65,8 +65,7 @@ public class Reservation
 
     public TimeSpan? ReservationTime { get; set; }
 
-    [MaxLength(50)]
-    public string PaymentStatus { get; set; } = "Pending";
+    public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
 
     // Reservation Business Logic Methods
     public void Approve(string? comment = null) 

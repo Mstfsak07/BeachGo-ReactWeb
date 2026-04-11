@@ -8,7 +8,7 @@ import {
 } from 'react';
 import api from '../api/axios';
 import { clearAuthSession, hydrateUserFromStorage, refreshAccessToken, setAccessToken } from '../api/token';
-import type { AppUser } from '../types';
+import type { ApiResult, AppUser } from '../types';
 
 type LoginResponsePayload = {
   accessToken?: string;
@@ -24,9 +24,9 @@ export type AuthContextValue = {
   user: AppUser | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<unknown>;
+  login: (email: string, password: string) => Promise<ApiResult>;
   logout: () => void;
-  register: (name: string, email: string, password: string) => Promise<unknown>;
+  register: (name: string, email: string, password: string) => Promise<ApiResult>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -59,7 +59,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     setAccessToken(accessToken);
-    localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
 
     return response.data;
@@ -67,20 +66,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const storedUser = hydrateUserFromStorage();
-
-      if (!storedUser) {
-        setLoading(false);
-        return;
-      }
-
-      setUser(storedUser);
+      hydrateUserFromStorage();
 
       try {
-        const authData = await refreshAccessToken();
+        const authData = await refreshAccessToken({ redirectOnFailure: false });
         if (authData?.user) {
-          localStorage.setItem('user', JSON.stringify(authData.user));
           setUser(authData.user);
+        } else {
+          setUser(null);
         }
       } catch {
         setUser(null);
@@ -93,9 +86,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(null);
       setLoading(false);
     });
-  }, [logout]);
+  }, []);
 
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (name: string, email: string, password: string): Promise<ApiResult> => {
     const response = await api.post('/Auth/register', { name, email, password });
     return response.data;
   };

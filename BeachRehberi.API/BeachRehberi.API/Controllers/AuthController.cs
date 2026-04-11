@@ -18,6 +18,8 @@ using BeachRehberi.API.Features.Auth.Commands.VerifyEmail;
 using BeachRehberi.API.Features.Auth.Commands.ResendVerification;
 using BeachRehberi.API.Features.Auth.Commands.RefreshToken;
 using BeachRehberi.API.Features.Auth.Commands.Logout;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace BeachRehberi.API.Controllers
 {
@@ -157,12 +159,18 @@ namespace BeachRehberi.API.Controllers
         [Authorize]
         public async Task<IActionResult> Logout()
         {
-            var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
             var refreshToken = Request.Cookies["refreshToken"];
-            
-            if (!string.IsNullOrEmpty(accessToken))
+            var jti = User.FindFirstValue(JwtRegisteredClaimNames.Jti);
+
+            if (string.IsNullOrEmpty(jti))
             {
+                var accessToken = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
                 await _tokenService.RevokeAccessTokenAsync(accessToken);
+            }
+            
+            if (!string.IsNullOrEmpty(jti))
+            {
+                await _tokenService.RevokeAccessToken(jti);
             }
 
             if (!string.IsNullOrEmpty(refreshToken))

@@ -2,6 +2,10 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Stripe;
+using Stripe.Checkout;
+using BeachRehberi.API.Data;
+using BeachRehberi.API.Models.Enums;
+using Microsoft.EntityFrameworkCore;
 
 namespace BeachRehberi.API.Controllers;
 
@@ -16,11 +20,13 @@ public class StripeWebhookController : ControllerBase
 {
     private readonly IConfiguration _config;
     private readonly ILogger<StripeWebhookController> _logger;
+    private readonly BeachDbContext _db;
 
-    public StripeWebhookController(IConfiguration config, ILogger<StripeWebhookController> logger)
+    public StripeWebhookController(IConfiguration config, ILogger<StripeWebhookController> logger, BeachDbContext db)
     {
         _config = config;
         _logger = logger;
+        _db = db;
     }
 
     [HttpPost("webhook")]
@@ -71,7 +77,17 @@ public class StripeWebhookController : ControllerBase
                 stripeEvent.Type,
                 stripeEvent.Id);
 
-            // Ödeme durumu güncellemeleri burada işlenecek (entegrasyon tamamlanınca).
+            if (stripeEvent.Type == EventTypes.CheckoutSessionCompleted)
+            {
+                var session = stripeEvent.Data.Object as Session;
+                await HandleCheckoutSessionCompletedAsync(session, cancellationToken);
+            }
+            else if (stripeEvent.Type == EventTypes.CheckoutSessionAsyncPaymentFailed)
+            {
+                var session = stripeEvent.Data.Object as Session;
+                await HandleCheckoutSessionFailedAsync(session, cancellationToken);
+            }
+
             return Ok();
         }
         catch (StripeException ex)
@@ -79,5 +95,61 @@ public class StripeWebhookController : ControllerBase
             _logger.LogWarning(ex, "Stripe webhook imza doğrulaması başarısız.");
             return BadRequest(new { success = false, message = "İmza doğrulaması başarısız." });
         }
+    }
+
+    private async Task HandleCheckoutSessionCompletedAsync(Session? session, CancellationToken cancellationToken)
+    {
+        if (session?.Metadata == null || !session.Metadata.TryGetValue("reservationId", out var reservationIdText) || !int.TryParse(reservationIdText, out var reservationId))
+            return;
+
+        var reservation = await _db.Reservations.FirstOrDefaultAsync(x => x.Id == reservationId, cancellationToken);
+        if (reservation == null)
+            return;
+
+        reservation.PaymentStatus = PaymentStatus.Paid;
+
+        var payment = await _db.ReservationPayments.FirstOrDefaultAsync(x => x.ReservationId == reservationId, cancellationToken);
+        if (payment == null)
+        {
+            payment = new Models.ReservationPayment
+            {
+                ReservationId = reservationId,
+                Amount = reservation.TotalPrice,
+                Status = PaymentStatus.Paid,
+                TransactionId = session.Id,
+                PaymentMethod = "Stripe",
+                PaidAt = DateTime.UtcNow
+            };
+            _db.ReservationPayments.Add(payment);
+        }
+        else
+        {
+            payment.Status = PaymentStatus.Paid;
+            payment.TransactionId = session.Id;
+            payment.PaidAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task HandleCheckoutSessionFailedAsync(Session? session, CancellationToken cancellationToken)
+    {
+        if (session?.Metadata == null || !session.Metadata.TryGetValue("reservationId", out var reservationIdText) || !int.TryParse(reservationIdText, out var reservationId))
+            return;
+
+        var reservation = await _db.Reservations.FirstOrDefaultAsync(x => x.Id == reservationId, cancellationToken);
+        if (reservation == null)
+            return;
+
+        reservation.PaymentStatus = PaymentStatus.Failed;
+
+        var payment = await _db.ReservationPayments.FirstOrDefaultAsync(x => x.ReservationId == reservationId, cancellationToken);
+        if (payment != null)
+        {
+            payment.Status = PaymentStatus.Failed;
+            payment.TransactionId = session.Id;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
     }
 }

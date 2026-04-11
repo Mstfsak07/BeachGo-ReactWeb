@@ -37,6 +37,9 @@ public class BeachService : IBeachService
             .FirstOrDefaultAsync(b => b.Id == id);
 
     public async Task<List<Beach>> SearchAsync(string query) =>
+        string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2 || query.Trim().Length > 100
+            ? new List<Beach>()
+            :
         await _db.Beaches
             .Where(b => b.Name.ToLower().Contains(query.ToLower()) ||
                         b.Description.ToLower().Contains(query.ToLower()))
@@ -61,18 +64,24 @@ public class BeachService : IBeachService
         if (filter.IsOpen.HasValue)
             query = query.Where(b => b.IsOpen == filter.IsOpen.Value);
 
-        var list = await query.ToListAsync();
-
         if (filter.SortBy == "distance" && filter.UserLat.HasValue && filter.UserLng.HasValue)
-            list = list.OrderBy(b => _geoCalculator.GetDistance(
-                filter.UserLat.Value, filter.UserLng.Value,
-                b.Latitude, b.Longitude)).ToList();
-        else if (filter.SortBy == "occupancy")
-            list = list.OrderBy(b => b.OccupancyPercent).ToList();
-        else
-            list = list.OrderByDescending(b => b.Rating).ToList();
+        {
+            var userLat = DegreesToRadians(filter.UserLat.Value);
+            var userLng = DegreesToRadians(filter.UserLng.Value);
 
-        return list;
+            return await query
+                .OrderBy(b => 6371d * Math.Acos(
+                    Math.Cos(userLat) * Math.Cos(DegreesToRadians(b.Latitude)) *
+                    Math.Cos(DegreesToRadians(b.Longitude) - userLng) +
+                    Math.Sin(userLat) * Math.Sin(DegreesToRadians(b.Latitude))))
+                .ToListAsync();
+        }
+
+        query = filter.SortBy == "occupancy"
+            ? query.OrderBy(b => b.OccupancyPercent)
+            : query.OrderByDescending(b => b.Rating);
+
+        return await query.ToListAsync();
     }
 
     public async Task<Beach> CreateAsync(Beach beach)
@@ -128,5 +137,7 @@ public class BeachService : IBeachService
         await _db.SaveChangesAsync();
         return true;
     }
+
+    private static double DegreesToRadians(double degrees) => degrees * (Math.PI / 180d);
 }
 

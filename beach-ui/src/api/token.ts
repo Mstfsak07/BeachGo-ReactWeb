@@ -12,6 +12,10 @@ type AuthPayload = {
   data?: AuthPayload | null;
 };
 
+type RefreshAccessTokenOptions = {
+  redirectOnFailure?: boolean;
+};
+
 export type NormalizedAuthPayload = {
   accessToken: string | null;
   user: AppUser | null;
@@ -40,7 +44,11 @@ export const clearAuthSession = (): void => {
   localStorage.removeItem('user');
 };
 
-export const refreshAccessToken = async (): Promise<NormalizedAuthPayload> => {
+export const refreshAccessToken = async (
+  options: RefreshAccessTokenOptions = {}
+): Promise<NormalizedAuthPayload> => {
+  const { redirectOnFailure = true } = options;
+
   try {
     const response = await axios.post<AuthPayload>(
       `${baseURL}/Auth/refresh`,
@@ -52,16 +60,15 @@ export const refreshAccessToken = async (): Promise<NormalizedAuthPayload> => {
 
     if (authData?.accessToken) {
       setAccessToken(authData.accessToken);
-      if (authData.user) {
-        localStorage.setItem('user', JSON.stringify(authData.user));
-      }
       return authData;
     }
 
     throw new Error('Access token yenilenemedi.');
   } catch (error) {
     clearAuthSession();
-    window.location.href = '/login';
+    if (redirectOnFailure) {
+      window.location.href = '/login';
+    }
     throw error;
   }
 };
@@ -75,5 +82,7 @@ export const hydrateUserFromStorage = (): AppUser | null => {
   } catch {
     localStorage.removeItem('user');
     return null;
+  } finally {
+    localStorage.removeItem('user');
   }
 };

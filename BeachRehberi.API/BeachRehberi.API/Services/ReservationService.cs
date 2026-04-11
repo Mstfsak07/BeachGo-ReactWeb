@@ -58,7 +58,7 @@ namespace BeachRehberi.API.Services
                 PersonCount = dto.PersonCount,
                 SunbedCount = dto.SunbedCount,
                 Notes = dto.Notes,
-                TotalPrice = dto.TotalPrice
+                TotalPrice = CalculatePrice(beach, dto.PersonCount, dto.SunbedCount)
             };
 
             _context.Reservations.Add(reservation);
@@ -114,7 +114,7 @@ namespace BeachRehberi.API.Services
             return ServiceResult<bool>.SuccessResult(true, "Rezervasyon iptal edildi.");
         }
 
-        public async Task<ReservationLookupDto?> GetByCodeAsync(string code)
+    public async Task<ReservationLookupDto?> GetByCodeAsync(string code)
         {
             var r = await _context.Reservations
                 .Include(x => x.Beach)
@@ -132,10 +132,17 @@ namespace BeachRehberi.API.Services
                 Pax = r.PersonCount,
                 ReservationDate = r.ReservationDate,
                 Status = r.Status.ToString(),
-                PaymentStatus = r.PaymentStatus ?? "Pending",
+                PaymentStatus = r.PaymentStatus.ToString(),
                 GuestPhone = r.GuestPhone ?? "",
                 GuestEmail = r.GuestEmail ?? ""
             };
+        }
+
+        private static decimal CalculatePrice(Beach beach, int personCount, int sunbedCount)
+        {
+            var personPrice = beach.HasEntryFee ? beach.EntryFee * personCount : 0m;
+            var sunbedPrice = beach.SunbedPrice * Math.Max(sunbedCount, 0);
+            return personPrice + sunbedPrice;
         }
     }
 }

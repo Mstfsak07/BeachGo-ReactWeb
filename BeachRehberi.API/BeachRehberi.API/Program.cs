@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.Services;
-using BeachRehberi.API.Middleware;
 using BeachRehberi.API.Middlewares;
 using BeachRehberi.API.Validators;
 using BeachRehberi.API.Mappings;
@@ -76,6 +75,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // ... (DI registrations) ...
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddSingleton<IGeoCalculator, GeoCalculator>();
 builder.Services.AddScoped<IBeachService, BeachService>();
 builder.Services.AddScoped<IBusinessService, BusinessService>();

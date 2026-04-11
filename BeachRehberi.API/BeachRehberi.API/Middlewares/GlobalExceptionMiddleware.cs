@@ -1,5 +1,4 @@
 using System;
-using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
 using BeachRehberi.API.Exceptions;
@@ -7,7 +6,7 @@ using BeachRehberi.API.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
-namespace BeachRehberi.API.Middleware
+namespace BeachRehberi.API.Middlewares
 {
     public class GlobalExceptionMiddleware
     {

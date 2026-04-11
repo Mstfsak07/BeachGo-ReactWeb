@@ -37,6 +37,20 @@ namespace BeachRehberi.API.Controllers
             _env = env;
         }
 
+        private CookieOptions BuildRefreshTokenCookieOptions()
+        {
+            var isCrossSiteDeployment = !_env.IsDevelopment();
+
+            return new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = isCrossSiteDeployment,
+                SameSite = isCrossSiteDeployment ? SameSiteMode.None : SameSiteMode.Lax,
+                Expires = DateTime.UtcNow.AddDays(7),
+                Path = "/"
+            };
+        }
+
         [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
@@ -57,13 +71,7 @@ namespace BeachRehberi.API.Controllers
             if (!result.Success)
                 throw new DomainException(result.Message);
 
-            Response.Cookies.Append("refreshToken", result.RefreshToken ?? "", new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = !_env.IsDevelopment(),
-                SameSite = SameSiteMode.Lax,
-                Expires = DateTime.UtcNow.AddDays(7)
-            });
+            Response.Cookies.Append("refreshToken", result.RefreshToken ?? "", BuildRefreshTokenCookieOptions());
 
             return Ok(ApiResponse<AuthResult>.Ok(result, "Giriş başarılı."));
         }
@@ -140,13 +148,7 @@ namespace BeachRehberi.API.Controllers
             if (!result.Success)
                 throw new DomainException(result.Message);
 
-            Response.Cookies.Append("refreshToken", result.RefreshToken ?? "", new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = !_env.IsDevelopment(),
-                SameSite = SameSiteMode.Lax,
-                Expires = DateTime.UtcNow.AddDays(7)
-            });
+            Response.Cookies.Append("refreshToken", result.RefreshToken ?? "", BuildRefreshTokenCookieOptions());
 
             return Ok(ApiResponse<AuthResult>.Ok(result, "Token başarıyla yenilendi."));
         }
@@ -168,7 +170,7 @@ namespace BeachRehberi.API.Controllers
                 await _tokenService.RevokeRefreshTokenAsync(refreshToken);
             }
 
-            Response.Cookies.Delete("refreshToken");
+            Response.Cookies.Delete("refreshToken", BuildRefreshTokenCookieOptions());
             return Ok(ApiResponse.OkResult("Çıkış başarılı."));
         }
 

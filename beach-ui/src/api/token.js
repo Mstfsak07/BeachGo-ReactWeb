@@ -21,8 +21,6 @@ export const setAccessToken = (token) => {
 export const clearAuthSession = () => {
   accessTokenMemory = null;
   localStorage.removeItem('user');
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
 };
 
 export const refreshAccessToken = async () => {

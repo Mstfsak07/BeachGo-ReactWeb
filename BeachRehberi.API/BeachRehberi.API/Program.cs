@@ -22,6 +22,7 @@ using BCrypt.Net;
 using System.Security.Claims;
 using BeachRehberi.API.Models;
 using Resend;
+using Npgsql;
 
 using BeachRehberi.Domain.Interfaces;
 
@@ -45,17 +46,22 @@ if (jwtSecret.Length < 32)
 // ─────────────────────────────────────────
 // DATABASE CONFIGURATION (PostgreSQL)
 // ─────────────────────────────────────────
-var dbConn = Environment.GetEnvironmentVariable("BEACHGO_DB_CONN")
-             ?? builder.Configuration.GetConnectionString("DefaultConnection");
+var dbConn = ResolveDatabaseConnectionString(builder.Configuration);
 
 if (string.IsNullOrWhiteSpace(dbConn))
 {
-    throw new InvalidOperationException("Database connection string is missing. Set BEACHGO_DB_CONN or ConnectionStrings:DefaultConnection.");
+    throw new InvalidOperationException("Database connection string is missing. Set BEACHGO_DB_CONN or provide Cloud SQL compatible DB env vars.");
 }
 
 builder.Services.AddDbContext<BeachDbContext>(options =>
 {
-    options.UseNpgsql(dbConn);
+    options.UseNpgsql(dbConn, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorCodesToAdd: null);
+    });
 
     if (builder.Environment.IsDevelopment())
     {
@@ -63,6 +69,59 @@ builder.Services.AddDbContext<BeachDbContext>(options =>
         options.EnableDetailedErrors();
     }
 });
+
+static string? ResolveDatabaseConnectionString(ConfigurationManager configuration)
+{
+    var directConnectionString = Environment.GetEnvironmentVariable("BEACHGO_DB_CONN");
+    if (!string.IsNullOrWhiteSpace(directConnectionString))
+    {
+        return directConnectionString;
+    }
+
+    var configuredConnectionString = configuration.GetConnectionString("DefaultConnection");
+    if (!string.IsNullOrWhiteSpace(configuredConnectionString))
+    {
+        return configuredConnectionString;
+    }
+
+    var database = Environment.GetEnvironmentVariable("BEACHGO_DB_NAME");
+    var username = Environment.GetEnvironmentVariable("BEACHGO_DB_USER");
+    var password = Environment.GetEnvironmentVariable("BEACHGO_DB_PASSWORD");
+
+    if (string.IsNullOrWhiteSpace(database) ||
+        string.IsNullOrWhiteSpace(username) ||
+        string.IsNullOrWhiteSpace(password))
+    {
+        return null;
+    }
+
+    var builder = new NpgsqlConnectionStringBuilder
+    {
+        Database = database,
+        Username = username,
+        Password = password,
+        Pooling = true,
+        Timeout = 15,
+        CommandTimeout = 30
+    };
+
+    var cloudSqlConnectionName = Environment.GetEnvironmentVariable("CLOUD_SQL_CONNECTION_NAME");
+    if (!string.IsNullOrWhiteSpace(cloudSqlConnectionName))
+    {
+        // Cloud Run + Cloud SQL connector mounts PostgreSQL sockets under /cloudsql/<INSTANCE_CONNECTION_NAME>.
+        builder.Host = $"/cloudsql/{cloudSqlConnectionName}";
+        return builder.ConnectionString;
+    }
+
+    builder.Host = Environment.GetEnvironmentVariable("BEACHGO_DB_HOST") ?? "127.0.0.1";
+
+    if (int.TryParse(Environment.GetEnvironmentVariable("BEACHGO_DB_PORT"), out var port) && port > 0)
+    {
+        builder.Port = port;
+    }
+
+    return builder.ConnectionString;
+}
 
 // ... (other infrastructure) ...
 builder.Services.AddMemoryCache();

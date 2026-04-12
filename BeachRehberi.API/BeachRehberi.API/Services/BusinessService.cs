@@ -170,11 +170,15 @@ public class BusinessService : IBusinessService
             .Where(r => r.BeachId == beachId && !r.IsDeleted)
             .SumAsync(r => r.TotalPrice);
 
-        var weeklyRaw = await _db.Reservations
+        var weeklyDates = await _db.Reservations
             .Where(r => r.BeachId == beachId && !r.IsDeleted && r.ReservationDate >= weekStart)
-            .GroupBy(r => r.ReservationDate.Date)
-            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .Select(r => r.ReservationDate)
             .ToListAsync();
+
+        var weeklyRaw = weeklyDates
+            .GroupBy(date => date.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToList();
 
         var dayNames = new[] { "Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt" };
         var weeklyData = Enumerable.Range(0, 7)

@@ -144,6 +144,7 @@ builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IWeatherService, WeatherService>();
 builder.Services.AddHostedService<RevokedTokenCleanupService>();
+builder.Services.AddSingleton<IGoogleCloudStorageService, GoogleCloudStorageService>();
 
 // Auth support services (OTP + Email)
 builder.Services.AddScoped<IOtpService, OtpService>();

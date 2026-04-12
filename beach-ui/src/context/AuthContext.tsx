@@ -61,11 +61,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const storedUser = hydrateUserFromStorage();
       const storedAccessToken = getAccessToken();
 
-      if (storedUser) {
+      if (storedUser && storedAccessToken) {
         setUser(storedUser);
       }
 
       if (!storedAccessToken) {
+        setUser(null);
         setLoading(false);
         return;
       }

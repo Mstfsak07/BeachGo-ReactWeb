@@ -1,11 +1,12 @@
 import api from '../api/axios';
 import {
-  unwrapArrayResponse,
+  unwrapPagedResponse,
   unwrapResponse,
   type ApiResult,
   type BeachDto,
   type BusinessReservationDto,
   type BusinessStatsDto,
+  type PagedResponse,
 } from '../types';
 
 export const register = async (
@@ -25,9 +26,20 @@ export const register = async (
   return unwrapResponse<ApiResult>(response.data);
 };
 
-export const getBusinessReservations = async (): Promise<BusinessReservationDto[]> => {
-  const response = await api.get('/business/reservations');
-  return unwrapArrayResponse<BusinessReservationDto>(response.data);
+type BusinessReservationsQuery = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  filterType?: string;
+  filterStatus?: string;
+  sortType?: string;
+};
+
+export const getBusinessReservations = async (
+  query: BusinessReservationsQuery = {}
+): Promise<PagedResponse<BusinessReservationDto>> => {
+  const response = await api.get('/business/reservations', { params: query });
+  return unwrapPagedResponse<BusinessReservationDto>(response.data);
 };
 
 export const getBusinessStats = async (): Promise<BusinessStatsDto | null> => {

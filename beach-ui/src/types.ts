@@ -5,6 +5,14 @@ export type ApiEnvelope<T> = {
   errors?: string[];
 };
 
+export type PagedResponse<T> = {
+  items?: T[];
+  totalCount?: number;
+  totalPages?: number;
+  currentPage?: number;
+  pageSize?: number;
+};
+
 export type ApiResult = ApiEnvelope<Record<string, unknown>> | Record<string, unknown>;
 
 export type AppUser = {
@@ -163,4 +171,18 @@ export function unwrapArrayResponse<T>(responseData: ApiEnvelope<T[]> | T[] | nu
   }
 
   return [];
+}
+
+export function unwrapPagedResponse<T>(
+  responseData: ApiEnvelope<PagedResponse<T>> | PagedResponse<T> | null | undefined
+): PagedResponse<T> {
+  const result = unwrapResponse<PagedResponse<T>>(responseData);
+
+  return {
+    items: result?.items ?? [],
+    totalCount: result?.totalCount ?? 0,
+    totalPages: result?.totalPages ?? 1,
+    currentPage: result?.currentPage ?? 1,
+    pageSize: result?.pageSize ?? 0,
+  };
 }

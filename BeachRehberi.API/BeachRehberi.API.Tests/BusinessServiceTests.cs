@@ -31,10 +31,12 @@ public class BusinessServiceTests
         var page1 = await service.GetAllReservationsAsync(beach.Id, page: 1, pageSize: 2);
         var page2 = await service.GetAllReservationsAsync(beach.Id, page: 2, pageSize: 2);
 
-        Assert.Equal(2, page1.Count);
-        Assert.Single(page2);
-        Assert.True(page1[0].CreatedAt >= page1[1].CreatedAt);
-        Assert.True(page1[1].CreatedAt >= page2[0].CreatedAt);
+        Assert.Equal(2, page1.Items.Count);
+        Assert.Single(page2.Items);
+        Assert.Equal(3, page1.TotalCount);
+        Assert.Equal(2, page1.TotalPages);
+        Assert.True(page1.Items[0].CreatedAt >= page1.Items[1].CreatedAt);
+        Assert.True(page1.Items[1].CreatedAt >= page2.Items[0].CreatedAt);
     }
 
     [Fact]

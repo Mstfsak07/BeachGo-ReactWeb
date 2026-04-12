@@ -18,13 +18,26 @@ public class BusinessController : ControllerBase
     public BusinessController(IBusinessService businessService) => _businessService = businessService;
 
     [HttpGet("reservations")]
-    public async Task<IActionResult> GetMyReservations([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+    public async Task<IActionResult> GetMyReservations(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        [FromQuery] string? search = null,
+        [FromQuery] string? filterType = null,
+        [FromQuery] string? filterStatus = null,
+        [FromQuery] string? sortType = null)
     {
         var beachId = GetUserBeachId();
         if (beachId == -1) return "Kendi işletme yetkiniz bulunamadı, işlem reddedildi.".ToForbiddenApiResponse();
 
-        var reservations = await _businessService.GetAllReservationsAsync(beachId, page, pageSize);
-        return reservations.ToOkApiResponse();
+        var reservations = await _businessService.GetAllReservationsAsync(
+            beachId,
+            page,
+            pageSize,
+            search,
+            filterType,
+            filterStatus,
+            sortType);
+        return reservations.ToPagedApiResponse();
     }
 
     [HttpGet("stats")]

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarCheck } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Sidebar from '../components/layout/Sidebar';
@@ -19,6 +19,8 @@ const ITEMS_PER_PAGE = 10;
 
 const DashboardReservations = () => {
   const [reservations, setReservations] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
@@ -34,57 +36,37 @@ const DashboardReservations = () => {
     undoLastFilter,
   } = useReservationFilters();
 
-  const fetchReservations = async () => {
+  const fetchReservations = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const data = await getBusinessReservations();
-      setReservations(data || []);
+      const response = await getBusinessReservations({
+        page: filters.currentPage,
+        pageSize: ITEMS_PER_PAGE,
+        search: filters.search || undefined,
+        filterType: filters.filterType !== 'All' ? filters.filterType : undefined,
+        filterStatus: filters.filterStatus !== 'All' ? filters.filterStatus : undefined,
+        sortType: filters.sortType !== 'Newest' ? filters.sortType : undefined,
+      });
+
+      setReservations(response.items || []);
+      setTotalCount(response.totalCount || 0);
+      setTotalPages(response.totalPages || 1);
     } catch (requestError) {
       toast.error('Rezervasyonlar yüklenemedi.');
       setError(requestError.message || 'Sunucuyla bağlantı kurulurken beklenmeyen bir hata oluştu.');
+      setReservations([]);
+      setTotalCount(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters.currentPage, filters.search, filters.filterType, filters.filterStatus, filters.sortType]);
 
   useEffect(() => {
     fetchReservations();
-  }, []);
-
-  const filteredReservations = useMemo(() => {
-    const searchValue = filters.search.trim().toLowerCase();
-
-    return [...reservations]
-      .filter((reservation) => {
-        const matchesSearch =
-          !searchValue ||
-          (reservation.customerName || '').toLowerCase().includes(searchValue) ||
-          (reservation.phone || '').toLowerCase().includes(searchValue) ||
-          (reservation.confirmationCode || '').toLowerCase().includes(searchValue);
-
-        const matchesType =
-          filters.filterType === 'All' ||
-          (filters.filterType === 'Guest' ? reservation.isGuestReservation : !reservation.isGuestReservation);
-
-        const isCancelled = reservation.status === 'Cancelled' || reservation.status === 'Rejected';
-        const matchesStatus =
-          filters.filterStatus === 'All' ||
-          (filters.filterStatus === 'Active' ? !isCancelled : isCancelled);
-
-        return matchesSearch && matchesType && matchesStatus;
-      })
-      .sort((left, right) => {
-        if (filters.sortType === 'Newest') return new Date(right.createdAt || 0) - new Date(left.createdAt || 0);
-        if (filters.sortType === 'Oldest') return new Date(left.createdAt || 0) - new Date(right.createdAt || 0);
-        if (filters.sortType === 'NameAZ') return (left.customerName || '').localeCompare(right.customerName || '');
-        if (filters.sortType === 'NameZA') return (right.customerName || '').localeCompare(left.customerName || '');
-        return 0;
-      });
-  }, [filters, reservations]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredReservations.length / ITEMS_PER_PAGE));
+  }, [fetchReservations]);
 
   useEffect(() => {
     if (filters.currentPage > totalPages) {
@@ -92,25 +74,10 @@ const DashboardReservations = () => {
     }
   }, [filters.currentPage, totalPages, updateFilter]);
 
-  const paginatedReservations = useMemo(() => {
-    const startIndex = (filters.currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredReservations.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [filteredReservations, filters.currentPage]);
-
   const selectedReservation = useMemo(
     () => reservations.find((reservation) => reservation.id === selectedReservationId) || null,
     [reservations, selectedReservationId]
   );
-
-  useEffect(() => {
-    setSelectedIds((previous) => {
-      if (previous.size === 0) return previous;
-
-      const visibleIds = new Set(filteredReservations.map((reservation) => reservation.id));
-      const next = new Set([...previous].filter((id) => visibleIds.has(id)));
-      return next.size === previous.size ? previous : next;
-    });
-  }, [filteredReservations]);
 
   const handleCopyConfirmationCode = async (confirmationCode) => {
     const copied = await copyText(confirmationCode);
@@ -162,10 +129,12 @@ const DashboardReservations = () => {
     });
   };
 
+  const visibleReservations = reservations;
+
   const handleTogglePageSelection = (checked) => {
     setSelectedIds((previous) => {
       const next = new Set(previous);
-      paginatedReservations.forEach((reservation) => {
+      visibleReservations.forEach((reservation) => {
         if (checked) next.add(reservation.id);
         else next.delete(reservation.id);
       });
@@ -217,7 +186,7 @@ const DashboardReservations = () => {
     }
   };
 
-  const currentPageIds = paginatedReservations.map((reservation) => reservation.id);
+  const currentPageIds = visibleReservations.map((reservation) => reservation.id);
   const allPageSelected = currentPageIds.length > 0 && currentPageIds.every((id) => selectedIds.has(id));
   const somePageSelected = currentPageIds.some((id) => selectedIds.has(id)) && !allPageSelected;
 
@@ -244,8 +213,8 @@ const DashboardReservations = () => {
         {!loading && !error && (
           <ReservationStatsCards
             totals={{
-              total: reservations.length,
-              visible: filteredReservations.length,
+              total: totalCount,
+              visible: totalCount,
               selected: selectedIds.size,
               filters: activeChips.length,
             }}
@@ -266,13 +235,13 @@ const DashboardReservations = () => {
         <ReservationTable
           loading={loading}
           error={error}
-          reservations={paginatedReservations}
+          reservations={visibleReservations}
           selectedIds={selectedIds}
           actionLoadingId={actionLoadingId}
           bulkLoading={bulkLoading}
           currentPage={filters.currentPage}
           totalPages={totalPages}
-          filteredCount={filteredReservations.length}
+          filteredCount={totalCount}
           itemsPerPage={ITEMS_PER_PAGE}
           allPageSelected={allPageSelected}
           somePageSelected={somePageSelected}

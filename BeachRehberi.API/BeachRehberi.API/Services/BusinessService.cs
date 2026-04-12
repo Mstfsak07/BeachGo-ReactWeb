@@ -103,14 +103,64 @@ public class BusinessService : IBusinessService
             .OrderBy(r => r.ReservationDate)
             .ToListAsync();
 
-    public async Task<List<BusinessReservationDto>> GetAllReservationsAsync(int beachId, int page = 1, int pageSize = 50)
+    public async Task<PagedResponse<BusinessReservationDto>> GetAllReservationsAsync(
+        int beachId,
+        int page = 1,
+        int pageSize = 50,
+        string? search = null,
+        string? filterType = null,
+        string? filterStatus = null,
+        string? sortType = null)
     {
         (page, pageSize) = NormalizePagination(page, pageSize);
 
-        return await _db.Reservations
+        var query = _db.Reservations
             .AsNoTracking()
-            .Where(r => r.BeachId == beachId)
-            .OrderByDescending(r => r.CreatedAt)
+            .Where(r => r.BeachId == beachId);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToLower();
+            query = query.Where(r =>
+                ((r.IsGuest ? (r.GuestFirstName ?? "") + " " + (r.GuestLastName ?? "") : (r.User != null ? (r.User.ContactName ?? r.User.Email) : ""))
+                    .ToLower().Contains(normalizedSearch)) ||
+                (r.GuestPhone ?? "").ToLower().Contains(normalizedSearch) ||
+                (r.ConfirmationCode ?? "").ToLower().Contains(normalizedSearch));
+        }
+
+        if (string.Equals(filterType, "Guest", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(r => r.IsGuest);
+        }
+        else if (string.Equals(filterType, "User", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(r => !r.IsGuest);
+        }
+
+        if (string.Equals(filterStatus, "Active", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(r => r.Status != ReservationStatus.Cancelled && r.Status != ReservationStatus.Rejected);
+        }
+        else if (string.Equals(filterStatus, "Cancelled", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(r => r.Status == ReservationStatus.Cancelled || r.Status == ReservationStatus.Rejected);
+        }
+
+        query = sortType switch
+        {
+            "Oldest" => query.OrderBy(r => r.CreatedAt),
+            "NameAZ" => query.OrderBy(r => r.IsGuest
+                ? (r.GuestFirstName ?? "") + " " + (r.GuestLastName ?? "")
+                : (r.User != null ? (r.User.ContactName ?? r.User.Email) : "Bilinmeyen")),
+            "NameZA" => query.OrderByDescending(r => r.IsGuest
+                ? (r.GuestFirstName ?? "") + " " + (r.GuestLastName ?? "")
+                : (r.User != null ? (r.User.ContactName ?? r.User.Email) : "Bilinmeyen")),
+            _ => query.OrderByDescending(r => r.CreatedAt)
+        };
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(r => new BusinessReservationDto
@@ -144,6 +194,8 @@ public class BusinessService : IBusinessService
                 CancelledAt = r.CancelledAt
             })
             .ToListAsync();
+
+        return new PagedResponse<BusinessReservationDto>(items, totalCount, page, pageSize);
     }
 
     public async Task<BusinessStatsDto> GetStatsAsync(int beachId)

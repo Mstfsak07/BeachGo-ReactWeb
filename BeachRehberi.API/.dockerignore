@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/.idea/
+BeachRehberi.API.Tests/
+*.user
+*.suo
+*.cache
+TestResults/

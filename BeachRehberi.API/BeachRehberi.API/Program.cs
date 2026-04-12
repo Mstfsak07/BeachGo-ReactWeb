@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -27,6 +28,11 @@ using Npgsql;
 using BeachRehberi.Domain.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
+var runningInContainer = string.Equals(
+    Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"),
+    "true",
+    StringComparison.OrdinalIgnoreCase);
+var forwardedHeadersEnabled = builder.Configuration.GetValue<bool>("ASPNETCORE_FORWARDEDHEADERS_ENABLED");
 
 
 // ─────────────────────────────────────────
@@ -378,6 +384,13 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 // ─────────────────────────────────────────
 // BUILD
 // ─────────────────────────────────────────
@@ -387,14 +400,12 @@ var app = builder.Build();
 // MIDDLEWARE PIPELINE (sıralama kritik!)
 // ─────────────────────────────────────────
 
-app.UseForwardedHeaders(); // Proxy/Nginx reverse yönlendirmeleri için gerekli
-
-// Security, HTTPS redirect & HSTS: Production korumaları
-if (!app.Environment.IsDevelopment())
+if (forwardedHeadersEnabled || runningInContainer)
 {
-    app.UseHsts();
-    app.UseHttpsRedirection();
+    app.UseForwardedHeaders();
 }
+
+var enableHttpsRedirection = !runningInContainer && !forwardedHeadersEnabled;
 
 app.Use(async (context, next) =>
 {
@@ -405,16 +416,18 @@ app.Use(async (context, next) =>
     await next();
 });
 
-if (app.Environment.IsDevelopment())
+if (enableHttpsRedirection)
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "BeachRehberi API v1");
-        c.RoutePrefix = "swagger";
-        c.DisplayRequestDuration();
-    });
+    app.UseHttpsRedirection();
 }
+
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "BeachRehberi API v1");
+    c.RoutePrefix = "swagger";
+    c.DisplayRequestDuration();
+});
 
 // CORS: Authentication'dan ÖNCE olmalı
 app.UseCors("AllowFrontend");
@@ -422,9 +435,9 @@ app.UseRouting();
 app.UseRateLimiter();
 
 // Authentication & Authorization
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseMiddleware<JwtBlacklistMiddleware>();
 app.UseAuthentication();
-app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();

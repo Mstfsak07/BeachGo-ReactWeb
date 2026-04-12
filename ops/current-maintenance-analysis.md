@@ -225,7 +225,28 @@ Bu yüzden aşağıdaki faz planına eski ama artık kapanmış bulgular dahil e
   - hayır, public route
   - önceki redirect problemi route protection değil bootstrap/auth side-effect idi ve fixlendi
 
-## Phase Plan
+## Completed Since This Analysis
+
+Asagidaki maddeler bu analiz cikarildiktan sonra repository icinde uygulanmistir:
+
+- `8dbe70d` `fix: close auth reservation and ops hardening phase`
+  - F-01 guest reservation pricing server-side helper'a tasindi
+  - F-02 auth rate limiter per-IP policy oldu
+  - F-03 access token persistence memory-only modele cekildi
+  - F-04 OTP verification expiry false negative kapatildi
+  - F-05 guest reservation soft-delete beach check eklendi
+  - F-06 Stripe webhook idempotency + reservation status update eklendi
+  - F-07 search query Npgsql `ILike` kullaniyor
+  - F-09 compose icinden aktif kullanilmayan Redis cikarildi
+  - F-10 `docs/PROJECT_NOTES.md` current-state'e gore yeniden yazildi
+  - focused smoke checklist eklendi
+- `61af9d3` `feat: move business reservations to server pagination`
+  - F-08 business reservations endpoint'i server-side search/filter/sort/page destekli paged response donuyor
+  - business dashboard reservations ekrani backend pagination'i gercekten tuketiyor
+
+Bu nedenle asagidaki faz plani tarihsel kayit niteligindedir; bu maddelerin buyuk kismi artik kapatilmis kabul edilmelidir.
+
+## Historical Phase Plan
 
 ### Phase 1 — Release Blockers
 Goal:
@@ -351,6 +372,8 @@ Focused smokes:
 - business reservations dashboard load
 
 ## Recommended Next Move
+
+Bu dosyadaki ilk faz gorevleri buyuk olcude tamamlandigi icin bir sonraki ajan once current repo durumunu yeniden degerlendirmeli ve yeni bir gap listesi cikarmalidir.
 
 Uygulama sırası için en mantıklı başlangıç:
 1. Phase 1 / F-01

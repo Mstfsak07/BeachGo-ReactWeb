@@ -1,5 +1,28 @@
 # Remaining Operations Runbook
 
+## 0. Completed Work Log
+
+Bu repo icinde asagidaki fazlar uygulanip commitlenmistir. Diger bir makinede devam edecek ajan bunlari yeniden planlamamali:
+
+- `8dbe70d` `fix: close auth reservation and ops hardening phase`
+- `61af9d3` `feat: move business reservations to server pagination`
+
+Bu commitlerle kapanan basliklar:
+
+- guest reservation pricing server-side hesaplama
+- auth per-IP rate limiter
+- access token memory-only persistence
+- OTP verification expiry false negative
+- guest reservation soft-delete beach guard
+- Stripe webhook idempotency + pending -> approved status update
+- beach search `ILike`
+- business reservations backend pagination + dashboard integration
+- compose Redis cleanup
+- `PROJECT_NOTES` current-state duzeltmesi
+- smoke checklist ve ek regression testleri
+
+Current state'te bir sonraki ajan once `git log --oneline -n 10` ve `ops/current-maintenance-analysis.md` uzerinden yeniden baglam kurmali.
+
 ## 1. DB Secret Rotation
 
 - `appsettings.json` içindeki geçmişte kullanılan varsayılan DB parolasını geçersiz kılın.

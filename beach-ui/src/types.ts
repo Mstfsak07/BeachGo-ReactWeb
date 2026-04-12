@@ -11,6 +11,9 @@ export type AppUser = {
   id?: number;
   email?: string;
   role?: string;
+  accountType?: string;
+  firstName?: string;
+  lastName?: string;
   name?: string;
   [key: string]: unknown;
 };
@@ -149,6 +152,15 @@ export function unwrapResponse<T>(responseData: ApiEnvelope<T> | T | null | unde
 }
 
 export function unwrapArrayResponse<T>(responseData: ApiEnvelope<T[]> | T[] | null | undefined): T[] {
-  const result = unwrapResponse<T[]>(responseData);
-  return Array.isArray(result) ? result : [];
+  const result = unwrapResponse<T[] | { items?: T[] }>(responseData as ApiEnvelope<T[] | { items?: T[] }> | T[] | { items?: T[] } | null | undefined);
+
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  if (result && typeof result === 'object' && Array.isArray((result as { items?: T[] }).items)) {
+    return (result as { items: T[] }).items;
+  }
+
+  return [];
 }

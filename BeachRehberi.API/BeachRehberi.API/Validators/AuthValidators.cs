@@ -55,6 +55,20 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
     }
 }
 
+public class BusinessRegisterRequestValidator : AbstractValidator<BusinessRegisterRequest>
+{
+    public BusinessRegisterRequestValidator()
+    {
+        Include(new RegisterRequestValidator());
+
+        RuleFor(x => x.BusinessName)
+            .NotEmpty().WithMessage("İşletme adı zorunludur.");
+
+        RuleFor(x => x.ContactName)
+            .NotEmpty().WithMessage("İletişim kişisi zorunludur.");
+    }
+}
+
 public class LoginRequestValidator : AbstractValidator<LoginRequest>
 {
     public LoginRequestValidator()

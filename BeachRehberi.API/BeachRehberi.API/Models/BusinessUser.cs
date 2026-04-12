@@ -50,8 +50,9 @@ public class BusinessUser
     public void SetEmail(string email)
     {
         if (string.IsNullOrWhiteSpace(email)) throw new DomainException("Email adresi boş olamaz.");
-        if (!Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$")) throw new DomainException("Geçersiz email formatı.");
-        Email = email;
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+        if (!Regex.IsMatch(normalizedEmail, @"^[^@\s]+@[^@\s]+\.[^@\s]+$")) throw new DomainException("Geçersiz email formatı.");
+        Email = normalizedEmail;
     }
 
     public void UpdatePersonalInfo(string firstName, string lastName, string phoneNumber)

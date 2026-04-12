@@ -65,13 +65,29 @@ namespace BeachRehberi.API.Controllers
         }
 
         [AllowAnonymous]
+        [HttpPost("business-register")]
+        public async Task<IActionResult> BusinessRegister([FromBody] BusinessRegisterRequest request)
+        {
+            var result = await _authService.BusinessRegisterAsync(request);
+            if (!result.Success)
+                throw new DomainException(result.Message);
+
+            return Ok(ApiResponse<AuthResult>.Ok(result, "İşletme kaydı başarıyla tamamlandı."));
+        }
+
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             var result = await _authService.LoginAsync(request);
 
             if (!result.Success)
+            {
+                if (string.Equals(result.Message, "İşletme hesabı için e-posta doğrulaması zorunludur.", StringComparison.Ordinal))
+                    throw new DomainException(result.Message, 403);
+
                 throw new DomainException(result.Message);
+            }
 
             Response.Cookies.Append("refreshToken", result.RefreshToken ?? "", BuildRefreshTokenCookieOptions());
 

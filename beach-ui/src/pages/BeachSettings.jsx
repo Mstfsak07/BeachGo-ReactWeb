@@ -143,10 +143,10 @@ const BeachSettings = () => {
   const labelClass = "text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2";
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       <Sidebar role="Business" />
 
-      <main className="flex-1 ml-0 md:ml-72 p-4 sm:p-6 md:p-10">
+      <main className="w-full flex-1 ml-0 md:ml-72 p-4 sm:p-6 md:p-10">
         <header className="mb-10">
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Plaj Ayarlari</h1>
           <p className="text-slate-500 font-medium">Musterilerinize gorunen bilgileri buradan duzenleyin.</p>

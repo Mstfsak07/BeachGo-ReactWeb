@@ -1,10 +1,14 @@
 using System;
+using BeachRehberi.API.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace BeachRehberi.API.Migrations
 {
+    [DbContext(typeof(BeachDbContext))]
+    [Migration("20260412021000_AddRevokedTokenExpiresAt")]
     public partial class AddRevokedTokenExpiresAt : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

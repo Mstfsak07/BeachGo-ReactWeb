@@ -30,16 +30,17 @@ public class VerifyEmailHandler :
 
     public async Task<AuthResult> Handle(VerifyEmailCommand command, CancellationToken cancellationToken)
     {
-        var isValid = await _otpService.ValidateTokenAsync(command.Email, "EmailVerification", command.Token);
+        var normalizedEmail = command.Email.Trim().ToLowerInvariant();
+        var isValid = await _otpService.ValidateTokenAsync(normalizedEmail, "EmailVerification", command.Token);
         if (!isValid)
             return new AuthResult { Success = false, Message = "Invalid or expired token" };
 
-        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == command.Email, cancellationToken);
+        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail, cancellationToken);
         if (user != null)
         {
             user.VerifyEmail();
             await _db.SaveChangesAsync(cancellationToken);
-            await _otpService.InvalidateTokenAsync(command.Email, "EmailVerification");
+            await _otpService.InvalidateTokenAsync(normalizedEmail, "EmailVerification");
         }
 
         return new AuthResult { Success = true };

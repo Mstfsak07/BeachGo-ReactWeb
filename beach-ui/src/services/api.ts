@@ -46,7 +46,7 @@ export const getBeachEvents = async (beachId: string | number): Promise<EventDto
 };
 
 export const getBeachReviews = async (beachId: string | number): Promise<BeachReviewDto[]> => {
-  const response = await api.get(`/Beaches/${beachId}/Reviews`);
+  const response = await api.get(`/Reviews/beach/${beachId}`);
   return unwrapArrayResponse<BeachReviewDto>(response.data);
 };
 

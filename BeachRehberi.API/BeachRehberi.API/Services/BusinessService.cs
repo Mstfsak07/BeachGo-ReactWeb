@@ -143,18 +143,21 @@ public class BusinessService : IBusinessService
 
     public async Task<BusinessStatsDto> GetStatsAsync(int beachId)
     {
-        var today = DateTime.UtcNow.Date;
-        var monthStart = new DateTime(today.Year, today.Month, 1);
-        var weekStart = today.AddDays(-6);
+        var now = DateTime.UtcNow;
+        var todayStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
+        var tomorrowStart = todayStart.AddDays(1);
+        var monthStart = new DateTime(todayStart.Year, todayStart.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var weekStart = todayStart.AddDays(-6);
 
         var total = await _db.Reservations
             .CountAsync(r => r.BeachId == beachId && !r.IsDeleted);
 
         var todayCheckins = await _db.Reservations
-            .CountAsync(r => r.BeachId == beachId && !r.IsDeleted && r.ReservationDate.Date == today);
+            .CountAsync(r => r.BeachId == beachId && !r.IsDeleted &&
+                             r.ReservationDate >= todayStart && r.ReservationDate < tomorrowStart);
 
         var monthly = await _db.Reservations
-            .CountAsync(r => r.BeachId == beachId && !r.IsDeleted && r.ReservationDate.Date >= monthStart);
+            .CountAsync(r => r.BeachId == beachId && !r.IsDeleted && r.ReservationDate >= monthStart);
 
         var activeCustomers = await _db.Reservations
             .Where(r => r.BeachId == beachId && !r.IsDeleted &&
@@ -168,7 +171,7 @@ public class BusinessService : IBusinessService
             .SumAsync(r => r.TotalPrice);
 
         var weeklyRaw = await _db.Reservations
-            .Where(r => r.BeachId == beachId && !r.IsDeleted && r.ReservationDate.Date >= weekStart)
+            .Where(r => r.BeachId == beachId && !r.IsDeleted && r.ReservationDate >= weekStart)
             .GroupBy(r => r.ReservationDate.Date)
             .Select(g => new { Date = g.Key, Count = g.Count() })
             .ToListAsync();
@@ -178,7 +181,7 @@ public class BusinessService : IBusinessService
             .Select(i =>
             {
                 var date = weekStart.AddDays(i);
-                var count = weeklyRaw.FirstOrDefault(w => w.Date == date)?.Count ?? 0;
+                var count = weeklyRaw.FirstOrDefault(w => w.Date == date.Date)?.Count ?? 0;
                 return new WeeklyStatDto { Day = dayNames[(int)date.DayOfWeek], Count = count };
             })
             .ToList();

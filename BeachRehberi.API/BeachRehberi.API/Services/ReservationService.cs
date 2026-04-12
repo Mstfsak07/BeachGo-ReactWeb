@@ -30,6 +30,17 @@ namespace BeachRehberi.API.Services
             if (!useReal)
                 return ServiceResult<ReservationResponseDto>.Failure("Şu an ödeme sistemi devre dışı olduğundan rezervasyon yapılamıyor.", 503);
 
+            var user = await _context.BusinessUsers.FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
+            if (user == null)
+                return ServiceResult<ReservationResponseDto>.Failure("Kullanıcı bulunamadı.", 404);
+
+            if (string.Equals(user.Role, UserRoles.User, StringComparison.OrdinalIgnoreCase) && !user.IsEmailVerified)
+            {
+                return ServiceResult<ReservationResponseDto>.Failure(
+                    "Rezervasyon yapmadan önce e-posta adresinizi doğrulamanız gerekiyor.",
+                    403);
+            }
+
             if (dto.ReservationDate.Date < DateTime.UtcNow.Date)
                 return ServiceResult<ReservationResponseDto>.FailureResult("Geçmiş bir tarih için rezervasyon yapılamaz.");
 

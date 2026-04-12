@@ -25,16 +25,17 @@ public class ResendVerificationHandler : IRequestHandler<ResendVerificationComma
 
     public async Task<AuthResult> Handle(ResendVerificationCommand command, CancellationToken cancellationToken)
     {
-        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email == command.Email, cancellationToken);
+        var normalizedEmail = command.Email.Trim().ToLowerInvariant();
+        var user = await _db.BusinessUsers.FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail, cancellationToken);
         if (user == null)
             return new AuthResult { Success = true };
 
         if (user.IsEmailVerified)
             return new AuthResult { Success = false, Message = "Already verified" };
 
-        var token = await _otpService.GenerateTokenAsync(command.Email, "EmailVerification");
+        var token = await _otpService.GenerateTokenAsync(normalizedEmail, "EmailVerification");
         var displayName = $"{user.FirstName} {user.LastName}".Trim();
-        await _emailService.SendEmailVerificationAsync(command.Email, displayName, token);
+        await _emailService.SendEmailVerificationAsync(normalizedEmail, displayName, token);
 
         return new AuthResult { Success = true };
     }

@@ -15,7 +15,7 @@ export const register = async (
   password: string,
   beachId?: number
 ): Promise<ApiResult | null> => {
-  const response = await api.post('/Auth/register', {
+  const response = await api.post('/Auth/business-register', {
     businessName,
     contactName,
     email,

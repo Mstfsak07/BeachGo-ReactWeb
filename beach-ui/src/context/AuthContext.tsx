@@ -7,18 +7,15 @@ import {
   type ReactNode,
 } from 'react';
 import api from '../api/axios';
-import { clearAuthSession, hydrateUserFromStorage, refreshAccessToken, setAccessToken } from '../api/token';
+import {
+  clearAuthSession,
+  extractAuthPayload,
+  getAccessToken,
+  hydrateUserFromStorage,
+  persistAuthSession,
+  refreshAccessToken,
+} from '../api/token';
 import type { ApiResult, AppUser } from '../types';
-
-type LoginResponsePayload = {
-  accessToken?: string;
-  token?: string;
-  Token?: string;
-  user?: AppUser;
-  User?: AppUser;
-  role?: string;
-  data?: LoginResponsePayload;
-};
 
 export type AuthContextValue = {
   user: AppUser | null;
@@ -46,27 +43,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await api.post<LoginResponsePayload>('/Auth/login', { email, password });
-    const responseData = (response.data?.data ?? response.data) as LoginResponsePayload | undefined;
-    const accessToken = responseData?.accessToken ?? responseData?.token ?? responseData?.Token;
-    const userData: AppUser =
-      responseData?.user ??
-      responseData?.User ??
-      ({ email, role: responseData?.role } as AppUser);
+    const response = await api.post('/Auth/login', { email, password });
+    const authData = extractAuthPayload(response.data);
 
-    if (!accessToken) {
+    if (!authData?.accessToken) {
       throw new Error('Access token alınamadı.');
     }
 
-    setAccessToken(accessToken);
-    setUser(userData);
+    persistAuthSession(authData);
+    setUser(authData.user ?? ({ email, role: authData.role ?? undefined } as AppUser));
 
     return response.data;
   };
 
   useEffect(() => {
     const initializeAuth = async () => {
-      hydrateUserFromStorage();
+      const storedUser = hydrateUserFromStorage();
+      const storedAccessToken = getAccessToken();
+
+      if (storedUser) {
+        setUser(storedUser);
+      }
+
+      if (!storedAccessToken) {
+        setLoading(false);
+        return;
+      }
 
       try {
         const authData = await refreshAccessToken({ redirectOnFailure: false });

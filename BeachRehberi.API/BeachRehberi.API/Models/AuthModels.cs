@@ -24,6 +24,10 @@ public class RegisterRequest
     public int? BeachId { get; set; }
 }
 
+public class BusinessRegisterRequest : RegisterRequest
+{
+}
+
 public class LoginRequest
 {
     public string Email { get; set; } = string.Empty;
@@ -113,6 +117,7 @@ public class AuthResult
                 LastName = user.LastName ?? string.Empty,
                 PhoneNumber = user.PhoneNumber ?? string.Empty,
                 Role = user.Role,
+                AccountType = user.Role,
                 BeachId = user.BeachId,
                 IsEmailVerified = user.IsEmailVerified
             }
@@ -136,6 +141,7 @@ public class UserDto
     public required string LastName { get; set; }
     public required string PhoneNumber { get; set; }
     public required string Role { get; set; }
+    public required string AccountType { get; set; }
     public int? BeachId { get; set; }
     public bool IsEmailVerified { get; set; }
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { getUserRole, isBusinessRole } from "../lib/auth";
 import { LogOut, User, Menu, X, Palmtree, Sun, Moon } from "lucide-react";
 
 const Navbar = () => {
@@ -11,6 +12,7 @@ const Navbar = () => {
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const role = getUserRole(user);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -32,11 +34,16 @@ const Navbar = () => {
     { name: "Etkinlikler", path: "/events" },
   ];
 
-  const authLinks = [
-    { name: "Profilim", path: "/profile" },
-    { name: "Rezervasyonlarım", path: "/reservations" },
-    { name: "Favorilerim", path: "/favorites" },
-  ];
+  const authLinks = isBusinessRole(role)
+    ? [
+        { name: "Dashboard", path: "/dashboard" },
+        { name: "Profilim", path: "/profile" },
+      ]
+    : [
+        { name: "Profilim", path: "/profile" },
+        { name: "Rezervasyonlarım", path: "/reservations" },
+        { name: "Favorilerim", path: "/favorites" },
+      ];
 
 
   const isHomePage = location.pathname === "/";

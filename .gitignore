@@ -424,3 +424,4 @@ ops/state/gemini-smoke.txt
 beach-ui/.claude/
 beach-ui/.env
 beach-ui/test-results/
+.env

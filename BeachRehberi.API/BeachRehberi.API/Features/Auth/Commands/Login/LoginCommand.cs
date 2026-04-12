@@ -26,11 +26,15 @@ public class LoginHandler : IRequestHandler<LoginCommand, AuthResult>
     public async Task<AuthResult> Handle(LoginCommand command, CancellationToken cancellationToken)
     {
         var request = command.Request;
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var user = await _db.BusinessUsers
-            .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive, cancellationToken);
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail && u.IsActive, cancellationToken);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return new AuthResult { Success = false, Message = "Geçersiz kullanıcı bilgileri." };
+
+        if (string.Equals(user.Role, UserRoles.Business, StringComparison.OrdinalIgnoreCase) && !user.IsEmailVerified)
+            return new AuthResult { Success = false, Message = "İşletme hesabı için e-posta doğrulaması zorunludur." };
 
         await InvalidateAllSessionsAsync(user.Id, "new_login", cancellationToken);
 
@@ -58,6 +62,7 @@ public class LoginHandler : IRequestHandler<LoginCommand, AuthResult>
                 LastName = user.LastName ?? "",
                 PhoneNumber = user.PhoneNumber ?? "",
                 Role = user.Role,
+                AccountType = user.Role,
                 BeachId = user.BeachId,
                 IsEmailVerified = user.IsEmailVerified
             }
@@ -66,10 +71,18 @@ public class LoginHandler : IRequestHandler<LoginCommand, AuthResult>
 
     private async Task InvalidateAllSessionsAsync(int userId, string reason, CancellationToken cancellationToken)
     {
-        await _db.RefreshTokens
+        var refreshTokens = await _db.RefreshTokens
             .Where(rt => rt.UserId == userId && rt.RevokedAt == null)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(rt => rt.RevokedAt, DateTime.UtcNow)
-                .SetProperty(rt => rt.RevokedReason, reason), cancellationToken);
+            .ToListAsync(cancellationToken);
+
+        if (refreshTokens.Count == 0)
+            return;
+
+        foreach (var refreshToken in refreshTokens)
+        {
+            refreshToken.Revoke(reason);
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
     }
 }

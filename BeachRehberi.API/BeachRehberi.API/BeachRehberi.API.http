@@ -9,9 +9,21 @@ POST {{BeachRehberi.API_HostAddress}}/api/auth/register
 Content-Type: application/json
 
 {
+  "name": "Test User",
   "email": "test@example.com",
-  "password": "Test123!",
-  "role": "BusinessUser"
+  "password": "Test123!"
+}
+
+###
+
+POST {{BeachRehberi.API_HostAddress}}/api/auth/business-register
+Content-Type: application/json
+
+{
+  "businessName": "Test Beach Club",
+  "contactName": "Business Owner",
+  "email": "business@example.com",
+  "password": "Test123!"
 }
 
 ###

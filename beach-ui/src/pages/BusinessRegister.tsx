@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import axios from 'axios';
 import businessService from '../services/businessService';
-import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Sun, Moon } from 'lucide-react';
 
@@ -28,7 +27,6 @@ const BusinessRegister = () => {
 
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
   const { darkMode, toggleDarkMode } = useTheme();
 
   const handleSubmit = async (e: FormEvent) => {
@@ -53,13 +51,8 @@ const BusinessRegister = () => {
         formData.beachId ?? undefined
       );
 
-      toast.success('İşletme kaydı başarılı! Giriş yapılıyor...');
-
-      await login(formData.email, formData.password);
-
-      toast.success('Giriş başarılı! Hoşgeldiniz.');
-
-      navigate('/dashboard');
+      toast.success('İşletme kaydı başarılı. Giriş yapmadan önce e-posta adresinizi doğrulayın.');
+      navigate('/login');
     } catch (err) {
       const errorMsg = axios.isAxiosError(err)
         ? (err.response?.data as { message?: string } | undefined)?.message

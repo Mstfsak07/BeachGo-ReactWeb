@@ -2,7 +2,16 @@ import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { isBusinessRole } from '../lib/auth';
 import { Sun, Moon } from 'lucide-react';
+
+const getDefaultRouteByRole = (role) => {
+    if (isBusinessRole(role)) {
+        return '/dashboard';
+    }
+
+    return '/';
+};
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -15,7 +24,7 @@ const Login = () => {
     const { darkMode, toggleDarkMode } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
-    const from = location.state?.from?.pathname || '/home';
+    const from = location.state?.from?.pathname;
 
     const validate = () => {
         const errors = {};
@@ -40,8 +49,11 @@ const Login = () => {
 
         setIsLoading(true);
         try {
-            await login(email, password);
-            navigate(from, { replace: true });
+            const result = await login(email, password);
+            const responseData = result?.data ?? result;
+            const user = responseData?.user ?? responseData?.User ?? responseData?.data?.user ?? responseData?.data?.User;
+            const role = user?.role ?? user?.accountType ?? responseData?.role ?? responseData?.accountType ?? responseData?.data?.role ?? responseData?.data?.accountType;
+            navigate(from || getDefaultRouteByRole(role), { replace: true });
         } catch (err) {
             setError(err.response?.data?.message || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
         } finally {

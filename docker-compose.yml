@@ -1,7 +1,4 @@
-version: '3.8'
-
 services:
-  # ── PostgreSQL ─────────────────────────────────────────
   db:
     image: postgres:15-alpine
     container_name: beachgo-db
@@ -20,7 +17,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Redis (Cache) ──────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: beachgo-redis
@@ -36,11 +32,10 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Backend API ────────────────────────────────────────
   api:
     build:
-      context: ./BeachRehberi.API/BeachRehberi.API
-      dockerfile: Dockerfile
+      context: ./BeachRehberi.API
+      dockerfile: BeachRehberi.API/Dockerfile
     container_name: beachgo-api
     restart: always
     depends_on:
@@ -59,19 +54,18 @@ services:
     volumes:
       - api_logs:/app/logs
 
-  # ── Frontend (Web) ─────────────────────────────────────
   ui:
     build:
       context: ./beach-ui
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:5143/api}
     container_name: beachgo-ui
     restart: always
     depends_on:
       - api
     ports:
       - "3000:80"
-    environment:
-      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:5143/api}
 
 networks:
   default:

@@ -6,6 +6,7 @@ namespace BeachRehberi.API.Services;
 public interface IAuthService
 {
     Task<AuthResult> RegisterAsync(RegisterRequest request);
+    Task<AuthResult> BusinessRegisterAsync(BusinessRegisterRequest request);
     Task<AuthResult> LoginAsync(LoginRequest request);
     Task<AuthResult> ForgotPasswordAsync(string email);
     Task<AuthResult> ResetPasswordAsync(string email, string token, string newPassword);

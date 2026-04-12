@@ -9,8 +9,11 @@ using System.Threading.Tasks;
 namespace BeachRehberi.API.Features.Auth.Commands.Register;
 
 public record RegisterCommand(RegisterRequest Request) : IRequest<AuthResult>;
+public record BusinessRegisterCommand(BusinessRegisterRequest Request) : IRequest<AuthResult>;
 
-public class RegisterHandler : IRequestHandler<RegisterCommand, AuthResult>
+public class RegisterHandler :
+    IRequestHandler<RegisterCommand, AuthResult>,
+    IRequestHandler<BusinessRegisterCommand, AuthResult>
 {
     private readonly BeachDbContext _db;
     private readonly IOtpService _otpService;
@@ -24,16 +27,26 @@ public class RegisterHandler : IRequestHandler<RegisterCommand, AuthResult>
     }
 
     public async Task<AuthResult> Handle(RegisterCommand command, CancellationToken cancellationToken)
-    {
-        var request = command.Request;
-        var normalizedName = NormalizeName(request);
-        var isBusinessRegistration = !string.IsNullOrWhiteSpace(request.BusinessName) && !string.IsNullOrWhiteSpace(request.ContactName);
+        => await HandleInternal(command.Request, forceBusinessRole: false, cancellationToken);
 
-        if (await _db.BusinessUsers.AnyAsync(u => u.Email == request.Email, cancellationToken))
+    public async Task<AuthResult> Handle(BusinessRegisterCommand command, CancellationToken cancellationToken)
+        => await HandleInternal(command.Request, forceBusinessRole: true, cancellationToken);
+
+    private async Task<AuthResult> HandleInternal(RegisterRequest request, bool forceBusinessRole, CancellationToken cancellationToken)
+    {
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var normalizedName = NormalizeName(request);
+        var hasBusinessProfile = !string.IsNullOrWhiteSpace(request.BusinessName) && !string.IsNullOrWhiteSpace(request.ContactName);
+        var isBusinessRegistration = forceBusinessRole || hasBusinessProfile;
+
+        if (forceBusinessRole && !hasBusinessProfile)
+            return new AuthResult { Success = false, Message = "İşletme adı ve iletişim kişisi zorunludur." };
+
+        if (await _db.BusinessUsers.AnyAsync(u => u.Email.ToLower() == normalizedEmail, cancellationToken))
             return new AuthResult { Success = false, Message = "Bu email adresi zaten kayıtlı." };
 
         var user = new BusinessUser(
-            request.Email,
+            normalizedEmail,
             BCrypt.Net.BCrypt.HashPassword(request.Password),
             isBusinessRegistration ? UserRoles.Business : UserRoles.User);
 
@@ -51,7 +64,23 @@ public class RegisterHandler : IRequestHandler<RegisterCommand, AuthResult>
         var displayName = $"{normalizedName.firstName} {normalizedName.lastName}".Trim();
         await _emailService.SendEmailVerificationAsync(user.Email, displayName, token);
 
-        return new AuthResult { Success = true, Message = "Kayıt başarılı. Lütfen email adresinize gönderilen doğrulama linkine tıklayın." };
+        return new AuthResult
+        {
+            Success = true,
+            Message = "Kayıt başarılı. Lütfen email adresinize gönderilen doğrulama linkine tıklayın.",
+            User = new UserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName ?? string.Empty,
+                LastName = user.LastName ?? string.Empty,
+                PhoneNumber = user.PhoneNumber ?? string.Empty,
+                Role = user.Role,
+                AccountType = user.Role,
+                BeachId = user.BeachId,
+                IsEmailVerified = user.IsEmailVerified
+            }
+        };
     }
 
     private static (string firstName, string lastName) NormalizeName(RegisterRequest request)

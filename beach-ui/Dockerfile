@@ -1,15 +1,16 @@
 # Build Stage
-FROM node:18-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
+ARG VITE_API_URL=http://localhost:5143/api
+ENV VITE_API_URL=$VITE_API_URL
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 COPY . .
 RUN npm run build
 
 # Runtime Stage
 FROM nginx:stable-alpine
 COPY --from=build /app/build /usr/share/nginx/html
-# React Router iĂ§in Nginx'i yĂśnlendiriyoruz
-RUN echo 'server { listen 80; location / { root /usr/share/nginx/html; index index.html; try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

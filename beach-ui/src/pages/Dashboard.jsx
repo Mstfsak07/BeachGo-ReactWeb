@@ -86,16 +86,16 @@ const Dashboard = () => {
   const chartData = stats?.weeklyData?.map(d => ({ name: d.day, res: d.count })) || [];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       <Sidebar role="Business" />
 
-      <main className="flex-1 ml-0 md:ml-72 p-4 sm:p-6 md:p-10">
-        <header className="flex justify-between items-center mb-10">
+      <main className="w-full flex-1 ml-0 md:ml-72 p-4 sm:p-6 md:p-10">
+        <header className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">Hoş Geldiniz</h1>
             <p className="text-slate-500 font-medium">İşletmenizin bugünkü durumuna göz atın.</p>
           </div>
-          <button className="flex items-center gap-2 bg-white border border-slate-200 px-5 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition-all">
+          <button className="inline-flex items-center gap-2 self-start rounded-xl border border-slate-200 bg-white px-5 py-2.5 font-bold text-slate-700 transition-all hover:bg-slate-50">
             <Download size={18} /> Rapor Al
           </button>
         </header>

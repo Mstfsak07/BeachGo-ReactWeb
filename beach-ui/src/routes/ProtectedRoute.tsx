@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getUserRole } from '../lib/auth';
 
 type ProtectedRouteProps = {
   children: ReactNode;
@@ -24,7 +25,8 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   }
 
   if (allowedRoles?.length) {
-    if (!user?.role || !allowedRoles.includes(user.role)) {
+    const role = getUserRole(user);
+    if (!role || !allowedRoles.includes(role)) {
       return <Navigate to="/unauthorized" replace />;
     }
   }

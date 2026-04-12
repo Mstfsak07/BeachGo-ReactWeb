@@ -26,6 +26,11 @@ public class AuthService : IAuthService
         return await _mediator.Send(new RegisterCommand(request));
     }
 
+    public async Task<AuthResult> BusinessRegisterAsync(BusinessRegisterRequest request)
+    {
+        return await _mediator.Send(new BusinessRegisterCommand(request));
+    }
+
     public async Task<AuthResult> LoginAsync(LoginRequest request)
     {
         return await _mediator.Send(new LoginCommand(request));

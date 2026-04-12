@@ -103,12 +103,16 @@ public class BusinessService : IBusinessService
             .OrderBy(r => r.ReservationDate)
             .ToListAsync();
 
-    public async Task<List<BusinessReservationDto>> GetAllReservationsAsync(int beachId) =>
-        await _db.Reservations
-            .Include(r => r.User)
-            .Include(r => r.Beach)
+    public async Task<List<BusinessReservationDto>> GetAllReservationsAsync(int beachId, int page = 1, int pageSize = 50)
+    {
+        (page, pageSize) = NormalizePagination(page, pageSize);
+
+        return await _db.Reservations
+            .AsNoTracking()
             .Where(r => r.BeachId == beachId)
             .OrderByDescending(r => r.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(r => new BusinessReservationDto
             {
                 Id = r.Id,
@@ -140,6 +144,7 @@ public class BusinessService : IBusinessService
                 CancelledAt = r.CancelledAt
             })
             .ToListAsync();
+    }
 
     public async Task<BusinessStatsDto> GetStatsAsync(int beachId)
     {
@@ -239,5 +244,18 @@ public class BusinessService : IBusinessService
         {
             return ServiceResult<object>.FailureResult(ex.Message);
         }
+    }
+
+    private static (int page, int pageSize) NormalizePagination(int page, int pageSize)
+    {
+        var safePage = page < 1 ? 1 : page;
+        var safePageSize = pageSize switch
+        {
+            < 1 => 50,
+            > 200 => 200,
+            _ => pageSize
+        };
+
+        return (safePage, safePageSize);
     }
 }

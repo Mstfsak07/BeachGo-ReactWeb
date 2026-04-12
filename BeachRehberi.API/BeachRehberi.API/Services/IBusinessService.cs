@@ -13,7 +13,7 @@ public interface IBusinessService
     Task<BeachEvent> AddEventAsync(BeachEvent ev);
     Task<bool> DeleteEventAsync(int eventId, int beachId);
     Task<List<Reservation>> GetReservationsAsync(int beachId, DateTime date);
-    Task<List<BusinessReservationDto>> GetAllReservationsAsync(int beachId);
+    Task<List<BusinessReservationDto>> GetAllReservationsAsync(int beachId, int page = 1, int pageSize = 50);
     Task<BusinessStatsDto> GetStatsAsync(int beachId);
     Task<ServiceResult<object>> UpdateReservationStatusAsync(int id, int beachId, ReservationStatus status, string? comment = null);
 }

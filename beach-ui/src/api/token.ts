@@ -30,8 +30,8 @@ export type NormalizedAuthPayload = {
   role: string | null;
 };
 
-let accessTokenMemory: string | null = localStorage.getItem(ACCESS_TOKEN_KEY);
-let refreshTokenMemory: string | null = localStorage.getItem(REFRESH_TOKEN_KEY);
+let accessTokenMemory: string | null = null;
+let refreshTokenMemory: string | null = null;
 
 const normalizeUser = (user: AppUser | null | undefined, fallbackRole?: string | null): AppUser | null => {
   if (!user && !fallbackRole) return null;
@@ -61,11 +61,6 @@ export const persistUser = (user: AppUser | null | undefined): void => {
 
 const persistRefreshToken = (token: string | null | undefined): void => {
   refreshTokenMemory = token || null;
-  if (refreshTokenMemory) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshTokenMemory);
-    return;
-  }
-
   localStorage.removeItem(REFRESH_TOKEN_KEY);
 };
 
@@ -92,11 +87,6 @@ export const getRefreshToken = (): string | null => refreshTokenMemory;
 
 export const setAccessToken = (token: string | null | undefined): void => {
   accessTokenMemory = token || null;
-  if (accessTokenMemory) {
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessTokenMemory);
-    return;
-  }
-
   localStorage.removeItem(ACCESS_TOKEN_KEY);
 };
 

@@ -179,8 +179,7 @@ public class OtpService : BeachRehberi.Application.Common.Interfaces.IOtpService
         return await _db.VerificationCodes.AnyAsync(x =>
             x.Id == parsedVerificationId &&
             x.Purpose == OtpPurpose.EmailVerification &&
-            x.IsUsed &&
-            x.ExpiresAt > DateTime.UtcNow);
+            x.IsUsed);
     }
 
     private async Task<string> CreateVerificationAsync(string email, OtpPurpose purpose)

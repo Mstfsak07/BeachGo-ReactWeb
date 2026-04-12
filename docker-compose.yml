@@ -17,21 +17,6 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    container_name: beachgo-redis
-    restart: always
-    ports:
-      - "6379:6379"
-    command: redis-server --requirepass ${REDIS_PASSWORD:-RedisSecret123!}
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   api:
     build:
       context: ./BeachRehberi.API
@@ -41,13 +26,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     environment:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
       - BEACHGO_JWT_SECRET=${BEACHGO_JWT_SECRET}
       - BEACHGO_DB_CONN=Host=db;Database=beachgo_db;Username=beach_admin;Password=${DB_PASSWORD:-SecretPassword123!}
-      - BEACHGO_REDIS_CONN=redis:6379,password=${REDIS_PASSWORD:-RedisSecret123!}
       - BEACHGO_ALLOWED_ORIGINS=${BEACHGO_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
     ports:
       - "5143:80"
@@ -73,5 +55,4 @@ networks:
 
 volumes:
   postgres_data:
-  redis_data:
   api_logs:

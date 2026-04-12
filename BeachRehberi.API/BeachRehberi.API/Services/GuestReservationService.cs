@@ -40,7 +40,7 @@ public class GuestReservationService : IGuestReservationService
             return ServiceResult<GuestReservationResponseDto>.FailureResult("E-posta doğrulaması tamamlanmamış.");
 
         // 2. Beach kontrolü
-        var beach = await _db.Beaches.FindAsync(dto.BeachId);
+        var beach = await _db.Beaches.FirstOrDefaultAsync(b => b.Id == dto.BeachId && !b.IsDeleted);
         if (beach == null)
             return ServiceResult<GuestReservationResponseDto>.FailureResult("Plaj bulunamadı.");
 
@@ -49,7 +49,7 @@ public class GuestReservationService : IGuestReservationService
             return ServiceResult<GuestReservationResponseDto>.FailureResult("Geçmiş bir tarihe rezervasyon yapılamaz.");
 
         // 4. Fiyat hesapla
-        var price = CalculatePrice(beach, dto.ReservationType, dto.PersonCount);
+        var price = ReservationPricing.Calculate(beach, dto.PersonCount, sunbedCount: 0);
 
         // 5. Onay kodu üret
         var confirmationCode = GenerateConfirmationCode();
@@ -204,14 +204,6 @@ public class GuestReservationService : IGuestReservationService
             TransactionId = paymentResult.TransactionId
         }, paymentResult.Message ?? "Ödeme oturumu hazır.");
     }
-
-    private static decimal CalculatePrice(Beach beach, string reservationType, int personCount)
-    {
-        // Mock fiyat hesaplama — gerçek implementasyon ileride
-        var basePrice = beach.EntryFee > 0 ? beach.EntryFee : 0;
-        return basePrice * personCount;
-    }
-
     private static string GenerateConfirmationCode()
     {
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

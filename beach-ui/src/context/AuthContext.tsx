@@ -10,8 +10,6 @@ import api from '../api/axios';
 import {
   clearAuthSession,
   extractAuthPayload,
-  getAccessToken,
-  hydrateUserFromStorage,
   persistAuthSession,
   refreshAccessToken,
 } from '../api/token';
@@ -58,19 +56,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
-      const storedUser = hydrateUserFromStorage();
-      const storedAccessToken = getAccessToken();
-
-      if (storedUser && storedAccessToken) {
-        setUser(storedUser);
-      }
-
-      if (!storedAccessToken) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
       try {
         const authData = await refreshAccessToken({ redirectOnFailure: false });
         if (authData?.user) {

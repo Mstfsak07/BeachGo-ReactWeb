@@ -69,7 +69,7 @@ namespace BeachRehberi.API.Services
                 PersonCount = dto.PersonCount,
                 SunbedCount = dto.SunbedCount,
                 Notes = dto.Notes,
-                TotalPrice = CalculatePrice(beach, dto.PersonCount, dto.SunbedCount)
+                TotalPrice = ReservationPricing.Calculate(beach, dto.PersonCount, dto.SunbedCount)
             };
 
             _context.Reservations.Add(reservation);
@@ -149,11 +149,5 @@ namespace BeachRehberi.API.Services
             };
         }
 
-        private static decimal CalculatePrice(Beach beach, int personCount, int sunbedCount)
-        {
-            var personPrice = beach.HasEntryFee ? beach.EntryFee * personCount : 0m;
-            var sunbedPrice = beach.SunbedPrice * Math.Max(sunbedCount, 0);
-            return personPrice + sunbedPrice;
-        }
     }
 }

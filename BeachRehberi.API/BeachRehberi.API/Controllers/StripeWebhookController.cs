@@ -106,7 +106,14 @@ public class StripeWebhookController : ControllerBase
         if (reservation == null)
             return;
 
+        if (reservation.PaymentStatus == PaymentStatus.Paid)
+            return;
+
         reservation.PaymentStatus = PaymentStatus.Paid;
+        if (reservation.Status == ReservationStatus.Pending)
+        {
+            reservation.Approve();
+        }
 
         var payment = await _db.ReservationPayments.FirstOrDefaultAsync(x => x.ReservationId == reservationId, cancellationToken);
         if (payment == null)

@@ -40,10 +40,7 @@ public class BeachService : IBeachService
         string.IsNullOrWhiteSpace(query) || query.Trim().Length < 2 || query.Trim().Length > 100
             ? new List<Beach>()
             :
-        await _db.Beaches
-            .Where(b => b.Name.ToLower().Contains(query.ToLower()) ||
-                        b.Description.ToLower().Contains(query.ToLower()))
-            .ToListAsync();
+        await BuildSearchQuery(query.Trim()).ToListAsync();
 
     public async Task<List<Beach>> FilterAsync(BeachFilter filter)
     {
@@ -136,6 +133,22 @@ public class BeachService : IBeachService
         beach.SetTodaySpecial(special);
         await _db.SaveChangesAsync();
         return true;
+    }
+
+    private IQueryable<Beach> BuildSearchQuery(string query)
+    {
+        if (_db.Database.IsNpgsql())
+        {
+            var pattern = $"%{query}%";
+            return _db.Beaches.Where(b =>
+                EF.Functions.ILike(b.Name, pattern) ||
+                EF.Functions.ILike(b.Description, pattern));
+        }
+
+        var normalizedQuery = query.ToLower();
+        return _db.Beaches.Where(b =>
+            b.Name.ToLower().Contains(normalizedQuery) ||
+            b.Description.ToLower().Contains(normalizedQuery));
     }
 
     private static double DegreesToRadians(double degrees) => degrees * (Math.PI / 180d);

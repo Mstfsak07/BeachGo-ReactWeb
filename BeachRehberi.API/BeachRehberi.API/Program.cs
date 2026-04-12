@@ -169,13 +169,17 @@ builder.Services.AddRateLimiter(options =>
         opt.QueueLimit = 0;
     });
 
-    // Auth endpoints - stricter
-    options.AddFixedWindowLimiter("auth", opt =>
-    {
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.PermitLimit = 20;
-        opt.QueueLimit = 0;
-    });
+    // Auth endpoints - stricter and partitioned per client IP
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "global-auth",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                AutoReplenishment = true,
+                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 20,
+                QueueLimit = 0
+            }));
 
     // Misafir uçları — lookup: 10 istek / 1 dk / IP (sliding, 4 segment); cancel+pay: 5 istek / 1 dk / IP (fixed).
     // Reddedilen istekler RateLimiting.GuestReservation log kategorisiyle uyarı olarak yazılır.

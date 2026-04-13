@@ -1,8 +1,16 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { CreditCard, ChevronLeft, Calendar, Clock, Users, MapPin } from 'lucide-react';
+import type { BeachDto } from '../../types';
+import type { GuestReservationStepProps } from './types';
 
-const StepPayment = ({ formData, updateForm, onNext, onBack, beach, loading }) => {
+type StepPaymentProps = GuestReservationStepProps & {
+  onNext: () => void;
+  onBack: () => void;
+  beach: BeachDto | null;
+  loading: boolean;
+};
+
+const StepPayment = ({ formData, updateForm, onNext, onBack, beach, loading }: StepPaymentProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, x: 30 }}

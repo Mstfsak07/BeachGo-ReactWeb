@@ -1,18 +1,21 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import useBodyScrollLock from '../../hooks/useBodyScrollLock';
+import useModalHistory from '../../hooks/useModalHistory';
 
 const BeachGalleryLightbox = ({ images, activeIndex, onClose, onNavigate }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const closeBtnRef = useRef(null);
+
+  useBodyScrollLock(true);
+  useModalHistory({ enabled: true, onClose });
 
   useEffect(() => {
     setIsLoaded(false);
   }, [activeIndex]);
 
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
-
     const trapFocus = (e) => {
       if (e.key === 'Tab') {
         e.preventDefault();
@@ -20,19 +23,9 @@ const BeachGalleryLightbox = ({ images, activeIndex, onClose, onNavigate }) => {
       }
     };
     document.addEventListener('keydown', trapFocus);
-    
-    // History popstate
-    window.history.pushState({ modalOpen: true }, '');
-    const handlePopState = () => onClose();
-    window.addEventListener('popstate', handlePopState);
 
     return () => {
-      document.body.style.overflow = 'unset';
       document.removeEventListener('keydown', trapFocus);
-      window.removeEventListener('popstate', handlePopState);
-      if (window.history.state?.modalOpen) {
-        window.history.back();
-      }
     };
   }, [onClose]);
 

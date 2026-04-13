@@ -29,8 +29,8 @@ import {
   Sparkles
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
-import axios from '../api/axios';
 import { toast } from 'react-hot-toast';
+import { getBeachSettings, updateBeachSettings } from '../services/beachSettingsService';
 
 const FACILITIES = [
   { key: 'hasSunbeds', label: 'Sezlong', icon: Umbrella },
@@ -83,9 +83,14 @@ const BeachSettings = () => {
   useEffect(() => {
     const fetchBeachData = async () => {
       try {
-        const res = await axios.get('/business/beach');
-        const data = res.data?.data ?? res.data;
+        const data = await getBeachSettings();
+        if (!data) {
+          toast.error('Plaj bilgileri alınamadı.');
+          return;
+        }
+
         setBeach({
+          id: data.id || null,
           name: data.name || '',
           address: data.address || '',
           description: data.description || '',
@@ -115,7 +120,8 @@ const BeachSettings = () => {
           hasAccessibility: data.hasAccessibility || false,
         });
       } catch (err) {
-        // Beach data fetch failed
+        console.error('Beach settings fetch failed', err);
+        toast.error('Plaj bilgileri yüklenemedi.');
       }
     };
     fetchBeachData();
@@ -125,9 +131,10 @@ const BeachSettings = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.put('/business/beach', beach);
+      await updateBeachSettings(beach);
       toast.success('Bilgiler basariyla guncellendi!');
     } catch (err) {
+      console.error('Beach settings update failed', err);
       const errors = err.response?.data?.errors;
       if (errors?.length) {
         errors.forEach(msg => toast.error(msg));

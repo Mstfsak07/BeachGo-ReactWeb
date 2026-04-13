@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import axios from 'axios';
 import { checkReservation, cancelGuestReservation } from '../services/reservationService';
 import toast from 'react-hot-toast';
+import { useConfirmDialog } from '../context/ConfirmDialogContext';
 
 type ReservationStatus = string | number | undefined;
 
@@ -15,6 +16,7 @@ type GuestReservationDetail = {
 };
 
 const ReservationCheck = () => {
+  const { confirm } = useConfirmDialog();
   const [code, setCode] = useState('');
   const [email, setEmail] = useState('');
   const [reservation, setReservation] = useState<GuestReservationDetail | null>(null);
@@ -81,7 +83,15 @@ const ReservationCheck = () => {
   const handleCancel = async () => {
     if (!reservation?.confirmationCode) return;
 
-    if (!window.confirm('Bu rezervasyonu iptal etmek istediğinize emin misiniz?')) {
+    const isConfirmed = await confirm({
+      title: 'Misafir rezervasyonu iptal edilsin mi?',
+      message: 'Onay koduna bağlı bu rezervasyon iptal edilecek.',
+      confirmText: 'İptal Et',
+      cancelText: 'Vazgeç',
+      tone: 'danger',
+    });
+
+    if (!isConfirmed) {
       return;
     }
 

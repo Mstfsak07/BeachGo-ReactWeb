@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import storage from '../lib/storage';
 
 export type ThemeContextValue = {
   darkMode: boolean;
@@ -13,21 +14,21 @@ type ThemeProviderProps = {
 
 export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const [darkMode, setDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
+    const savedTheme = storage.getItem('theme');
     if (savedTheme) {
       return savedTheme === 'dark';
     }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
   useEffect(() => {
     const root = window.document.documentElement;
     if (darkMode) {
       root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      storage.setItem('theme', 'dark');
     } else {
       root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+      storage.setItem('theme', 'light');
     }
   }, [darkMode]);
 

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import useBodyScrollLock from '../../hooks/useBodyScrollLock';
+import useModalHistory from '../../hooks/useModalHistory';
 
 const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
   const [storyIndex, setStoryIndex] = useState(initialStoryIndex);
@@ -10,13 +12,13 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const closeBtnRef = useRef(null);
 
+  useBodyScrollLock(true);
+  useModalHistory({ enabled: true, onClose });
+
   const currentStory = stories[storyIndex];
   const currentMedia = currentStory.media[mediaIndex];
   
-  // Body scroll lock & Focus trap
   useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    
     const trapFocus = (e) => {
       if (e.key === 'Tab') {
         e.preventDefault();
@@ -24,19 +26,9 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
       }
     };
     document.addEventListener('keydown', trapFocus);
-    
-    // History popstate
-    window.history.pushState({ modalOpen: true }, '');
-    const handlePopState = () => onClose();
-    window.addEventListener('popstate', handlePopState);
 
     return () => {
-      document.body.style.overflow = 'unset';
       document.removeEventListener('keydown', trapFocus);
-      window.removeEventListener('popstate', handlePopState);
-      if (window.history.state?.modalOpen) {
-        window.history.back();
-      }
     };
   }, [onClose]);
 

@@ -11,8 +11,8 @@ import {
   Loader
 } from 'lucide-react';
 import Sidebar from '../components/layout/Sidebar';
-import axios from '../api/axios';
 import { toast } from 'react-hot-toast';
+import { getAdminDashboardData, toggleAdminBeachStatus } from '../services/adminService';
 
 const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
@@ -31,12 +31,9 @@ const AdminPanel = () => {
   const fetchAdminData = async () => {
     try {
       setLoading(true);
-      const [statsRes, beachesRes] = await Promise.all([
-        axios.get('/admin/stats'),
-        axios.get('/admin/beaches')
-      ]);
-      setStats(statsRes.data);
-      setBeaches(beachesRes.data);
+      const data = await getAdminDashboardData();
+      setStats(data.stats);
+      setBeaches(data.beaches);
     } catch (err) {
       toast.error('Veriler yüklenirken bir hata oluştu.');
     } finally {
@@ -46,7 +43,7 @@ const AdminPanel = () => {
 
   const toggleStatus = async (id) => {
     try {
-      await axios.patch(`/admin/beaches/${id}/toggle-status`);
+      await toggleAdminBeachStatus(id);
       toast.success('Durum güncellendi');
       fetchAdminData();
     } catch (err) {
@@ -114,7 +111,7 @@ const AdminPanel = () => {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {loading ? (
-                  <tr><td colSpan="5" className="py-20 text-center"><Loader className="animate-spin mx-auto" /></td></tr>
+                  <tr><td colSpan="6" className="py-20 text-center"><Loader className="animate-spin mx-auto" /></td></tr>
                 ) : (
                   beaches.map((beach) => (
                     <tr key={beach.id} className="hover:bg-slate-50/50 transition-colors">

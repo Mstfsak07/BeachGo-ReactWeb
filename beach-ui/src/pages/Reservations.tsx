@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import reservationService from '../services/reservationService';
+import { useConfirmDialog } from '../context/ConfirmDialogContext';
 import {
   Calendar,
   Trash2,
@@ -24,6 +25,7 @@ type ReservationWithCompat = ReservationDto & {
 };
 
 const Reservations = () => {
+  const { confirm } = useConfirmDialog();
   const [reservations, setReservations] = useState<ReservationWithCompat[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
@@ -44,7 +46,15 @@ const Reservations = () => {
   }, []);
 
   const handleCancel = async (id: number) => {
-    if (!window.confirm('Bu rezervasyonu iptal etmek istediğinizden emin misiniz?')) {
+    const isConfirmed = await confirm({
+      title: 'Rezervasyon iptal edilsin mi?',
+      message: 'Bu işlem geri alınamaz. Seçilen rezervasyon iptal edilecek.',
+      confirmText: 'İptal Et',
+      cancelText: 'Geri Dön',
+      tone: 'danger',
+    });
+
+    if (!isConfirmed) {
       return;
     }
 

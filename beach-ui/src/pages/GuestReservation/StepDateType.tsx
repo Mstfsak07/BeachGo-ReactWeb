@@ -1,16 +1,22 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import { Calendar, Clock, Users, Minus, Plus, UtensilsCrossed, Sun, Tent, PartyPopper, FileText } from 'lucide-react';
+import type { BeachDto } from '../../types';
+import type { GuestReservationStepProps } from './types';
 
 const RESERVATION_TYPES = [
   { key: 'Masa', label: 'Masa', icon: UtensilsCrossed, color: 'blue' },
   { key: 'Şezlong', label: 'Şezlong', icon: Sun, color: 'amber' },
   { key: 'Loca', label: 'Loca', icon: Tent, color: 'emerald' },
   { key: 'Etkinlik', label: 'Etkinlik', icon: PartyPopper, color: 'rose' },
-];
+ ] as const;
 
-const StepDateType = ({ formData, updateForm, onNext, beach }) => {
+type StepDateTypeProps = GuestReservationStepProps & {
+  onNext: () => void;
+  beach: BeachDto | null;
+};
+
+const StepDateType = ({ formData, updateForm, onNext, beach }: StepDateTypeProps) => {
   const today = new Date().toISOString().split('T')[0];
 
   const validate = () => {
@@ -70,6 +76,13 @@ const StepDateType = ({ formData, updateForm, onNext, beach }) => {
         <div className="grid grid-cols-2 gap-3">
           {RESERVATION_TYPES.map((type) => {
             const isSelected = formData.reservationType === type.key;
+            const selectedClassName = {
+              blue: 'border-blue-500 bg-blue-50 text-blue-700',
+              amber: 'border-amber-500 bg-amber-50 text-amber-700',
+              emerald: 'border-emerald-500 bg-emerald-50 text-emerald-700',
+              rose: 'border-rose-500 bg-rose-50 text-rose-700',
+            }[type.color];
+
             return (
               <button
                 key={type.key}
@@ -77,7 +90,7 @@ const StepDateType = ({ formData, updateForm, onNext, beach }) => {
                 onClick={() => updateForm({ reservationType: type.key })}
                 className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
                   isSelected
-                    ? `border-${type.color}-500 bg-${type.color}-50 text-${type.color}-700`
+                    ? selectedClassName
                     : 'border-slate-100 bg-white text-slate-600 hover:border-slate-200'
                 }`}
               >

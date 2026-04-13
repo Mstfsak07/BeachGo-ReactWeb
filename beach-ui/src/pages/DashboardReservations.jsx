@@ -8,6 +8,7 @@ import ReservationStatsCards from '../components/dashboard/reservations/Reservat
 import ReservationTable from '../components/dashboard/reservations/ReservationTable';
 import { useReservationFilters } from '../components/dashboard/reservations/useReservationFilters';
 import { copyText } from '../components/dashboard/reservations/reservationUtils';
+import { useConfirmDialog } from '../context/ConfirmDialogContext';
 import {
   approveReservation,
   cancelReservation,
@@ -18,6 +19,7 @@ import {
 const ITEMS_PER_PAGE = 10;
 
 const DashboardReservations = () => {
+  const { confirm } = useConfirmDialog();
   const [reservations, setReservations] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -89,8 +91,18 @@ const DashboardReservations = () => {
   const handleStatusChange = async (id, status, event) => {
     event?.stopPropagation();
 
-    if (status === 'Cancelled' && !window.confirm('Bu rezervasyonu iptal etmek istediğinize emin misiniz?')) {
-      return;
+    if (status === 'Cancelled') {
+      const isConfirmed = await confirm({
+        title: 'Rezervasyon iptal edilsin mi?',
+        message: 'İşletme panelinden yapılan iptal işlemi rezervasyon durumunu hemen günceller.',
+        confirmText: 'İptal Et',
+        cancelText: 'Vazgeç',
+        tone: 'danger',
+      });
+
+      if (!isConfirmed) {
+        return;
+      }
     }
 
     setActionLoadingId(id);

@@ -7,6 +7,7 @@ import BeachGallery from '../beach/BeachGallery';
 import { previewInstagramContent } from '../../lib/social/previewInstagramContent';
 import { importInstagramContent } from '../../lib/social/importInstagramContent';
 import { toast } from 'react-hot-toast';
+import useBodyScrollLock from '../../hooks/useBodyScrollLock';
 
 const InstagramContentPreviewModal = ({ isOpen, onClose, username, beachId }) => {
   const [loading, setLoading] = useState(false);
@@ -14,17 +15,7 @@ const InstagramContentPreviewModal = ({ isOpen, onClose, username, beachId }) =>
   const [data, setData] = useState(null);
   const [importing, setImporting] = useState(false);
 
-  // Body scroll lock
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [isOpen]);
+  useBodyScrollLock(isOpen);
 
   useEffect(() => {
     if (isOpen && username) {
@@ -43,6 +34,7 @@ const InstagramContentPreviewModal = ({ isOpen, onClose, username, beachId }) =>
       const previewData = await previewInstagramContent(username);
       setData(previewData);
     } catch (err) {
+      console.error('Instagram preview fetch failed', err);
       setError(err.message || 'İçerik alınamadı. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
@@ -58,6 +50,7 @@ const InstagramContentPreviewModal = ({ isOpen, onClose, username, beachId }) =>
         onClose();
       }
     } catch (err) {
+      console.error('Instagram content import failed', err);
       toast.error('İçerik kaydedilirken hata oluştu.');
     } finally {
       setImporting(false);

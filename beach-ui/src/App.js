@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ConfirmDialogProvider } from "./context/ConfirmDialogContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { getUserRole, isBusinessRole } from "./lib/auth";
 import Navbar from "./components/Navbar";
@@ -124,9 +125,11 @@ const AppContent = () => {
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <ConfirmDialogProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </ConfirmDialogProvider>
     </ThemeProvider>
   );
 }

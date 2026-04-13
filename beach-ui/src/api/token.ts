@@ -1,4 +1,5 @@
 import axios from 'axios';
+import storage from '../lib/storage';
 import type { AppUser } from '../types';
 
 const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -52,16 +53,16 @@ const normalizeUser = (user: AppUser | null | undefined, fallbackRole?: string |
 
 export const persistUser = (user: AppUser | null | undefined): void => {
   if (!user) {
-    localStorage.removeItem(USER_KEY);
+    storage.removeItem(USER_KEY);
     return;
   }
 
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  storage.setJson(USER_KEY, user);
 };
 
 const persistRefreshToken = (token: string | null | undefined): void => {
   refreshTokenMemory = token || null;
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  storage.removeItem(REFRESH_TOKEN_KEY);
 };
 
 const normalizeAuthPayload = (payload: AuthPayload | null | undefined): NormalizedAuthPayload | null => {
@@ -87,7 +88,7 @@ export const getRefreshToken = (): string | null => refreshTokenMemory;
 
 export const setAccessToken = (token: string | null | undefined): void => {
   accessTokenMemory = token || null;
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  storage.removeItem(ACCESS_TOKEN_KEY);
 };
 
 export const setRefreshToken = (token: string | null | undefined): void => {
@@ -111,9 +112,9 @@ export const extractAuthPayload = (payload: AuthPayload | null | undefined): Nor
 export const clearAuthSession = (): void => {
   accessTokenMemory = null;
   refreshTokenMemory = null;
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  storage.removeItem(ACCESS_TOKEN_KEY);
+  storage.removeItem(REFRESH_TOKEN_KEY);
+  storage.removeItem(USER_KEY);
 };
 
 export const refreshAccessToken = async (
@@ -159,13 +160,6 @@ export const refreshAccessToken = async (
 };
 
 export const hydrateUserFromStorage = (): AppUser | null => {
-  const storedUser = localStorage.getItem(USER_KEY);
-  if (!storedUser) return null;
-
-  try {
-    return normalizeUser(JSON.parse(storedUser) as AppUser);
-  } catch {
-    localStorage.removeItem(USER_KEY);
-    return null;
-  }
+  const storedUser = storage.getJson<AppUser>(USER_KEY);
+  return normalizeUser(storedUser);
 };

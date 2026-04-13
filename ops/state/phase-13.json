@@ -1,0 +1,98 @@
+{
+  "phase_id": "phase-13",
+  "title": "Frontend Mobile Readiness Backlog",
+  "status": "success",
+  "attempts_used": 1,
+  "max_retries": 3,
+  "timestamp": "2026-04-13T17:15:00+03:00",
+  "task_results": [
+    {
+      "task_id": "phase-13-task-1",
+      "title": "Replace window.confirm flows with shared confirm dialog",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Reservations, ReservationCheck ve DashboardReservations iptal akislari shared ConfirmDialogContext uzerinden modal tabanli hale getirildi."
+    },
+    {
+      "task_id": "phase-13-task-2",
+      "title": "Isolate browser-only modal dependencies",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Body scroll lock ve modal history davranisi hook'lara tasindi; ilgili componentlerde dogrudan body overflow / history pushState kullanimi kaldirildi."
+    },
+    {
+      "task_id": "phase-13-task-3",
+      "title": "Add storage abstraction and service layer cleanup",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Token/theme localStorage erisimi storage abstraction altina alindi; AdminPanel ve BeachSettings icindeki bare axios cagrilari adminService ve beachSettingsService uzerinden tasindi."
+    },
+    {
+      "task_id": "phase-13-task-4",
+      "title": "Remove targeted silent catch blocks and convert reservation steps to TSX",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "BeachSettings ve BeachDetail icindeki sessiz catch path'leri log/toast ile gorunur hale getirildi; StepDateType ve StepPayment minimal prop typing ile TSX'e tasindi."
+    }
+  ],
+  "verification_results": [
+    {
+      "name": "beach-ui-lint",
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "C:\\dev\\BeachGo-ReactWeb\\beach-ui",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "ESLint max warnings 0 ile gecti."
+    },
+    {
+      "name": "beach-ui-typecheck",
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "cwd": "C:\\dev\\BeachGo-ReactWeb\\beach-ui",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "TypeScript noEmit typecheck gecti."
+    },
+    {
+      "name": "beach-ui-build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "cwd": "C:\\dev\\BeachGo-ReactWeb\\beach-ui",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Vite production build basariyla tamamlandi."
+    }
+  ]
+}

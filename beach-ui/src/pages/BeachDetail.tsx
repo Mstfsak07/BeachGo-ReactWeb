@@ -119,7 +119,9 @@ const BeachDetail = () => {
 
     getBeachWeather(id)
       .then((data) => setWeather(data))
-      .catch(() => {});
+      .catch((error) => {
+        console.error('Beach weather fetch failed', error);
+      });
   }, [id]);
 
   const toggleFavorite = async () => {

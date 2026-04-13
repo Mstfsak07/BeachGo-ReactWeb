@@ -62,14 +62,17 @@ Her ajanin oturum sonunda bu bolumu guncellemesi beklenir:
 - Last updated: `2026-04-13`
 - Updated by: `codex`
 - In progress: `none`
-- Last completed item: `converted Claude-Analiz.txt into execution-oriented mobile readiness backlog`
-- Next concrete step: `if requested, start with P0 frontend mobile-readiness cleanup from Claude-Analiz.txt`
+- Last completed item: `implemented Claude-Analiz mobile-readiness backlog across confirm flows, browser abstractions, storage, services and reservation TSX steps`
+- Next concrete step: `browser-QA confirm modal, lightbox/story history behavior and beach settings/admin flows if requested`
 - Verification:
-  - `documentation-only change; no code validation run`
+  - `beach-ui: npm run lint`
+  - `beach-ui: npm run typecheck`
+  - `beach-ui: npm run build`
 - Notes:
-  - `AI_HANDOFF.md` current shared context file olarak olusturuldu.
-  - `AGENTS.md`, `CLAUDE.md` ve `GEMINI.md` bu dosyaya yonlenecek sekilde duzenlendi.
-  - `Claude-Analiz.txt` soyut onerilerden cikarilip repo kaniti, oncelik ve kabul kriterleri olan backlog formatina cevrildi.
+  - `window.confirm` kullanimlari shared confirm dialog context uzerine tasindi.
+  - `document.body.style.overflow` ve modal history push/pop davranisi hook'lara izole edildi.
+  - `localStorage` erisimi storage abstraction altina alindi; `AdminPanel` ve `BeachSettings` axios cagrilari service katmanina tasindi.
+  - `GuestReservation/StepDateType` ve `StepPayment` dosyalari `.tsx` formatina tasindi; `BeachSettings` ve `BeachDetail` icindeki sessiz catch path'leri gorunur log/toast ile kapatildi.
 
 ## Update Discipline
 

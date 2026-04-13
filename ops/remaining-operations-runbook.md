@@ -39,14 +39,16 @@ Bugun yapilan ek dogrulamalar ve uygulanan degisiklikler:
 - Cloud Logging taramasinda plaintext DB parolasi veya tam connection string izi bulunmadi. Artifact Registry'de aktif `latest` digest disindaki eski image'lar silindi. Aktif Cloud Build log'unda bilinen secret pattern'i bulunmadi.
 - Stripe live setup su an bilincli olarak devre disi birakildi. Cloud Run runtime env uzerinde `Features__UseRealPayment=false` explicit olarak tanimli.
 - Frontend guest akisinda odeme yuzeyi gizlendi; rezervasyon basari ve sorgu ekranlarinda odeme badge/button gorunmuyor. Backend odeme verisi arka planda kalmaya devam ediyor.
+- `beachgo.net` artik verified gorunuyor ve `api.beachgo.net` domain mapping mevcut. Gereken DNS kaydi `api CNAME ghs.googlehosted.com.`; public DNS'te henuz olmadigi icin SSL sertifikasi `CertificatePending` durumunda bekliyor.
+- Git history pattern taramasinda `BEACHGO_DB_CONN` ve eski development JWT secret pattern'leri gecmis commitlerde goruldu. History rewrite/force-push karari henuz alinmadigi icin bu is audit seviyesinde kayda gecirildi, uygulanmadi.
 
 Bugun itibariyla halen dis bagimlilik veya operator karari gerektiren blokajlar:
 
-- `beachgo.net` mevcut hesapta `gcloud domains list-user-verified` altinda gorunmedigi icin `api.beachgo.net` custom domain mapping olusturulamadi.
 - Stripe production setup ertelendi. Live `SecretKey` ve `WebhookSecret` henuz tanimli degil; flag bilincli olarak `false`.
 - Git history secret cleanup konusunda `git filter-repo` / force-push karari alinmadi.
 - Uygulamada ileride `Gcs:BucketName` aktif edilirse ilgili production bucket icin bucket-level object yazma izni ayri olarak verilmelidir; su an runtime bucket kullanmiyor.
 - Docker daemon bu makinede o anda kapali oldugu icin aktif image layer icerigi binary seviyede acilip taranmadi; ancak registry eski digest cleanup'i tamamlandi.
+- `api.beachgo.net` icin DNS CNAME kaydi registrar tarafinda henuz eklenmedi; bu nedenle SSL provisioning tamamlanmadi.
 
 ## 1. DB Secret Rotation
 

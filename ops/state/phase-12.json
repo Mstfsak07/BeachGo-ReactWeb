@@ -1,0 +1,111 @@
+{
+  "phase_id": "phase-12",
+  "title": "Domain Mapping And Git History Audit",
+  "status": "partial",
+  "attempts_used": 1,
+  "max_retries": 3,
+  "timestamp": "2026-04-13T14:35:00+03:00",
+  "task_results": [
+    {
+      "task_id": "phase-12-task-1",
+      "title": "Re-check verified domains and Cloud Run mapping",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "gcloud domains list-user-verified artik beachgo.net sonucunu dondu. Cloud Run domain mapping api.beachgo.net mevcut ve route beachrehberi-api'ye bagli."
+    },
+    {
+      "task_id": "phase-12-task-2",
+      "title": "Extract exact DNS target and SSL state",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "partial",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Domain mapping status.resourceRecords uzerinden exact kayit api CNAME ghs.googlehosted.com. olarak dogrulandi. Public DNS'te kayit henuz yok; SSL durumu CertificatePending."
+    },
+    {
+      "task_id": "phase-12-task-3",
+      "title": "Git history secret pattern audit",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "partial",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "git log -S taramasinda BEACGO_DB_CONN ve eski development JWT secret pattern'i gecmis commitlerde goruldu. History rewrite/force-push onayi olmadigi icin sadece audit kaydi tutuldu."
+    }
+  ],
+  "verification_results": [
+    {
+      "name": "gcloud-domains-list-user-verified",
+      "command": [
+        "gcloud",
+        "domains",
+        "list-user-verified",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--format=json"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Verified domain listesinde beachgo.net goruldu."
+    },
+    {
+      "name": "gcloud-domain-mapping-describe",
+      "command": [
+        "gcloud",
+        "beta",
+        "run",
+        "domain-mappings",
+        "describe",
+        "--platform=managed",
+        "--region=europe-west1",
+        "--domain=api.beachgo.net",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--format=json"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Mapping status.resourceRecords icinde api CNAME ghs.googlehosted.com. ve condition olarak CertificatePending goruldu."
+    },
+    {
+      "name": "public-dns-nslookup-api-beachgo-net",
+      "command": [
+        "nslookup",
+        "api.beachgo.net"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "partial",
+      "message": "Public DNS su an NXDOMAIN dondu; registrar tarafinda CNAME kaydi henuz yok."
+    },
+    {
+      "name": "git-history-secret-patterns",
+      "command": [
+        "git",
+        "log",
+        "--all",
+        "-S",
+        "BEACHGO_DB_CONN"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "partial",
+      "message": "BEACHGO_DB_CONN pattern'i birden fazla gecmis committe bulundu. Rewrite uygulanmadi."
+    }
+  ]
+}

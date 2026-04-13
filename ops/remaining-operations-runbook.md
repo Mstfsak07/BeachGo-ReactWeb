@@ -37,11 +37,12 @@ Bugun yapilan ek dogrulamalar ve uygulanan degisiklikler:
 - Cloud Run uzerindeki retired revision'lar silindi; yalnizca `beachrehberi-api-00018-xsx` aktif ve metadata olarak kaldirildi.
 - Runtime service account hardening uygulandi; `beach-api-sa` uzerinden `owner`, `storage.admin`, `artifactregistry.writer`, `cloudbuild.serviceAgent` ve project-level `secretmanager.secretAccessor` kaldirildi. Secret erisimi `BEACHGO_DB_CONN` ve `JWT_SECRET_KEY` uzerinde resource-level'e indirildi.
 - Cloud Logging taramasinda plaintext DB parolasi veya tam connection string izi bulunmadi. Artifact Registry'de aktif `latest` digest disindaki eski image'lar silindi. Aktif Cloud Build log'unda bilinen secret pattern'i bulunmadi.
+- Stripe live setup su an bilincli olarak devre disi birakildi. Cloud Run runtime env uzerinde `Features__UseRealPayment=false` explicit olarak tanimli.
 
 Bugun itibariyla halen dis bagimlilik veya operator karari gerektiren blokajlar:
 
 - `beachgo.net` mevcut hesapta `gcloud domains list-user-verified` altinda gorunmedigi icin `api.beachgo.net` custom domain mapping olusturulamadi.
-- Stripe production setup icin live `SecretKey` ve `WebhookSecret` henuz repo veya ortamda mevcut degil.
+- Stripe production setup ertelendi. Live `SecretKey` ve `WebhookSecret` henuz tanimli degil; flag bilincli olarak `false`.
 - Git history secret cleanup konusunda `git filter-repo` / force-push karari alinmadi.
 - Uygulamada ileride `Gcs:BucketName` aktif edilirse ilgili production bucket icin bucket-level object yazma izni ayri olarak verilmelidir; su an runtime bucket kullanmiyor.
 - Docker daemon bu makinede o anda kapali oldugu icin aktif image layer icerigi binary seviyede acilip taranmadi; ancak registry eski digest cleanup'i tamamlandi.
@@ -64,6 +65,12 @@ Bugun itibariyla halen dis bagimlilik veya operator karari gerektiren blokajlar:
 
 ## 3. Stripe Production Setup
 
+- Durum: ertelendi / bilincli olarak devre disi.
+- Cloud Run runtime env: `Features__UseRealPayment=false`
+- Canliya gecilecek zaman gerekli girdiler:
+  - `Stripe__SecretKey=sk_live_...`
+  - `Stripe__WebhookSecret=whsec_...`
+  - `APP_URL=https://<frontend-public-origin>`
 - Stripe live `SecretKey` ve `WebhookSecret` değerlerini alın.
 - Canlı webhook endpoint URL’ini yapılandırın.
 - `APP_URL`, success URL ve cancel URL’lerini canlı alan adına göre ayarlayın.

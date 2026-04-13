@@ -1,0 +1,77 @@
+{
+  "phase_id": "phase-10",
+  "title": "Stripe Runtime Disabled",
+  "status": "completed",
+  "attempts_used": 1,
+  "max_retries": 3,
+  "timestamp": "2026-04-13T14:00:00+03:00",
+  "task_results": [
+    {
+      "task_id": "phase-10-task-1",
+      "title": "Confirm current Stripe behavior",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Kod uzerinde Features:UseRealPayment false oldugunda StripePaymentService'in odemeyi bilincli olarak devre disi biraktigi dogrulandi."
+    },
+    {
+      "task_id": "phase-10-task-2",
+      "title": "Pin runtime payment flag to false",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Cloud Run service beachrehberi-api icin Features__UseRealPayment=false env var'i explicit olarak yazildi; yeni revision beachrehberi-api-00021-2cj aktif oldu."
+    },
+    {
+      "task_id": "phase-10-task-3",
+      "title": "Second-pass review",
+      "executor": "gemini-3-flash",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Gemini follow-up olarak frontend'te odeme kapali durumunun net yansitilmasi ve ileride Stripe dashboard webhook kaydi varsa bosuna retry uretip uretmediginin kontrolunu not etti."
+    }
+  ],
+  "verification_results": [
+    {
+      "name": "run-env-features-use-real-payment",
+      "command": [
+        "gcloud",
+        "run",
+        "services",
+        "describe",
+        "beachrehberi-api",
+        "--region=europe-west1",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--format=yaml(status.latestReadyRevisionName,spec.template.spec.containers[0].env)"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Runtime env icinde Features__UseRealPayment=false ve latest ready revision 00021-2cj goruldu."
+    },
+    {
+      "name": "cloud-run-health-after-stripe-disable",
+      "command": [
+        "Invoke-WebRequest",
+        "https://beachrehberi-api-837681809323.europe-west1.run.app/swagger/index.html"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Stripe flag explicit false olduktan sonra swagger endpoint 200 dondu."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - BeachRehberi.API/Dockerfile
+      - -t
+      - europe-west1-docker.pkg.dev/project-db39a430-19a7-420b-afa/beachrehberi/beachrehberi-api:latest
+      - .
+
+images:
+  - europe-west1-docker.pkg.dev/project-db39a430-19a7-420b-afa/beachrehberi/beachrehberi-api:latest

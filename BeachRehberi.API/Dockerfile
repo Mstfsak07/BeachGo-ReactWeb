@@ -1,15 +1,15 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY ["BeachRehberi.API/BeachRehberi.API/BeachRehberi.API.csproj", "BeachRehberi.API/BeachRehberi.API/"]
-COPY ["BeachRehberi.API/BeachRehberi.Application/BeachRehberi.Application.csproj", "BeachRehberi.API/BeachRehberi.Application/"]
-COPY ["BeachRehberi.API/BeachRehberi.Domain/BeachRehberi.Domain.csproj", "BeachRehberi.API/BeachRehberi.Domain/"]
+COPY ["BeachRehberi.API/BeachRehberi.API.csproj", "BeachRehberi.API/"]
+COPY ["BeachRehberi.Application/BeachRehberi.Application.csproj", "BeachRehberi.Application/"]
+COPY ["BeachRehberi.Domain/BeachRehberi.Domain.csproj", "BeachRehberi.Domain/"]
 
-RUN dotnet restore "BeachRehberi.API/BeachRehberi.API/BeachRehberi.API.csproj" --nologo
+RUN dotnet restore "BeachRehberi.API/BeachRehberi.API.csproj" --nologo
 
 COPY . .
 
-RUN dotnet publish "BeachRehberi.API/BeachRehberi.API/BeachRehberi.API.csproj" \
+RUN dotnet publish "BeachRehberi.API/BeachRehberi.API.csproj" \
     -c Release \
     -o /app/publish \
     --no-restore \

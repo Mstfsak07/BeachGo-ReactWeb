@@ -17,6 +17,12 @@ public class JwtBlacklistMiddleware
 
     public async Task InvokeAsync(HttpContext context, ITokenService tokenService)
     {
+        if (context.Request.Path.StartsWithSegments("/internal/cleanup", StringComparison.OrdinalIgnoreCase))
+        {
+            await _next(context);
+            return;
+        }
+
         // Extraction Strategy: Try Header first, then context
         string? token = null;
         var authHeader = context.Request.Headers["Authorization"].ToString();

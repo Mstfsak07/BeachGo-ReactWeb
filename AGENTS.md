@@ -1,25 +1,29 @@
 # AGENTS.md
-<!-- dikkate alma
-Bu repo için çalışma modeli:
 
-1. İlk iş: verilen review/assessment dosyasını oku.
-2. Sorunları severity + dependency'ye göre fazlara ayır:
-   - Phase 1: critical/blocker
-   - Phase 2: correctness/security
-   - Phase 3: maintainability/refactor
-   - Phase 4: tests/docs/cleanup
-3. Her faz için task listesi üret.
-4. Her task için executor seç:
-   - Claude CLI -> büyük kod değişiklikleri
-   - Gemini CLI -> gap filling, alternative fix, second-pass validation
-5. Uygulama sonrası doğrulama zorunlu:
-   - lint
-   - typecheck
-   - tests
-   - build
-6. Doğrulama geçmeden sonraki faza geçme.
-7. Başarısız görevlerde retry yap, max 3.
-8. Tüm işlemleri state dosyalarına ve loglara yaz.
-9. Kapsam dışı değişiklik yapma.
-10. Her aşamada en küçük güvenli diff'i tercih et.
-11. Oluşturulan ve güncellenen tüm dosyalarda UTF-8 kullan, Türkçe karakterleri bozma. -->
+Bu repo icinde ise baslamadan once ilk okunacak dosya `AI_HANDOFF.md` dosyasidir.
+
+## Codex Startup Order
+
+1. `AI_HANDOFF.md` dosyasini oku.
+2. Gerekirse `docs/PROJECT_NOTES.md` ve `ops/remaining-operations-runbook.md` ile current-state dogrulamasi yap.
+3. `ops/state/` altindaki en yeni phase dosyasina bakarak yarim kalan isi ve son dogrulama durumunu anla.
+4. Kullanici yeni bir hedef vermediyse `AI_HANDOFF.md` icindeki `Next Suggested Work` alanini referans al.
+
+## Working Rules
+
+- `AI_HANDOFF.md` current working memory dosyasidir; tarihsel analizden daha once gelir.
+- Eski analiz veya archive notlari, `AI_HANDOFF.md` ile celisirse current-state olarak kabul edilmez.
+- Kapsam disi degisiklik yapma.
+- En kucuk guvenli diff'i tercih et.
+- Kod veya operasyon degisikligi yaptiysan oturum sonunda `AI_HANDOFF.md` icindeki ilgili alanlari guncelle.
+- Dogrulama yapildiysa sonucunu `AI_HANDOFF.md` icindeki `Validation Snapshot` alanina isle.
+
+## Shared Handoff Rule
+
+Bu repo birden fazla ajan ve hesap degisimi ile kullaniliyor. Codex, Claude ve Gemini arasinda baglam kaybini onlemek icin:
+
+- Kalici durum ozeti `AI_HANDOFF.md`
+- Daha derin operasyon baglami `ops/remaining-operations-runbook.md`
+- Faz bazli kayitlar `ops/state/phase-*.json`
+
+kaynak sirasi ile kullanilmalidir.

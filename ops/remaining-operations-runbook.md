@@ -38,6 +38,7 @@ Bugun yapilan ek dogrulamalar ve uygulanan degisiklikler:
 - Runtime service account hardening uygulandi; `beach-api-sa` uzerinden `owner`, `storage.admin`, `artifactregistry.writer`, `cloudbuild.serviceAgent` ve project-level `secretmanager.secretAccessor` kaldirildi. Secret erisimi `BEACHGO_DB_CONN` ve `JWT_SECRET_KEY` uzerinde resource-level'e indirildi.
 - Cloud Logging taramasinda plaintext DB parolasi veya tam connection string izi bulunmadi. Artifact Registry'de aktif `latest` digest disindaki eski image'lar silindi. Aktif Cloud Build log'unda bilinen secret pattern'i bulunmadi.
 - Stripe live setup su an bilincli olarak devre disi birakildi. Cloud Run runtime env uzerinde `Features__UseRealPayment=false` explicit olarak tanimli.
+- Frontend guest akisinda odeme yuzeyi gizlendi; rezervasyon basari ve sorgu ekranlarinda odeme badge/button gorunmuyor. Backend odeme verisi arka planda kalmaya devam ediyor.
 
 Bugun itibariyla halen dis bagimlilik veya operator karari gerektiren blokajlar:
 

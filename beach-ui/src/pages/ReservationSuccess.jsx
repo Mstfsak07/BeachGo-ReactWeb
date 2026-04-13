@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, Copy, Search, Home, Calendar, Users, MapPin, CreditCard } from 'lucide-react';
+import { CheckCircle, Copy, Search, Home, Calendar, Users, MapPin } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { getReservationByCode, payGuestReservation } from '../services/reservationService';
+import { getReservationByCode } from '../services/reservationService';
 
 const ReservationSuccess = () => {
   const location = useLocation();
@@ -15,7 +15,6 @@ const ReservationSuccess = () => {
 
   // Initialize state once so we can mutate it on mock pay
   const [resState, setResState] = useState(location.state);
-  const [payLoading, setPayLoading] = useState(false);
 
   useEffect(() => {
     const hydrateFromQuery = async () => {
@@ -50,7 +49,7 @@ const ReservationSuccess = () => {
     return <Navigate to="/" replace />;
   }
 
-  const { confirmationCode, beachName, reservationDate, reservationTime, personCount, reservationType, paymentStatus, totalPrice } = resState;
+  const { confirmationCode, beachName, reservationDate, reservationTime, personCount, reservationType, totalPrice } = resState;
 
   const handleCopy = async () => {
     try {
@@ -63,30 +62,6 @@ const ReservationSuccess = () => {
     }
   };
 
-  const handlePay = async () => {
-    setPayLoading(true);
-    try {
-      const res = await payGuestReservation(confirmationCode);
-      if (res?.paymentUrl) {
-        window.location.href = res.paymentUrl;
-        return;
-      }
-      if (res && res.paymentStatus === 'Paid') {
-        toast.success('Ödeme işlemi başarılı!');
-        setResState((prev) => ({ ...prev, paymentStatus: 'Paid' }));
-      }
-    } catch (err) {
-      toast.error('Ödeme işlemi başarısız oldu.');
-    } finally {
-      setPayLoading(false);
-    }
-  };
-
-  const getPaymentBadge = (status) => {
-    if (status === 'Paid') return <span className="bg-emerald-100 text-emerald-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Ödendi</span>;
-    if (status === 'Failed') return <span className="bg-rose-100 text-rose-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Başarısız</span>;
-    return <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest">Ödeme Bekliyor</span>;
-  };
   return (
     <div className="min-h-screen bg-slate-50 pt-28 pb-20 px-4 flex justify-center items-start">
       <div className="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
@@ -123,10 +98,6 @@ const ReservationSuccess = () => {
             </div>
             {copied && <p className="text-xs text-emerald-500 font-bold mb-4">Kopyalandı!</p>}
             
-            <div className="flex items-center justify-between border-t border-slate-200 pt-4">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ödeme Durumu</span>
-              {getPaymentBadge(paymentStatus)}
-            </div>
           </div>
 
           <div className="bg-white rounded-2xl p-5 space-y-3 border border-slate-100 text-left shadow-sm">
@@ -148,16 +119,6 @@ const ReservationSuccess = () => {
               )}
             </div>
           </div>
-
-          {paymentStatus !== 'Paid' && (
-            <button
-              onClick={handlePay}
-              disabled={payLoading}
-              className="w-full py-4 bg-emerald-500 text-white font-black rounded-xl uppercase tracking-widest text-sm shadow-xl transition-all flex items-center justify-center gap-2 hover:bg-emerald-600 disabled:opacity-50"
-            >
-              <CreditCard size={18} /> {payLoading ? 'Ödeniyor...' : 'Ödemeyi Tamamla'}
-            </button>
-          )}
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button

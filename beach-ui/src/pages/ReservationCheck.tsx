@@ -12,7 +12,6 @@ type GuestReservationDetail = {
   personCount?: number;
   reservationDate?: string;
   status?: ReservationStatus;
-  paymentStatus?: string;
 };
 
 const ReservationCheck = () => {
@@ -48,28 +47,6 @@ const ReservationCheck = () => {
     return (
       <span className="bg-blue-100 text-blue-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-center w-full block">
         {String(status ?? 'Bilinmiyor')}
-      </span>
-    );
-  };
-
-  const getPaymentBadge = (status: string | undefined): ReactNode => {
-    if (status === 'Paid') {
-      return (
-        <span className="bg-emerald-100 text-emerald-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-center w-full block">
-          Ödendi
-        </span>
-      );
-    }
-    if (status === 'Failed') {
-      return (
-        <span className="bg-rose-100 text-rose-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-center w-full block">
-          Başarısız
-        </span>
-      );
-    }
-    return (
-      <span className="bg-orange-100 text-orange-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-center w-full block">
-        Ödeme Bekliyor
       </span>
     );
   };
@@ -244,10 +221,6 @@ const ReservationCheck = () => {
                 <div className="w-full bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col items-center">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Durum</span>
                   {getStatusBadge(reservation.status)}
-                </div>
-                <div className="w-full bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col items-center">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Ödeme</span>
-                  {getPaymentBadge(reservation.paymentStatus)}
                 </div>
               </div>
             </div>

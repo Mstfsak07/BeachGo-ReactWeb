@@ -23,11 +23,38 @@ Bu commitlerle kapanan basliklar:
 
 Current state'te bir sonraki ajan once `git log --oneline -n 10` ve `ops/current-maintenance-analysis.md` uzerinden yeniden baglam kurmali.
 
+## 0.1 2026-04-13 Ops Continuation Notes
+
+Bugun yapilan ek dogrulamalar ve uygulanan degisiklikler:
+
+- `cloudbuild.yaml` icindeki Artifact Registry project id typo'su duzeltildi.
+- Cloud Run startup migration race'i icin PostgreSQL-backed integration test hatti eklendi; bos DB migration ve idempotency senaryolari `Testcontainers` ile dogrulandi.
+- Revoked token cleanup BackgroundService yerine Cloud Scheduler + OIDC korumali internal endpoint'e tasindi ve canli tetikleme `200` ile dogrulandi.
+- Monitoring tarafinda iki alert policy aktif:
+  - Cloud Run 5xx ratio > %5
+  - failed startup probe
+- Cloud SQL `appuser` parolasi rotate edildi; Cloud Run artik plaintext `BEACHGO_DB_CONN` yerine Secret Manager `BEACHGO_DB_CONN` secret version `1` kullaniyor.
+- Cloud Run uzerindeki retired revision'lar silindi; yalnizca `beachrehberi-api-00018-xsx` aktif ve metadata olarak kaldirildi.
+- Runtime service account hardening uygulandi; `beach-api-sa` uzerinden `owner`, `storage.admin`, `artifactregistry.writer`, `cloudbuild.serviceAgent` ve project-level `secretmanager.secretAccessor` kaldirildi. Secret erisimi `BEACHGO_DB_CONN` ve `JWT_SECRET_KEY` uzerinde resource-level'e indirildi.
+- Cloud Logging taramasinda plaintext DB parolasi veya tam connection string izi bulunmadi. Artifact Registry'de aktif `latest` digest disindaki eski image'lar silindi. Aktif Cloud Build log'unda bilinen secret pattern'i bulunmadi.
+
+Bugun itibariyla halen dis bagimlilik veya operator karari gerektiren blokajlar:
+
+- `beachgo.net` mevcut hesapta `gcloud domains list-user-verified` altinda gorunmedigi icin `api.beachgo.net` custom domain mapping olusturulamadi.
+- Stripe production setup icin live `SecretKey` ve `WebhookSecret` henuz repo veya ortamda mevcut degil.
+- Git history secret cleanup konusunda `git filter-repo` / force-push karari alinmadi.
+- Uygulamada ileride `Gcs:BucketName` aktif edilirse ilgili production bucket icin bucket-level object yazma izni ayri olarak verilmelidir; su an runtime bucket kullanmiyor.
+- Docker daemon bu makinede o anda kapali oldugu icin aktif image layer icerigi binary seviyede acilip taranmadi; ancak registry eski digest cleanup'i tamamlandi.
+
 ## 1. DB Secret Rotation
 
-- `appsettings.json` içindeki geçmişte kullanılan varsayılan DB parolasını geçersiz kılın.
-- Yeni DB parolasını yalnızca environment variable veya secret manager üzerinden verin.
-- Uygulama DB kullanıcısının yetkilerini en aza indirin.
+- Durum: tamamlandi.
+- Cloud SQL `appuser` parolasi yeni rastgele parola ile rotate edildi.
+- Cloud Run `BEACHGO_DB_CONN` artik Secret Manager secret ref kullaniyor; plaintext env kaldirildi.
+- Takip isi:
+  - secret rotation takvimi tanimlayin
+  - ileride GCS upload production'da aktif edilirse bucket-level IAM tanimlayin
+  - Git history icin ayri secret scan/cleanup karari alin
 
 ## 2. Git History Secret Cleanup
 
@@ -41,6 +68,13 @@ Current state'te bir sonraki ajan once `git log --oneline -n 10` ve `ops/current
 - Canlı webhook endpoint URL’ini yapılandırın.
 - `APP_URL`, success URL ve cancel URL’lerini canlı alan adına göre ayarlayın.
 - Stripe dashboard üzerinden test ödeme ve webhook teslimini doğrulayın.
+- Gerekli runtime config:
+  - `Features__UseRealPayment=true`
+  - `APP_URL=https://<frontend-public-origin>`
+  - `Stripe__SecretKey=sk_live_...`
+  - `Stripe__WebhookSecret=whsec_...`
+- Beklenen webhook endpoint:
+  - `https://<api-domain>/api/stripe/webhook`
 
 ## 4. Migration Apply Safety
 
@@ -48,6 +82,10 @@ Current state'te bir sonraki ajan once `git log --oneline -n 10` ve `ops/current
 - Gerekirse SQL script üretip inceleyin.
 - Migration’ları düşük trafik saatinde uygulayın.
 - `ReservationPaymentStatusEnum` ve `AddRevokedTokenExpiresAt` migration’larının hedef ortamda başarıyla geçtiğini doğrulayın.
+- Not:
+  - Startup migration akisi su an uygulama boot'unda advisory lock ile serialize ediliyor.
+  - Bu akis artik `Testcontainers` tabanli PostgreSQL integration test ile dogrulaniyor.
+  - CI ortami icin Docker erisimi gerekecek; yoksa bu testler kosamaz.
 
 ## 5. Live Verification Checks
 
@@ -56,3 +94,6 @@ Current state'te bir sonraki ajan once `git log --oneline -n 10` ve `ops/current
 - Loglarda plaintext OTP/JWT çıkmadığını kontrol edin.
 - Logout sonrası aynı access token ile çağrının `401` döndüğünü test edin.
 - Stripe checkout -> webhook -> `PaymentStatus=Paid` zincirini canlı ortamda uçtan uca test edin.
+- Cloud Scheduler cleanup smoke:
+  - `cleanup-revoked-tokens` job'i `europe-west1` bolgesinde `*/30 * * * *` ile calismali
+  - Cloud Run request log'unda `Google-Cloud-Scheduler` user-agent ile `POST /internal/cleanup/revoked-tokens` icin `200` gorulmeli

@@ -1,0 +1,151 @@
+{
+  "phase_id": "phase-6",
+  "title": "Cloud SQL Secret Rotation",
+  "status": "completed",
+  "attempts_used": 1,
+  "max_retries": 3,
+  "timestamp": "2026-04-13T12:55:00+03:00",
+  "task_results": [
+    {
+      "task_id": "phase-6-task-1",
+      "title": "Inspect live database credential flow",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Cloud Run servisinin plaintext BEACHGO_DB_CONN env var ile calistigi, appuser kullanicisinin Cloud SQL uzerinde aktif oldugu ve secret-backed gecise uygun oldugu dogrulandi."
+    },
+    {
+      "task_id": "phase-6-task-2",
+      "title": "Rotate Cloud SQL app password",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Cloud SQL instance beachgo-db icindeki appuser parolasi yeni rastgele 32 karakterlik parola ile rotate edildi."
+    },
+    {
+      "task_id": "phase-6-task-3",
+      "title": "Move connection string into Secret Manager",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Secret Manager secret BEACHGO_DB_CONN olusturuldu ve version 1 icine yeni Cloud SQL connection string yazildi."
+    },
+    {
+      "task_id": "phase-6-task-4",
+      "title": "Update Cloud Run to secret-backed DB config",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "beachrehberi-api servisi plaintext BEACHGO_DB_CONN env var'i kaldirilip Secret Manager ref ile yeniden deploy edildi; aktif revision beachrehberi-api-00018-xsx oldu."
+    },
+    {
+      "task_id": "phase-6-task-5",
+      "title": "Second-pass review",
+      "executor": "gemini-3-flash",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Gemini kalan risk olarak eski revision cleanup, CI/CD secret parity, least-privilege IAM ve rotation automation notlarini isaret etti."
+    }
+  ],
+  "verification_results": [
+    {
+      "name": "gcloud-secrets-list",
+      "command": [
+        "gcloud",
+        "secrets",
+        "list",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--format=json"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "BEACHGO_DB_CONN secret'i proje altinda goruldu."
+    },
+    {
+      "name": "gcloud-secret-version",
+      "command": [
+        "gcloud",
+        "secrets",
+        "versions",
+        "list",
+        "BEACHGO_DB_CONN",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--format=json"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "BEACHGO_DB_CONN version 1 olusturuldu."
+    },
+    {
+      "name": "gcloud-run-describe-secret-ref",
+      "command": [
+        "gcloud",
+        "run",
+        "services",
+        "describe",
+        "beachrehberi-api",
+        "--region=europe-west1",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--format=json"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Cloud Run env konfigurasyonunda BEACHGO_DB_CONN artik secretKeyRef olarak gorunuyor."
+    },
+    {
+      "name": "cloud-run-swagger-health",
+      "command": [
+        "Invoke-WebRequest",
+        "https://beachrehberi-api-837681809323.europe-west1.run.app/swagger/index.html"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Swagger endpoint 200 dondu; servis yeni secret ile saglikli acildi."
+    },
+    {
+      "name": "cloud-run-startup-logs",
+      "command": [
+        "gcloud",
+        "logging",
+        "read",
+        "resource.type=cloud_run_revision AND resource.labels.service_name=beachrehberi-api AND resource.labels.revision_name=beachrehberi-api-00018-xsx",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--limit=20",
+        "--format=json"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Yeni revision healthy oldu ve uygulama logunda DB initialization sonrasi startup tamamlandi."
+    }
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "phase_id": "phase-8",
+  "title": "Runtime IAM Least Privilege",
+  "status": "completed",
+  "attempts_used": 1,
+  "max_retries": 3,
+  "timestamp": "2026-04-13T13:25:00+03:00",
+  "task_results": [
+    {
+      "task_id": "phase-8-task-1",
+      "title": "Audit effective runtime dependencies",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Kod ve Cloud Run config uzerinden runtime'in Cloud SQL ve iki Secret Manager secret'i kullandigi, GCS upload'in ise ancak Gcs:BucketName ayarlanirsa devreye girecegi dogrulandi."
+    },
+    {
+      "task_id": "phase-8-task-2",
+      "title": "Move secret access to resource scope",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "BEACHGO_DB_CONN ve JWT_SECRET_KEY secret'lerine serviceAccount:beach-api-sa icin resource-level secretAccessor binding eklendi."
+    },
+    {
+      "task_id": "phase-8-task-3",
+      "title": "Remove broad project-level runtime roles",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Project-level roles owner, storage.admin, secretmanager.secretAccessor, artifactregistry.writer ve cloudbuild.serviceAgent runtime service account'tan kaldirildi; yalnizca cloudsql.client birakildi."
+    },
+    {
+      "task_id": "phase-8-task-4",
+      "title": "Cold-start validation after IAM hardening",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "IAM degisikligi sonrasi no-op revision dogrulamasi icin 00019 olusturuldu, ardindan marker temizlenerek aktif revision 00020-4ls ile final cold-start saglikli dogrulandi."
+    },
+    {
+      "task_id": "phase-8-task-5",
+      "title": "Second-pass review",
+      "executor": "gemini-3-flash",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Gemini kalan not olarak ileride production GCS bucket aktif edilirse bucket-level storage izni verilmesi ve ek secret'lar Secret Manager'a tasininca yeni accessor binding'lerin eklenmesi gerektigini belirtti."
+    }
+  ],
+  "verification_results": [
+    {
+      "name": "project-iam-after-hardening",
+      "command": [
+        "gcloud",
+        "projects",
+        "get-iam-policy",
+        "project-db39a430-19a7-420b-afa"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Runtime service account icin project-level yalnizca roles/cloudsql.client kaldi."
+    },
+    {
+      "name": "secret-iam-beachgo-db-conn",
+      "command": [
+        "gcloud",
+        "secrets",
+        "get-iam-policy",
+        "BEACHGO_DB_CONN",
+        "--project=project-db39a430-19a7-420b-afa"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "BEACHGO_DB_CONN secret'i uzerinde runtime service account icin secretAccessor goruldu."
+    },
+    {
+      "name": "secret-iam-jwt-secret-key",
+      "command": [
+        "gcloud",
+        "secrets",
+        "get-iam-policy",
+        "JWT_SECRET_KEY",
+        "--project=project-db39a430-19a7-420b-afa"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "JWT_SECRET_KEY secret'i uzerinde runtime service account icin secretAccessor goruldu."
+    },
+    {
+      "name": "cloud-run-cold-start-health",
+      "command": [
+        "Invoke-WebRequest",
+        "https://beachrehberi-api-837681809323.europe-west1.run.app/swagger/index.html"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "IAM hardening sonrasi aktif revision beachrehberi-api-00020-4ls ile swagger endpoint 200 dondu."
+    },
+    {
+      "name": "cloud-run-revision-00020-startup",
+      "command": [
+        "gcloud",
+        "logging",
+        "read",
+        "resource.type=cloud_run_revision AND resource.labels.service_name=beachrehberi-api AND resource.labels.revision_name=beachrehberi-api-00020-4ls",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--limit=20",
+        "--format=json"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Yeni revision healthy oldu; startup probe basarili ve DbInitializer log'lari goruldu."
+    }
+  ]
+}

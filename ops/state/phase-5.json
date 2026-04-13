@@ -1,0 +1,206 @@
+{
+  "phase_id": "phase-5",
+  "title": "Operational Continuation And Gaps",
+  "status": "completed",
+  "attempts_used": 1,
+  "max_retries": 3,
+  "timestamp": "2026-04-13T12:05:00+03:00",
+  "task_results": [
+    {
+      "task_id": "phase-5-task-1",
+      "title": "Remaining ops gaps audit with parallel workers",
+      "executor": "codex + 3 workers",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Kalan isler DB secret rotation, git history cleanup karari, Stripe live secret girisi ve Search Console domain verification etrafinda toplandi."
+    },
+    {
+      "task_id": "phase-5-task-2",
+      "title": "Cloud Build target project typo duzelt",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "cloudbuild.yaml icindeki project-db39430 yanlisligi project-db39a430 olarak guncellendi."
+    },
+    {
+      "task_id": "phase-5-task-3",
+      "title": "Ops runbook bugunku canli durumla guncelle",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Runbook'a Cloud Scheduler cleanup, alert policy durumu, custom domain verification blokaji ve Stripe production gereksinimleri eklendi."
+    },
+    {
+      "task_id": "phase-5-task-4",
+      "title": "Blocked live operations",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "partial",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": null,
+      "message": "DB password rotation, git history rewrite ve Stripe live setup operatorden gelecek secret/karar olmadan tamamlanamiyor; custom domain mapping Search Console verification gorunmeden ilerlemiyor."
+    },
+    {
+      "task_id": "phase-5-task-5",
+      "title": "Historical analysis file superseded marker",
+      "executor": "codex + gemini-3-flash",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "ops/current-maintenance-analysis.md dosyasi historical/superseded olarak isaretlendi ki kapanmis bulgular active backlog gibi okunmasin."
+    },
+    {
+      "task_id": "phase-5-task-6",
+      "title": "Missing active technical gap capture",
+      "executor": "gemini-3-flash + codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "PostgreSQL-backed startup migration integration test boslugu aktif kalan teknik is olarak acikca kayda gecirildi."
+    },
+    {
+      "task_id": "phase-5-task-7",
+      "title": "PostgreSQL-backed startup migration integration tests",
+      "executor": "codex + gemini-3-flash",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "DbInitializer icin Testcontainers tabanli PostgreSQL integration testleri eklendi; bos veritabaninda migration apply ve ikinci calistirmada idempotency senaryolari dogrulandi."
+    }
+  ],
+  "verification_results": [
+    {
+      "name": "git-log-context",
+      "command": [
+        "git",
+        "log",
+        "--oneline",
+        "-n",
+        "12"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Son commit zinciri ops baglami ile hizali."
+    },
+    {
+      "name": "gcloud-domain-verified",
+      "command": [
+        "gcloud",
+        "domains",
+        "list-user-verified",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--format=json"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "partial",
+      "message": "Aktif hesap altinda verified domain listesi bos geldi; custom domain mapping bu nedenle blocked."
+    },
+    {
+      "name": "gcloud-scheduler-cleanup-smoke",
+      "command": [
+        "gcloud",
+        "logging",
+        "read",
+        "run.googleapis.com/requests Google-Cloud-Scheduler cleanup endpoint",
+        "--project=project-db39a430-19a7-420b-afa"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Cloud Run request log'unda Google-Cloud-Scheduler user-agent ile cleanup endpoint icin 200 goruldu."
+    },
+    {
+      "name": "gemini-second-pass-phase5",
+      "command": [
+        "powershell",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "..\\ops\\run_gemini.ps1",
+        "-Model",
+        "gemini-3-flash"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Gemini second-pass review kalan is listesini dogruladi; outdated analysis file ve migration integration test boslugunu ekledi."
+    },
+    {
+      "name": "dotnet-build-dbinit-tests",
+      "command": [
+        "dotnet",
+        "build",
+        ".\\BeachRehberi.API.Tests\\BeachRehberi.API.Tests.csproj"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "API test projesi yeni PostgreSQL integration testleri ile temiz build verdi."
+    },
+    {
+      "name": "dotnet-test-dbinitializer-integration",
+      "command": [
+        "dotnet",
+        "test",
+        ".\\BeachRehberi.API.Tests\\BeachRehberi.API.Tests.csproj",
+        "--no-build",
+        "--filter",
+        "FullyQualifiedName~BeachRehberi.API.Tests.DbInitializerIntegrationTests"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "DbInitializer PostgreSQL integration testleri 2/2 basarili gecti."
+    },
+    {
+      "name": "gemini-second-pass-dbinitializer-tests",
+      "command": [
+        "powershell",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "..\\ops\\run_gemini.ps1",
+        "-Model",
+        "gemini-3-flash"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Gemini ikinci geciste belirgin kod acigi bulmadi; CI ortami icin Docker erisimi gerektigini artik risk olarak not etti."
+    }
+  ]
+}

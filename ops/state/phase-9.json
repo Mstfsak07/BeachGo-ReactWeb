@@ -1,0 +1,145 @@
+{
+  "phase_id": "phase-9",
+  "title": "Secret Surface Scan And Registry Cleanup",
+  "status": "completed",
+  "attempts_used": 1,
+  "max_retries": 3,
+  "timestamp": "2026-04-13T13:40:00+03:00",
+  "task_results": [
+    {
+      "task_id": "phase-9-task-1",
+      "title": "Cloud Logging secret pattern scan",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Cloud Run log'larinda plaintext DB parolasi ve tam Cloud SQL connection string pattern'i icin tarama yapildi; eslesme bulunmadi. Yalnizca eski startup failure log'larinda BEACHGO_DB_CONN env var adinin gectigi iki kayit goruldu."
+    },
+    {
+      "task_id": "phase-9-task-2",
+      "title": "Artifact Registry stale image cleanup",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Artifact Registry'de beachrehberi-api icin aktif latest digest disindaki tum eski image digest'lari silindi; registry'de yalnizca sha256:8aa7d182b9fca8748918592399c678a1905166369c051546cf433be8a251f007 kaldi."
+    },
+    {
+      "task_id": "phase-9-task-3",
+      "title": "Cloud Build log scan",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Aktif production image'i ureten Cloud Build log'u bilinen secret pattern'leri icin tarandi; eslesme bulunmadi."
+    },
+    {
+      "task_id": "phase-9-task-4",
+      "title": "Second-pass review",
+      "executor": "gemini-3-flash",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Gemini kalan risk olarak aktif image layer'inin Docker kapali oldugu icin binary seviyede yerel inspect edilmedigini, git history taramasinin ise ayri karar/temizlik isi olarak kaldigini not etti."
+    }
+  ],
+  "verification_results": [
+    {
+      "name": "logging-scan-strongpassword123",
+      "command": [
+        "gcloud",
+        "logging",
+        "read",
+        "resource.type=\"cloud_run_revision\" AND textPayload:\"StrongPassword123\"",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--limit=50",
+        "--format=json"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Hit bulunmadi."
+    },
+    {
+      "name": "logging-scan-cloudsql-conn",
+      "command": [
+        "gcloud",
+        "logging",
+        "read",
+        "resource.type=\"cloud_run_revision\" AND textPayload:\"Host=/cloudsql/project-db39a430-19a7-420b-afa:europe-west1:beachgo-db\"",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--limit=50",
+        "--format=json"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Hit bulunmadi."
+    },
+    {
+      "name": "logging-scan-env-name",
+      "command": [
+        "gcloud",
+        "logging",
+        "read",
+        "resource.type=\"cloud_run_revision\" AND textPayload:\"BEACHGO_DB_CONN\"",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--limit=50",
+        "--format=json"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Iki eski startup error kaydinda env var adi goruldu; plaintext deger yoktu."
+    },
+    {
+      "name": "artifact-registry-after-cleanup",
+      "command": [
+        "gcloud",
+        "artifacts",
+        "docker",
+        "images",
+        "list",
+        "europe-west1-docker.pkg.dev/project-db39a430-19a7-420b-afa/beachrehberi/beachrehberi-api",
+        "--include-tags",
+        "--format=json"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Registry listesinde yalnizca aktif latest digest kaldi."
+    },
+    {
+      "name": "cloud-build-log-scan-active-build",
+      "command": [
+        "gcloud",
+        "builds",
+        "log",
+        "e0cfb82a-4dcd-4504-81bb-fc89956e279c",
+        "--project=project-db39a430-19a7-420b-afa"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Log icinde bilinen secret pattern eslesmesi bulunmadi."
+    }
+  ]
+}

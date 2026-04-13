@@ -1,0 +1,103 @@
+{
+  "phase_id": "phase-7",
+  "title": "Cloud Run Revision Cleanup",
+  "status": "completed",
+  "attempts_used": 1,
+  "max_retries": 3,
+  "timestamp": "2026-04-13T13:10:00+03:00",
+  "task_results": [
+    {
+      "task_id": "phase-7-task-1",
+      "title": "Audit active and retired Cloud Run revisions",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "beachrehberi-api icin aktif revision 00018 ve onceki retired revision'larda plaintext DB config izi bulundugu dogrulandi."
+    },
+    {
+      "task_id": "phase-7-task-2",
+      "title": "Delete retired revisions with stale metadata",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "beachrehberi-api-00001-c6b ile beachrehberi-api-00017-84d arasindaki tum retired revision'lar silindi; yalnizca aktif revision beachrehberi-api-00018-xsx birakildi."
+    },
+    {
+      "task_id": "phase-7-task-3",
+      "title": "IAM scope assessment",
+      "executor": "codex",
+      "attempt": 1,
+      "status": "partial",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "beach-api-sa uzerinde roles/owner dahil genis proje rolleri goruldu. Runtime izinlerini tam audit etmeden kaldirmak riskli oldugu icin otomatik revoke uygulanmadi; bu ayri hardening isi olarak kayda gecirildi."
+    },
+    {
+      "task_id": "phase-7-task-4",
+      "title": "Second-pass review",
+      "executor": "gemini-3-flash",
+      "attempt": 1,
+      "status": "success",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "message": "Gemini residual risk olarak log/artifact izi ve pipeline secret hygiene maddelerini hatirlatti; credential rotation maddesi zaten phase-6'da kapanmis durumda."
+    }
+  ],
+  "verification_results": [
+    {
+      "name": "gcloud-run-revisions-after-cleanup",
+      "command": [
+        "gcloud",
+        "run",
+        "revisions",
+        "list",
+        "--service=beachrehberi-api",
+        "--region=europe-west1",
+        "--project=project-db39a430-19a7-420b-afa",
+        "--format=value(metadata.name)"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Revision list yalnizca beachrehberi-api-00018-xsx dondu."
+    },
+    {
+      "name": "cloud-run-swagger-health-after-cleanup",
+      "command": [
+        "Invoke-WebRequest",
+        "https://beachrehberi-api-837681809323.europe-west1.run.app/swagger/index.html"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "success",
+      "message": "Revision cleanup sonrasinda swagger endpoint 200 dondu."
+    },
+    {
+      "name": "project-iam-runtime-sa-audit",
+      "command": [
+        "gcloud",
+        "projects",
+        "get-iam-policy",
+        "project-db39a430-19a7-420b-afa"
+      ],
+      "cwd": "C:\\Users\\akMuratNET\\Desktop\\BeachGo\\BeachGo-ReactWeb\\BeachRehberi.API",
+      "stdout_path": null,
+      "stderr_path": null,
+      "exit_code": 0,
+      "status": "partial",
+      "message": "Runtime service account uzerinde roles/owner, cloudsql.client, secretmanager.secretAccessor, storage.admin ve build/artifact rolleri goruldu; least-privilege cleanup henuz uygulanmadi."
+    }
+  ]
+}

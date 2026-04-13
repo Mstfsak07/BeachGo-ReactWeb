@@ -1,6 +1,11 @@
 # BeachGo Current Maintenance Analysis
 
+> Superseded on 2026-04-13.
+> Bu dosya tarihsel analiz kaydidir. Aktif operasyon listesi icin `ops/remaining-operations-runbook.md` ve `ops/state/phase-5.json` dosyalarini esas alin.
+> Bu dosyada acik gorunen pek cok bulgu daha sonra commitlerle kapatilmistir.
+
 Arşiv tarihi: 2026-04-12
+Superseded tarihi: 2026-04-13
 Kaynaklar:
 - `Beachgo-Claude-Analiz.txt`
 - mevcut repo kodu
@@ -10,7 +15,19 @@ Kaynaklar:
 
 ## Executive Summary
 
-Repo önceki duruma göre anlamlı şekilde toparlanmış. Public beach detail stale-session redirect problemi ve business stats `timestamptz` hatası çözülmüş durumda. Ancak production'a çıkışı hâlâ durduran iki net konu var:
+Bu ozet artik current-state degildir. Tarihsel baglam icin tutulur.
+
+Repo bu analiz yazildigi tarihte onceki duruma gore toparlanmisti. Ancak bu dosyadaki bircok acik daha sonra kapatildi.
+
+Bu dosyadaki blocker ozetini current truth gibi okumayin. Guncel blocker listesi:
+
+1. DB secret rotation operator girdisi gerektiriyor.
+2. Git history cleanup karari alinmadi.
+3. Stripe production live secret ve runtime config eksik.
+4. `beachgo.net` verified gorunmedigi icin custom domain mapping bloklu.
+5. PostgreSQL-backed migration integration test hatti eksik.
+
+Tarihsel ozet:
 
 1. Guest reservation fiyat hesaplaması hâlâ mock.
 2. Auth rate limiter hâlâ global bucket kullanıyor, per-IP değil.

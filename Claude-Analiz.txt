@@ -1,0 +1,141 @@
+BeachGo frontend mobile gecisi oncesi uygulanabilir backlog
+
+Amac:
+Web odakli frontend kodunda React Native gecisini dogrudan zorlayacak alanlari en kucuk guvenli diff ile temizlemek.
+
+Durum ozeti:
+- Bu belge genel fikir listesi degil, repo icinde dogrulanmis teknik backlog'tur.
+- Odak buyuk refactor degil; platform bagimliliklarini azaltmak ve kritik akislari daha guvenli hale getirmektir.
+- Onceliklendirme impact ve mobile gecis riski uzerinden yapilmistir.
+
+P0 - window.confirm kullanimlarini kaldir
+
+Neden:
+`window.confirm` React Native tarafinda calismaz. Bu alanlar mobile geciste dogrudan kirilma yaratir.
+
+Repo kaniti:
+- `beach-ui/src/pages/Reservations.tsx`
+- `beach-ui/src/pages/ReservationCheck.tsx`
+- `beach-ui/src/pages/DashboardReservations.jsx`
+
+Yapilacak is:
+- Ortak bir `ConfirmDialog` veya onay modal wrapper'i tanimla.
+- Mevcut iptal/onay akislarini bu component veya helper uzerine tasi.
+- Kullanici aksiyonlari async modal sonucu ile yonetilsin; native browser dialog'a dayanilmasin.
+
+Kabul kriteri:
+- Kod tabaninda production path icinde `window.confirm` kalmamis olmali.
+- Rezervasyon iptal akislari mevcut davranisi korumali.
+- Web davranisi bozulmadan modal ile calismali.
+
+P0 - document/window bagimliliklarini izole et
+
+Neden:
+`document.body.style.overflow` ve `window.history.pushState` gibi browser API kullanimi mobile tarafinda dogrudan tasinamaz.
+
+Repo kaniti:
+- `beach-ui/src/components/beach/BeachGalleryLightbox.jsx`
+- `beach-ui/src/components/beach/BeachStoryViewer.jsx`
+- `beach-ui/src/components/admin/InstagramContentPreviewModal.jsx`
+
+Yapilacak is:
+- DOM kilitleme davranisini `useBodyScrollLock` benzeri bir hook veya helper arkasina al.
+- History push/pop davranisini web adapter/helper katmanina tasi.
+- Componentler dogrudan `document` veya `window.history` cagrisi yapmasin.
+
+Kabul kriteri:
+- UI componentleri icinde dogrudan `document.body.style.overflow` kullanimi kalmamis olmali.
+- History ile ilgili web-ozel davranis izole bir helper/hook uzerinden gecmeli.
+- Modal/lightbox davranisi webde mevcut UX'i korumali.
+
+P1 - localStorage kullanimini storage abstraction altina al
+
+Neden:
+`localStorage` web'e ozeldir. Token, user ve theme gibi kalici veriler platform adapter uzerinden okunmali.
+
+Repo kaniti:
+- `beach-ui/src/api/token.ts`
+- `beach-ui/src/context/ThemeContext.tsx`
+
+Yapilacak is:
+- `storage.ts` benzeri tek girisli bir abstraction olustur.
+- Web implementation `localStorage` kullansin.
+- API ve context katmanlari dogrudan `localStorage` yerine bu abstraction'i kullansin.
+
+Kabul kriteri:
+- Uygulama kodunda dogrudan `localStorage` kullanimlari minimuma inmeli; tercihen sadece storage implementation dosyasinda kalmali.
+- Token ve theme akislari mevcut davranisi korumali.
+- Mobile tarafinda `AsyncStorage` benzeri adapter eklemek icin tek degisim noktasi olmali.
+
+P1 - sessiz catch bloklarini temizle
+
+Neden:
+Hata yutulmasi debugging'i zorlastirir. Mobil geciste davranis farklari olursa tespit gecikir.
+
+Repo kaniti:
+- `beach-ui/src/pages/BeachSettings.jsx` icinde veri cekme hatasi sessiz geciliyor.
+- Benzer sekilde yorum seviyesinde bosaltilmis catch bloklari ayiklanmali.
+
+Yapilacak is:
+- Sessiz catch bloklarinda en azindan gorunur hata davranisi tanimla.
+- Uygun yerde `toast.error`, `console.error` veya ortak error helper kullan.
+- Kullaniciya gosterilmesi gerekmeyen yerlerde bile telemetry/log izi birak.
+
+Kabul kriteri:
+- Kritik veri cekme/guncelleme path'lerinde sessiz catch kalmamis olmali.
+- Hata oldugunda kullanici veya geliştirici tarafinda gorunur bir iz bulunmali.
+
+P2 - AdminPanel ve BeachSettings icindeki bare axios cagrilarini service katmanina tasi
+
+Neden:
+Sayfa componentleri icinde daginik veri erisimi bakimi zorlastirir. Mobil paylasim veya adapter degisiminde yeniden kullanim dusuk olur.
+
+Repo kaniti:
+- `beach-ui/src/pages/AdminPanel.jsx`
+- `beach-ui/src/pages/BeachSettings.jsx`
+
+Yapilacak is:
+- `adminService.ts` ve `beachSettingsService.ts` benzeri servisler olustur veya mevcut servis yapisina dahil et.
+- Sayfa componentleri sadece service fonksiyonlarini cagirsin.
+- Response shape normalizasyonu service katmaninda toplansin.
+
+Kabul kriteri:
+- Bu iki sayfada dogrudan axios cagrisi kalmamis olmali.
+- Veri cekme ve mutation path'leri service katmanindan gecmeli.
+- UI davranisi degismeden daha tutarli bir veri erisim yapisi saglanmali.
+
+P2 - Kritik reservation adimlarini .tsx tarafina tasi
+
+Neden:
+Rezervasyon akisinin kritik adimlari halen `.js`. Bu alanlarda temel tip guvenligi eklemek sonraki tasimalari daha guvenli yapar.
+
+Repo kaniti:
+- `beach-ui/src/pages/GuestReservation/StepDateType.js`
+- `beach-ui/src/pages/GuestReservation/StepPayment.js`
+
+Yapilacak is:
+- Bu iki dosyayi `.tsx` formatina tası.
+- `formData`, `updateForm`, `beach` ve callback prop'lari icin minimum gerekli tipleri ekle.
+- Gereksiz buyuk TypeScript refactor'a girme; sadece kritik prop sinirlarini netlestir.
+
+Kabul kriteri:
+- Dosyalar `.tsx` olarak calisiyor olmali.
+- Temel prop tipleri tanimli olmali.
+- Rezervasyon akisi build ve runtime olarak korunmali.
+
+Bu asamada yapilmamasi gerekenler:
+- Buyuk mimari refactor
+- TanStack Query entegrasyonu
+- Tum frontend'i topluca TypeScript'e tasima
+- Klasor yapisini yeniden kurma
+
+Onerilen uygulama sirasi:
+1. `window.confirm` temizligi
+2. `document/window` izolasyonu
+3. `storage` abstraction
+4. sessiz catch temizligi
+5. service katmani duzenlemesi
+6. kritik `.js -> .tsx` donusumu
+
+Not:
+Bu backlog execution-ready seviyeye yakindir. Uygulamaya baslamadan once her maddede ilgili dosyanin current-state'i yeniden okunmali ve diff en kucuk guvenli kapsamda tutulmalidir.

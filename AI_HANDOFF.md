@@ -59,20 +59,35 @@ Bu dosya repo icindeki ortak ajan hafizasidir. Hesap degistiginde veya farkli bi
 
 Her ajanin oturum sonunda bu bolumu guncellemesi beklenir:
 
-- Last updated: `2026-04-13`
+- Last updated: `2026-04-14`
 - Updated by: `codex`
 - In progress: `none`
-- Last completed item: `implemented Claude-Analiz mobile-readiness backlog across confirm flows, browser abstractions, storage, services and reservation TSX steps`
-- Next concrete step: `browser-QA confirm modal, lightbox/story history behavior and beach settings/admin flows if requested`
+- Last completed item: `implemented minimal Stories feature across backend and Flutter: active story endpoints, mobile repository/providers, beach-top story strip, full-screen viewer and admin URL-based create form`
+- Next concrete step: `optional follow-up: add real video playback for story viewer or surface story management into web admin if requested`
 - Verification:
   - `beach-ui: npm run lint`
   - `beach-ui: npm run typecheck`
   - `beach-ui: npm run build`
+  - `mobile: flutter analyze`
+  - `mobile: flutter test`
+  - `mobile: flutter build web`
+  - `backend: dotnet build BeachRehberi.API/BeachRehberi.API.csproj`
 - Notes:
   - `window.confirm` kullanimlari shared confirm dialog context uzerine tasindi.
   - `document.body.style.overflow` ve modal history push/pop davranisi hook'lara izole edildi.
   - `localStorage` erisimi storage abstraction altina alindi; `AdminPanel` ve `BeachSettings` axios cagrilari service katmanina tasindi.
   - `GuestReservation/StepDateType` ve `StepPayment` dosyalari `.tsx` formatina tasindi; `BeachSettings` ve `BeachDetail` icindeki sessiz catch path'leri gorunur log/toast ile kapatildi.
+  - `mobile/lib/core/models/*` kaynak koddan cikmis durumda; mobile uygulama artik DTO + domain entity ayrimi ile ilerliyor.
+  - `mobile/README.md` ve `mobile/FAZLAR.md` legacy `core/models` / freezed anlatimindan temizlendi.
+  - `mobile/pubspec.yaml` icinden kullanilmayan `freezed`, `freezed_annotation`, `json_serializable`, `json_annotation` direct bagimliliklari kaldirildi.
+  - Generic pagination altyapisi `mobile/lib/core/pagination/` altina tasindi: `PaginatedResult<T>`, `PaginatedState<T,...>`, `PaginatedNotifier<T,...>`.
+  - Beach list notifier artik bu generic temel sinifi kullaniyor; infinite scroll sadece default paginated liste modunda aktif, aktif arama/filtre sonucunda mevcut davranis korunup loadMore devre disi kaliyor.
+  - `mobile/test/beach_list_provider_test.dart` append, duplicate-request guard ve refresh-failure item preservation senaryolarini kapsiyor.
+  - `mobile/test/core/pagination/paginated_notifier_test.dart` generic pagination temelinin favorite-benzeri ikinci bir notifier/state ile tekrar kullanilabildigini dogruluyor.
+  - Backend `Stories` endpointleri aktif/non-expired filtre ile calisiyor ve DTO sozlesmesi mobile icin `mediaUrl`, `mediaType`, `expiresAt` alanlarina sadeleştirildi; `IStoryService` DI kaydi eklendi.
+  - Mobile `features/stories/` altinda domain/data/presentation akisi eklendi. Beach list tepesinde Instagram-benzeri story strip var; story yoksa section gizleniyor.
+  - `/admin` rotasi artik minimal story ekleme formuna gidiyor. Form URL tabanli create kullaniyor; upload sistemi yok.
+  - Story viewer image storyleri tam ekran gosteriyor; video URL'leri su an bilincli olarak guvenli placeholder ile gosteriliyor, gerçek video playback henüz eklenmedi.
 
 ## Update Discipline
 

@@ -23,7 +23,7 @@ public class StoriesController : ControllerBase
     public async Task<IActionResult> GetActive()
     {
         var stories = await _storyService.GetActiveStoriesAsync();
-        return Ok(new { success = true, data = stories });
+        return stories.ToOkApiResponse("Aktif storyler getirildi.");
     }
 
     [HttpGet("beach/{beachId}")]
@@ -31,7 +31,7 @@ public class StoriesController : ControllerBase
     public async Task<IActionResult> GetByBeach(int beachId)
     {
         var stories = await _storyService.GetStoriesByBeachAsync(beachId);
-        return Ok(new { success = true, data = stories });
+        return stories.ToOkApiResponse("Plaj storyleri getirildi.");
     }
 
     [HttpPost]

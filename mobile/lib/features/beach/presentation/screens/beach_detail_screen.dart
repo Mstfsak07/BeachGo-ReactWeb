@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 
+import 'package:beachgo/core/error/result.dart';
 import 'package:beachgo/core/theme/app_theme.dart';
+import 'package:beachgo/features/beach/domain/entities/beach.dart';
 import 'package:beachgo/features/beach/presentation/providers/beach_list_provider.dart';
 import 'package:beachgo/shared/widgets/shared_widgets.dart';
 
@@ -21,14 +23,14 @@ class BeachDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       body: beachAsync.when(
-        data: (beach) {
-          if (beach == null) {
+        data: (result) {
+          if (result is FailureResult<Beach>) {
             return const Center(
-              child: AppErrorWidget(
-                message: 'Plaj detayi su anda yuklenemedi.',
-              ),
+              child: AppErrorWidget(message: 'Plaj detayi su anda yuklenemedi.'),
             );
           }
+
+          final beach = (result as Success<Beach>).data;
 
           return CustomScrollView(
             slivers: [
@@ -36,19 +38,19 @@ class BeachDetailScreen extends ConsumerWidget {
                 expandedHeight: 280,
                 pinned: true,
                 flexibleSpace: FlexibleSpaceBar(
-                  title: Text(beach.name ?? 'Plaj Detayi'),
+                  title: Text(beach.name.isNotEmpty ? beach.name : 'Plaj Detayi'),
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      if (beach.imageUrl != null && beach.imageUrl!.isNotEmpty)
+                      if (beach.imageUrl.isNotEmpty)
                         CachedNetworkImage(
-                          imageUrl: beach.imageUrl!,
+                          imageUrl: beach.imageUrl,
                           fit: BoxFit.cover,
                           errorWidget: (_, __, ___) =>
-                              _DetailHeroFallback(beach.name ?? 'Beach'),
+                              _DetailHeroFallback(beach.name),
                         )
                       else
-                        _DetailHeroFallback(beach.name ?? 'Beach'),
+                        _DetailHeroFallback(beach.name),
                       const DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -74,38 +76,35 @@ class BeachDetailScreen extends ConsumerWidget {
                         children: [
                           _InfoChip(
                             icon: Icons.star_rounded,
-                            label:
-                                '${(beach.rating ?? 0).toStringAsFixed(1)} puan',
+                            label: '${beach.rating.toStringAsFixed(1)} puan',
                             color: Colors.amber,
                           ),
                           _InfoChip(
                             icon: Icons.people_alt_outlined,
-                            label: '%${beach.occupancyPercent ?? 0} dolu',
+                            label: '%${beach.occupancyPercent.toStringAsFixed(0)} dolu',
                             color: AppColors.primary,
                           ),
                           _InfoChip(
                             icon: Icons.schedule_outlined,
-                            label:
-                                '${beach.openTime ?? '--:--'} - ${beach.closeTime ?? '--:--'}',
+                            label: '${beach.openTime} - ${beach.closeTime}',
                             color: Colors.teal,
                           ),
                         ],
                       ),
                       const Gap(20),
-                      if (beach.address != null && beach.address!.isNotEmpty)
+                      if (beach.address.isNotEmpty)
                         _DetailSection(
                           title: 'Konum',
                           child: Text(
-                            beach.address!,
+                            beach.address,
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
                         ),
-                      if (beach.description != null &&
-                          beach.description!.isNotEmpty)
+                      if (beach.description.isNotEmpty)
                         _DetailSection(
                           title: 'Hakkinda',
                           child: Text(
-                            beach.description!,
+                            beach.description,
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
                         ),
@@ -115,27 +114,25 @@ class BeachDetailScreen extends ConsumerWidget {
                           spacing: 10,
                           runSpacing: 10,
                           children: [
-                            if (beach.hasEntryFee == true)
-                              _StatPill('Giris ${beach.entryFee ?? 0} TL'),
-                            if (beach.hasEntryFee == false)
+                            if (beach.hasEntryFee) _StatPill('Giris ${beach.entryFee} TL'),
+                            if (!beach.hasEntryFee)
                               const _StatPill('Ucretsiz giris'),
-                            if ((beach.sunbedPrice ?? 0) > 0)
+                            if (beach.sunbedPrice > 0)
                               _StatPill('Sezlong ${beach.sunbedPrice} TL'),
-                            if (beach.isOpen != null)
-                              _StatPill(beach.isOpen! ? 'Su an acik' : 'Su an kapali'),
-                            if ((beach.reviewCount ?? 0) > 0)
+                            _StatPill(beach.isOpen ? 'Su an acik' : 'Su an kapali'),
+                            if (beach.reviewCount > 0)
                               _StatPill('${beach.reviewCount} degerlendirme'),
                           ],
                         ),
                       ),
-                      if ((beach.facilities ?? const []).isNotEmpty)
+                      if (beach.facilities.isNotEmpty)
                         _DetailSection(
                           title: 'Olanaklar',
                           child: Wrap(
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              for (final facility in beach.facilities!)
+                              for (final facility in beach.facilities)
                                 Chip(label: Text(facility)),
                             ],
                           ),

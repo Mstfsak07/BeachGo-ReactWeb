@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:beachgo/core/models/models.dart';
 import 'package:beachgo/core/theme/app_theme.dart';
+import 'package:beachgo/features/beach/domain/entities/beach.dart';
+import 'package:beachgo/features/beach/domain/entities/beach_filter.dart';
 import 'package:beachgo/features/beach/presentation/providers/beach_list_provider.dart';
+import 'package:beachgo/features/stories/presentation/widgets/story_strip.dart';
 import 'package:beachgo/shared/widgets/shared_widgets.dart';
 
 class BeachListScreen extends ConsumerStatefulWidget {
@@ -18,6 +20,7 @@ class BeachListScreen extends ConsumerStatefulWidget {
 
 class _BeachListScreenState extends ConsumerState<BeachListScreen> {
   late final TextEditingController _searchController;
+  late final ScrollController _scrollController;
 
   static const Map<String, BeachFilter> _categoryFilters = {
     'Populer': BeachFilter(sortBy: 'rating'),
@@ -31,152 +34,55 @@ class _BeachListScreenState extends ConsumerState<BeachListScreen> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    _scrollController = ScrollController()..addListener(_handleScroll);
   }
 
   @override
   void dispose() {
+    _scrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
     _searchController.dispose();
     super.dispose();
   }
 
+  void _handleScroll() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 500) {
+      ref.read(beachListControllerProvider.notifier).loadMore();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final beachStateAsync = ref.watch(beachListControllerProvider);
+    final state = ref.watch(beachListControllerProvider);
 
-    ref.listen<AsyncValue<BeachListState>>(beachListControllerProvider, (_, next) {
-      final nextValue = next.valueOrNull;
-      if (nextValue != null && _searchController.text != nextValue.query) {
-        _searchController.text = nextValue.query;
+    ref.listen<BeachListState>(beachListControllerProvider, (previous, next) {
+      if (_searchController.text != next.query) {
+        _searchController.text = next.query;
+      }
+
+      final previousMessage = previous?.errorMessage;
+      final nextMessage = next.errorMessage;
+      final shouldShowSnackBar = nextMessage != null &&
+          next.items.isNotEmpty &&
+          previousMessage != nextMessage;
+
+      if (shouldShowSnackBar) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(nextMessage)));
       }
     });
 
     return Scaffold(
       body: SafeArea(
-        child: beachStateAsync.when(
-          data: (state) => RefreshIndicator(
-            onRefresh: () => ref.read(beachListControllerProvider.notifier).reload(),
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Plajlari Kesfet',
-                          style: Theme.of(context).textTheme.headlineLarge,
-                        ),
-                        const Gap(8),
-                        Text(
-                          'React tarafindaki arama, filtre ve kart akisini mobile-first bir liste deneyimine tasidim.',
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
-                        const Gap(16),
-                        _SearchBar(
-                          controller: _searchController,
-                          activeFilterCount: state.activeFilterCount,
-                          onSubmit: (value) => ref
-                              .read(beachListControllerProvider.notifier)
-                              .search(value),
-                          onOpenFilter: () => _openFilterSheet(context, state),
-                          onClear: () => ref
-                              .read(beachListControllerProvider.notifier)
-                              .clearFilters(),
-                        ),
-                        const Gap(16),
-                        SizedBox(
-                          height: 40,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemBuilder: (context, index) {
-                              final entry = _categoryFilters.entries.elementAt(index);
-                              final isActive = state.activeCategory == entry.key;
-                              return ChoiceChip(
-                                label: Text(entry.key),
-                                selected: isActive,
-                                onSelected: (_) {
-                                  ref
-                                      .read(beachListControllerProvider.notifier)
-                                      .applyFilters(
-                                        entry.value,
-                                        activeCategory: entry.key,
-                                      );
-                                },
-                              );
-                            },
-                            separatorBuilder: (_, __) => const Gap(8),
-                            itemCount: _categoryFilters.length,
-                          ),
-                        ),
-                        if (state.isUsingMockData) ...[
-                          const Gap(14),
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryLight,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.info_outline,
-                                  color: AppColors.primary,
-                                ),
-                                const Gap(10),
-                                Expanded(
-                                  child: Text(
-                                    'API erisilemedigi icin ekran su an yerel mock veri ile calisiyor. Repository gercek servise de bagli.',
-                                    style: Theme.of(context).textTheme.bodyMedium,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                        const Gap(12),
-                        Text(
-                          '${state.beaches.length} plaj listeleniyor',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (state.beaches.isEmpty)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(
-                      child: AppErrorWidget(
-                        message:
-                            'Bu kriterlerle eslesen plaj bulunamadi. Aramayi veya filtreleri temizleyip tekrar deneyin.',
-                      ),
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                    sliver: SliverList.separated(
-                      itemCount: state.beaches.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) {
-                        final beach = state.beaches[index];
-                        return _BeachCard(
-                          beach: beach,
-                          onTap: () {
-                            if (beach.id != null) {
-                              context.push('/beaches/${beach.id}');
-                            }
-                          },
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          loading: () => ListView.separated(
+        child: state.isInitialLoading && state.items.isEmpty
+            ? ListView.separated(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
             itemBuilder: (_, __) => const SizedBox(
               height: 280,
@@ -184,14 +90,136 @@ class _BeachListScreenState extends ConsumerState<BeachListScreen> {
             ),
             separatorBuilder: (_, __) => const SizedBox(height: 16),
             itemCount: 4,
-          ),
-          error: (_, __) => Center(
-            child: AppErrorWidget(
-              message: 'Plajlar yuklenemedi.',
-              onRetry: () => ref.read(beachListControllerProvider.notifier).reload(),
-            ),
-          ),
-        ),
+          )
+            : RefreshIndicator(
+                onRefresh: () =>
+                    ref.read(beachListControllerProvider.notifier).refresh(),
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Plajlari Kesfet',
+                              style: Theme.of(context).textTheme.headlineLarge,
+                            ),
+                            const Gap(8),
+                            Text(
+                          'React tarafindaki arama, filtre ve kart akisini mobile-first bir liste deneyimine tasidim.',
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                        const Gap(20),
+                        const StoryStrip(),
+                        const Gap(16),
+                        _SearchBar(
+                              controller: _searchController,
+                              activeFilterCount: state.activeFilterCount,
+                              onSubmit: (value) => ref
+                                  .read(beachListControllerProvider.notifier)
+                                  .search(value),
+                              onOpenFilter: () => _openFilterSheet(context, state),
+                              onClear: () => ref
+                                  .read(beachListControllerProvider.notifier)
+                                  .clearFilters(),
+                            ),
+                            const Gap(16),
+                            SizedBox(
+                              height: 40,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemBuilder: (context, index) {
+                                  final entry =
+                                      _categoryFilters.entries.elementAt(index);
+                                  final isActive =
+                                      state.activeCategory == entry.key;
+                                  return ChoiceChip(
+                                    label: Text(entry.key),
+                                    selected: isActive,
+                                    onSelected: (_) {
+                                      ref
+                                          .read(
+                                            beachListControllerProvider.notifier,
+                                          )
+                                          .applyFilters(
+                                            entry.value,
+                                            activeCategory: entry.key,
+                                          );
+                                    },
+                                  );
+                                },
+                                separatorBuilder: (_, __) => const Gap(8),
+                                itemCount: _categoryFilters.length,
+                              ),
+                            ),
+                            if (state.errorMessage != null &&
+                                state.items.isNotEmpty) ...[
+                              const Gap(14),
+                              _BeachListInlineError(message: state.errorMessage!),
+                            ],
+                            const Gap(12),
+                            Text(
+                              '${state.totalCount} plaj listeleniyor',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (state.showInitialError)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
+                          child: AppErrorWidget(
+                            message: state.errorMessage ?? 'Plajlar yuklenemedi.',
+                            onRetry: () => ref
+                                .read(beachListControllerProvider.notifier)
+                                .loadInitial(),
+                          ),
+                        ),
+                      )
+                    else if (state.showEmptyState)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
+                          child: AppErrorWidget(
+                            message: state.query.isNotEmpty || state.hasActiveFilters
+                                ? 'Bu kriterlerle eslesen plaj bulunamadi. Aramayi veya filtreleri temizleyip tekrar deneyin.'
+                                : 'Henuz listelenecek plaj bulunmuyor.',
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                        sliver: SliverList.separated(
+                          itemCount: state.items.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 16),
+                          itemBuilder: (context, index) {
+                            final beach = state.items[index];
+                            return _BeachCard(
+                              beach: beach,
+                              onTap: () {
+                                context.push('/beaches/${beach.id}');
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    if (state.isLoadingMore)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(20, 0, 20, 24),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -227,6 +255,15 @@ class _BeachListScreenState extends ConsumerState<BeachListScreen> {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
+                        _FilterToggle(
+                          label: 'Wifi',
+                          selected: selected.hasWifi == true,
+                          onTap: () => setModalState(() {
+                            selected = selected.copyWith(
+                              hasWifi: selected.hasWifi == true ? null : true,
+                            );
+                          }),
+                        ),
                         _FilterToggle(
                           label: 'Ucretsiz Giris',
                           selected: selected.freeEntry == true,
@@ -359,6 +396,38 @@ class _BeachListScreenState extends ConsumerState<BeachListScreen> {
   }
 }
 
+class _BeachListInlineError extends StatelessWidget {
+  const _BeachListInlineError({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4E5),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.error_outline,
+            color: Color(0xFFB45309),
+          ),
+          const Gap(10),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SearchBar extends StatelessWidget {
   const _SearchBar({
     required this.controller,
@@ -440,12 +509,12 @@ class _BeachCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final BeachDto beach;
+  final Beach beach;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final occupancy = beach.occupancyPercent ?? 0;
+    final occupancy = beach.occupancyPercent;
     final activeFacilities = _facilityMeta.entries
         .where((entry) => _facilityValue(beach, entry.key))
         .take(5)
@@ -477,9 +546,9 @@ class _BeachCard extends StatelessWidget {
                   SizedBox(
                     height: 210,
                     width: double.infinity,
-                    child: beach.imageUrl != null && beach.imageUrl!.isNotEmpty
+                    child: beach.imageUrl.isNotEmpty
                         ? CachedNetworkImage(
-                            imageUrl: beach.imageUrl!,
+                            imageUrl: beach.imageUrl,
                             fit: BoxFit.cover,
                             errorWidget: (_, __, ___) => _CardFallback(beach),
                           )
@@ -497,22 +566,19 @@ class _BeachCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _StatusBadge(
-                              label: beach.hasEntryFee == true
-                                  ? 'Giris ucretli'
-                                  : 'Ucretsiz',
-                              color: beach.hasEntryFee == true
+                              label: beach.hasEntryFee ? 'Giris ucretli' : 'Ucretsiz',
+                              color: beach.hasEntryFee
                                   ? Colors.black87
                                   : Colors.green,
                             ),
                             const Gap(6),
-                            if (beach.isOpen != null)
-                              _StatusBadge(
-                                label: beach.isOpen! ? 'Acik' : 'Kapali',
-                                color: beach.isOpen! ? Colors.green : Colors.red,
-                              ),
+                            _StatusBadge(
+                              label: beach.isOpen ? 'Acik' : 'Kapali',
+                              color: beach.isOpen ? Colors.green : Colors.red,
+                            ),
                           ],
                         ),
-                        if ((beach.rating ?? 0) > 0)
+                        if (beach.rating > 0)
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -532,7 +598,7 @@ class _BeachCard extends StatelessWidget {
                                 ),
                                 const Gap(4),
                                 Text(
-                                  (beach.rating ?? 0).toStringAsFixed(1),
+                                  beach.rating.toStringAsFixed(1),
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodyMedium
@@ -602,7 +668,7 @@ class _BeachCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (beach.address != null && beach.address!.isNotEmpty)
+                  if (beach.address.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Row(
@@ -615,7 +681,7 @@ class _BeachCard extends StatelessWidget {
                           const Gap(6),
                           Expanded(
                             child: Text(
-                              beach.address!,
+                              beach.address,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -626,16 +692,16 @@ class _BeachCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                    ),
+                  ),
                   Text(
-                    beach.name ?? 'Adsiz Plaj',
+                    beach.name.isNotEmpty ? beach.name : 'Adsiz Plaj',
                     style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  if (beach.description != null && beach.description!.isNotEmpty)
+                  if (beach.description.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        beach.description!,
+                        beach.description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium,
@@ -661,11 +727,11 @@ class _BeachCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          '${beach.openTime ?? '--:--'} - ${beach.closeTime ?? '--:--'}',
+                          '${beach.openTime} - ${beach.closeTime}',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
-                      if ((beach.reviewCount ?? 0) > 0)
+                      if (beach.reviewCount > 0)
                         Text(
                           '${beach.reviewCount} degerlendirme',
                           style: Theme.of(context).textTheme.bodySmall,
@@ -681,28 +747,28 @@ class _BeachCard extends StatelessWidget {
     );
   }
 
-  bool _facilityValue(BeachDto beach, String key) {
+  bool _facilityValue(Beach beach, String key) {
     switch (key) {
       case 'hasBar':
-        return beach.hasBar == true;
+        return beach.hasBar;
       case 'hasPool':
-        return beach.hasPool == true;
+        return beach.hasPool;
       case 'hasWifi':
-        return beach.hasWifi == true;
+        return beach.hasWifi;
       case 'hasParking':
-        return beach.hasParking == true;
+        return beach.hasParking;
       case 'hasRestaurant':
-        return beach.hasRestaurant == true;
+        return beach.hasRestaurant;
       case 'hasWaterSports':
-        return beach.hasWaterSports == true;
+        return beach.hasWaterSports;
       case 'isChildFriendly':
-        return beach.isChildFriendly == true;
+        return beach.isChildFriendly;
       case 'hasSunbeds':
-        return beach.hasSunbeds == true;
+        return beach.hasSunbeds;
       case 'hasShower':
-        return beach.hasShower == true;
+        return beach.hasShower;
       case 'hasDJ':
-        return beach.hasDJ == true;
+        return beach.hasDJ;
       default:
         return false;
     }
@@ -741,11 +807,11 @@ class _StatusBadge extends StatelessWidget {
 class _CardFallback extends StatelessWidget {
   const _CardFallback(this.beach);
 
-  final BeachDto beach;
+  final Beach beach;
 
   @override
   Widget build(BuildContext context) {
-    final initial = (beach.name?.isNotEmpty ?? false) ? beach.name![0] : 'B';
+    final initial = beach.name.isNotEmpty ? beach.name[0] : 'B';
 
     return DecoratedBox(
       decoration: const BoxDecoration(

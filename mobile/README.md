@@ -10,7 +10,7 @@ BeachGo web uygulamasının Flutter mobile versiyonu.
 | Navigation | go_router |
 | HTTP | dio |
 | Storage | flutter_secure_storage (token) + shared_preferences (tercihler) |
-| Model | freezed + json_serializable |
+| Model | DTO + domain entity mapping |
 
 ## Kurulum
 
@@ -37,7 +37,7 @@ flutter run --dart-define=ENV=production
 ```
 lib/
 ├── core/
-│   ├── models/        # Tüm Dart modelleri (web types.ts karşılığı)
+│   ├── error/         # Failure ve Result tipleri
 │   ├── network/       # Dio client, interceptor, response wrapper
 │   ├── storage/       # Secure storage abstraction
 │   ├── router/        # go_router + auth guard
@@ -46,11 +46,20 @@ lib/
 ├── features/
 │   ├── auth/
 │   │   ├── data/
+│   │   │   └── models/      # DTO modelleri
+│   │   ├── domain/
+│   │   │   └── entities/    # Domain entity'leri
 │   │   └── presentation/
 │   │       ├── providers/   # auth_provider.dart
 │   │       ├── screens/     # LoginScreen, RegisterScreen...
 │   │       └── widgets/
 │   ├── beach/
+│   │   ├── data/
+│   │   │   ├── models/      # DTO modelleri
+│   │   │   └── repository/
+│   │   ├── domain/
+│   │   │   └── entities/    # Domain entity'leri
+│   │   └── presentation/
 │   ├── reservation/
 │   ├── profile/
 │   └── favorites/
@@ -65,7 +74,7 @@ lib/
 |-----|---------|
 | `api/axios.ts` | `core/network/dio_client.dart` |
 | `api/token.ts` | `core/storage/storage_service.dart` |
-| `types.ts` | `core/models/models.dart` |
+| `types.ts` | `features/*/data/models/*_dto.dart` + `features/*/domain/entities/*.dart` |
 | `context/AuthContext.tsx` | `features/auth/presentation/providers/auth_provider.dart` |
 | `lib/storage.ts` | `core/storage/storage_service.dart` |
 | `App.js` (routing) | `core/router/app_router.dart` |
@@ -74,7 +83,7 @@ lib/
 
 ## Kod Üretimi (build_runner)
 
-`freezed` ve `riverpod_annotation` kullanıldığı için `.g.dart` ve `.freezed.dart`
+`riverpod_annotation` ve router generation kullanıldığı için `.g.dart`
 dosyaları elle yazılmaz, üretilir:
 
 ```bash

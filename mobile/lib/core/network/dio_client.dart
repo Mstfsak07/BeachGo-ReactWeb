@@ -1,30 +1,59 @@
+import 'dart:convert';
+import 'dart:developer';
+
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../network/app_config.dart';
-import '../storage/storage_service.dart';
 
-// Web'deki api/axios.ts'nin Flutter karşılığı.
-// Token ekleme + 401 üzerinde otomatik refresh + queue mekanizması.
+import 'package:beachgo/core/network/app_config.dart';
+import 'package:beachgo/core/storage/storage_service.dart';
+import 'package:beachgo/core/network/api_response.dart';
+import 'package:beachgo/features/auth/data/models/auth_session_dto.dart';
 
-final dioProvider = Provider<Dio>((ref) {
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: AppConfig.baseUrl,
-      connectTimeout: AppConfig.connectTimeout,
-      receiveTimeout: AppConfig.receiveTimeout,
-      headers: {'Content-Type': 'application/json'},
-    ),
-  );
+final dioProvider = Provider<Dio>((ref) => DioClient().instance);
 
-  dio.interceptors.add(AuthInterceptor(dio));
-  return dio;
-});
+class DioClient {
+  DioClient._internal();
 
-class AuthInterceptor extends QueuedInterceptor {
-  final Dio _dio;
+  static final DioClient _singleton = DioClient._internal();
+
+  factory DioClient() => _singleton;
+
+  late final Dio _dio = _createDio();
+
+  Dio get instance => _dio;
+
+  Dio _createDio() {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: AppConfig.baseUrl,
+        connectTimeout: AppConfig.connectTimeout,
+        receiveTimeout: AppConfig.receiveTimeout,
+        sendTimeout: AppConfig.connectTimeout,
+        headers: const {'Content-Type': 'application/json'},
+      ),
+    );
+
+    dio.interceptors.add(_AuthInterceptor());
+    dio.interceptors.add(_ErrorInterceptor());
+
+    if (kDebugMode) {
+      dio.interceptors.add(
+        LogInterceptor(
+          requestBody: true,
+          responseBody: true,
+          requestHeader: false,
+          responseHeader: false,
+        ),
+      );
+    }
+
+    return dio;
+  }
+}
+
+class _AuthInterceptor extends QueuedInterceptor {
   bool _isRefreshing = false;
-
-  AuthInterceptor(this._dio);
 
   @override
   Future<void> onRequest(
@@ -32,7 +61,7 @@ class AuthInterceptor extends QueuedInterceptor {
     RequestInterceptorHandler handler,
   ) async {
     final token = await StorageService.getAccessToken();
-    if (token != null) {
+    if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
     handler.next(options);
@@ -43,59 +72,90 @@ class AuthInterceptor extends QueuedInterceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    if (err.response?.statusCode == 401 && !_isRefreshing) {
+    final request = err.requestOptions;
+    final shouldSkipRefresh =
+        request.headers['x-skip-auth-refresh'] == true ||
+            request.path.contains('/Auth/login') ||
+            request.path.contains('/Auth/register') ||
+            request.path.contains('/Auth/refresh');
+
+    if (err.response?.statusCode == 401 && !shouldSkipRefresh && !_isRefreshing) {
       _isRefreshing = true;
       try {
-        final newToken = await _refreshToken();
-        if (newToken != null) {
-          // Başarısız isteği yeni token ile tekrar gönder
-          final opts = err.requestOptions;
-          opts.headers['Authorization'] = 'Bearer $newToken';
-          final response = await _dio.fetch(opts);
+        final refreshed = await _refreshSession();
+        if (refreshed != null) {
+          request.headers['Authorization'] = 'Bearer ${refreshed.accessToken}';
+          final retryDio = DioClient().instance;
+          final response = await retryDio.fetch<dynamic>(request);
           handler.resolve(response);
           return;
         }
       } catch (_) {
         await StorageService.clearAuthSession();
-        // Router'a logout eventi göndermek için AppRouter'daki listener tetiklenir
       } finally {
         _isRefreshing = false;
       }
     }
+
     handler.next(err);
   }
 
-  Future<String?> _refreshToken() async {
+  Future<AuthSessionDto?> _refreshSession() async {
     final accessToken = await StorageService.getAccessToken();
     final refreshToken = await StorageService.getRefreshToken();
+    if (refreshToken == null || refreshToken.isEmpty) return null;
 
-    if (refreshToken == null) return null;
+    final refreshDio = Dio(
+      BaseOptions(
+        baseUrl: AppConfig.baseUrl,
+        connectTimeout: AppConfig.connectTimeout,
+        receiveTimeout: AppConfig.receiveTimeout,
+        sendTimeout: AppConfig.connectTimeout,
+        headers: const {'Content-Type': 'application/json'},
+      ),
+    );
 
-    // Refresh için interceptor bypass eden ayrı Dio instance
-    final refreshDio = Dio(BaseOptions(baseUrl: AppConfig.baseUrl));
-    final response = await refreshDio.post('/Auth/refresh', data: {
-      'accessToken': accessToken ?? '',
-      'refreshToken': refreshToken,
-    });
+    final response = await refreshDio.post<Map<String, dynamic>>(
+      '/Auth/refresh',
+      data: {
+        'accessToken': accessToken ?? '',
+        'refreshToken': refreshToken,
+      },
+      options: Options(headers: {'x-skip-auth-refresh': true}),
+    );
 
-    final data = _unwrapData(response.data);
-    final newToken = data['accessToken'] ?? data['token'] ?? data['Token'];
-    final newRefresh = data['refreshToken'] ?? data['RefreshToken'];
+    final payload = response.data;
+    if (payload == null) return null;
 
-    if (newToken is String) {
-      await StorageService.setAccessToken(newToken);
-      if (newRefresh is String) {
-        await StorageService.setRefreshToken(newRefresh);
-      }
-      return newToken;
+    final apiResponse = ApiResponse<AuthSessionDto>.fromJson(
+      payload,
+      (raw) => AuthSessionDto.fromJson(raw as Map<String, dynamic>),
+    );
+
+    if (!apiResponse.success || apiResponse.data == null) {
+      await StorageService.clearAuthSession();
+      return null;
     }
-    return null;
+
+    final session = apiResponse.data!;
+    await StorageService.setAccessToken(session.accessToken);
+    await StorageService.setRefreshToken(session.refreshToken);
+    if (session.user != null) {
+      await StorageService.setUser(jsonEncode(session.user!.toJson()));
+    }
+    return session;
   }
+}
 
-  Map<String, dynamic> _unwrapData(dynamic raw) {
-    if (raw is Map<String, dynamic>) {
-      return (raw['data'] as Map<String, dynamic>?) ?? raw;
+class _ErrorInterceptor extends Interceptor {
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (kDebugMode) {
+      log(
+        'Dio error: ${err.requestOptions.method} ${err.requestOptions.uri} -> ${err.response?.statusCode}',
+        error: err.message,
+      );
     }
-    return {};
+    handler.next(err);
   }
 }

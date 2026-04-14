@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:beachgo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:beachgo/features/beach/presentation/screens/beach_detail_screen.dart';
 import 'package:beachgo/features/beach/presentation/screens/beach_list_screen.dart';
+import 'package:beachgo/features/stories/presentation/screens/story_admin_screen.dart';
 
 // Sayfa importları — ilerleyen aşamalarda eklenir
 // import '../features/auth/presentation/screens/login_screen.dart';
@@ -61,7 +62,7 @@ GoRouter router(Ref ref) {
       // Korumalı rotalar
       final protectedRoutes = ['/profile', '/reservations', '/favorites'];
       final businessRoutes = ['/dashboard', '/dashboard/stats',
-          '/dashboard/reservations', '/beach-settings'];
+          '/dashboard/reservations', '/beach-settings', '/admin'];
 
       if (protectedRoutes.any((r) => path.startsWith(r)) && !isAuthenticated) {
         return '/login?redirect=${Uri.encodeComponent(path)}';
@@ -186,7 +187,7 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: '/admin',
         name: AppRoute.admin.name,
-        builder: (context, state) => const _PlaceholderScreen('Admin'),
+        builder: (context, state) => const StoryAdminScreen(),
       ),
       GoRoute(
         path: '/unauthorized',

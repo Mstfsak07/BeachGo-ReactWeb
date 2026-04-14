@@ -1,7 +1,7 @@
 # BeachGo Flutter — Codex Geliştirme Fazları
 
 Her faz bağımsız çalışır. Bir sonraki faza geçmeden önce mevcut fazı tamamla.
-Her fazın sonunda `dart run build_runner build --delete-conflicting-outputs` çalıştır.
+Riverpod/router generation gereken noktalarda `dart run build_runner build --delete-conflicting-outputs` çalıştır.
 
 ---
 
@@ -13,7 +13,7 @@ Aşağıdaki dosyalar hazır, elle değiştirme:
 lib/
 ├── main.dart
 ├── core/
-│   ├── models/models.dart          ← Tüm Dart modelleri (freezed)
+│   ├── error/                      ← Failure ve Result tipleri
 │   ├── network/
 │   │   ├── app_config.dart         ← Base URL, timeout
 │   │   ├── dio_client.dart         ← HTTP client + token interceptor
@@ -21,6 +21,10 @@ lib/
 │   ├── storage/storage_service.dart ← Secure token storage
 │   ├── router/app_router.dart      ← Tüm route'lar + auth guard
 │   └── theme/app_theme.dart        ← AppTheme, AppColors
+├── features/auth/data/models/      ← Auth DTO modelleri
+├── features/auth/domain/entities/  ← Auth domain entity'leri
+├── features/beach/data/models/     ← Beach DTO modelleri
+├── features/beach/domain/entities/ ← Beach domain entity'leri
 ├── features/auth/presentation/providers/auth_provider.dart
 └── shared/widgets/shared_widgets.dart
 ```
@@ -38,7 +42,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 ### Görevler
 
-**1.1 — Freezed ve Riverpod dosyalarını üret**
+**1.1 — Riverpod ve router dosyalarını üret**
 
 ```bash
 flutter pub get
@@ -46,8 +50,6 @@ dart run build_runner build --delete-conflicting-outputs
 ```
 
 Bu komut şu dosyaları üretir:
-- `lib/core/models/models.freezed.dart`
-- `lib/core/models/models.g.dart`
 - `lib/features/auth/presentation/providers/auth_provider.g.dart`
 - `lib/core/router/app_router.g.dart`
 

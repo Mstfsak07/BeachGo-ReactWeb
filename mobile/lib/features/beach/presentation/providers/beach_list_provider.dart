@@ -1,154 +1,286 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:beachgo/core/models/models.dart';
-import 'package:beachgo/features/beach/data/beach_repository.dart';
+import 'package:beachgo/core/error/failures.dart';
+import 'package:beachgo/core/error/result.dart';
+import 'package:beachgo/core/network/paged_response.dart';
+import 'package:beachgo/core/pagination/paginated_notifier.dart';
+import 'package:beachgo/core/pagination/paginated_result.dart';
+import 'package:beachgo/core/pagination/paginated_state.dart';
+import 'package:beachgo/features/beach/data/repository/beach_repository.dart';
+import 'package:beachgo/features/beach/domain/entities/beach.dart';
+import 'package:beachgo/features/beach/domain/entities/beach_filter.dart';
 
 final beachListControllerProvider =
-    AsyncNotifierProvider<BeachListController, BeachListState>(
-  BeachListController.new,
+    NotifierProvider<BeachListNotifier, BeachListState>(
+  BeachListNotifier.new,
 );
 
-final beachDetailProvider = FutureProvider.family<BeachDto?, int>((ref, id) {
+final beachDetailProvider = FutureProvider.family<Result<Beach>, int>((ref, id) {
   return ref.watch(beachRepositoryProvider).getBeachById(id);
 });
 
-class BeachListController extends AsyncNotifier<BeachListState> {
+class BeachListNotifier extends PaginatedNotifier<Beach, BeachListState> {
+  static const int _defaultPageSize = 10;
+
   @override
-  Future<BeachListState> build() async {
-    return _loadInitial();
+  BeachListState createInitialState() {
+    return BeachListState.initial(pageSize: _defaultPageSize);
   }
 
-  Future<void> reload() async {
-    final previous = state.valueOrNull;
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      if (previous == null) return _loadInitial();
+  @override
+  Object itemIdentity(Beach item) => item.id;
 
-      if (previous.query.isNotEmpty) {
-        final result = await ref
-            .read(beachRepositoryProvider)
-            .searchBeaches(previous.query);
-        return previous.copyWith(
-          beaches: result.beaches,
-          isUsingMockData: result.isMock,
-        );
-      }
-
-      if (previous.hasActiveFilters) {
-        final result = await ref
-            .read(beachRepositoryProvider)
-            .filterBeaches(previous.filters);
-        return previous.copyWith(
-          beaches: result.beaches,
-          isUsingMockData: result.isMock,
-        );
-      }
-
-      return _loadInitial();
-    });
-  }
-
-  Future<void> search(String query) async {
-    final current = state.valueOrNull ?? BeachListState.initial();
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final trimmed = query.trim();
-      if (trimmed.isEmpty) {
-        final result = await ref.read(beachRepositoryProvider).getBeaches();
-        return current.copyWith(
-          beaches: result.beaches,
+  @override
+  BeachListState resetStateForInitialLoad(BeachListState current) {
+    return current
+        .copyWith(
           query: '',
           filters: BeachListState.defaultFilter,
           clearActiveCategory: true,
-          isUsingMockData: result.isMock,
+        )
+        .copyWithPagination(
+          items: const <Beach>[],
+          isInitialLoading: true,
+          isLoadingMore: false,
+          isRefreshing: false,
+          hasMore: true,
+          currentPage: 0,
+          totalCount: 0,
+          error: null,
         );
-      }
+  }
 
-      final result = await ref.read(beachRepositoryProvider).searchBeaches(trimmed);
-      return current.copyWith(
-        beaches: result.beaches,
-        query: trimmed,
-        filters: BeachListState.defaultFilter,
-        clearActiveCategory: true,
-        isUsingMockData: result.isMock,
-      );
-    });
+  @override
+  bool canLoadMore(BeachListState current) {
+    return current.isPaginatedMode && super.canLoadMore(current);
+  }
+
+  @override
+  Future<PaginatedResult<Beach>> fetchPage(int page, int pageSize) async {
+    final result = await ref.read(beachRepositoryProvider).getBeaches(
+          page: page,
+          pageSize: pageSize,
+        );
+
+    return switch (result) {
+      Success<PagedResponse<Beach>>(data: final pageData) => PaginatedResult<Beach>(
+          items: pageData.items,
+          page: pageData.page,
+          pageSize: pageData.pageSize,
+          totalCount: pageData.totalCount,
+        ),
+      FailureResult<PagedResponse<Beach>>(failure: final failure) => throw failure,
+    };
+  }
+
+  Future<void> search(String query) async {
+    if (state.isInitialLoading || state.isRefreshing) {
+      return;
+    }
+
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      await loadInitial();
+      return;
+    }
+
+    final previous = state;
+    state = state
+        .copyWith(
+          query: trimmed,
+          filters: BeachListState.defaultFilter,
+          clearActiveCategory: true,
+        )
+        .copyWithPagination(
+          isInitialLoading: true,
+          isLoadingMore: false,
+          isRefreshing: false,
+          error: null,
+        );
+
+    final result = await ref.read(beachRepositoryProvider).searchBeaches(trimmed);
+    state = _mapListResult(
+      result,
+      previous: previous,
+      query: trimmed,
+      filters: BeachListState.defaultFilter,
+      clearActiveCategory: true,
+      isInitialLoading: false,
+    );
   }
 
   Future<void> applyFilters(
     BeachFilter filters, {
     String? activeCategory,
   }) async {
-    final current = state.valueOrNull ?? BeachListState.initial();
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final result = await ref.read(beachRepositoryProvider).filterBeaches(filters);
-      return current.copyWith(
-        beaches: result.beaches,
-        query: '',
-        filters: filters,
-        activeCategory: activeCategory,
-        clearActiveCategory: activeCategory == null,
-        isUsingMockData: result.isMock,
-      );
-    });
+    if (state.isInitialLoading || state.isRefreshing) {
+      return;
+    }
+
+    final previous = state;
+    state = state
+        .copyWith(
+          query: '',
+          filters: filters,
+          activeCategory: activeCategory,
+          clearActiveCategory: activeCategory == null,
+        )
+        .copyWithPagination(
+          isInitialLoading: true,
+          isLoadingMore: false,
+          isRefreshing: false,
+          error: null,
+        );
+
+    final result = await ref.read(beachRepositoryProvider).filterBeaches(filters);
+    state = _mapListResult(
+      result,
+      previous: previous,
+      query: '',
+      filters: filters,
+      activeCategory: activeCategory,
+      clearActiveCategory: activeCategory == null,
+      isInitialLoading: false,
+    );
   }
 
   Future<void> clearFilters() async {
-    final current = state.valueOrNull ?? BeachListState.initial();
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      final result = await ref.read(beachRepositoryProvider).getBeaches();
-      return current.copyWith(
-        beaches: result.beaches,
-        query: '',
-        filters: BeachListState.defaultFilter,
-        clearActiveCategory: true,
-        isUsingMockData: result.isMock,
-      );
-    });
+    await loadInitial();
   }
 
-  Future<BeachListState> _loadInitial() async {
-    final result = await ref.read(beachRepositoryProvider).getBeaches();
-    return BeachListState(
-      beaches: result.beaches,
-      query: '',
-      filters: BeachListState.defaultFilter,
-      activeCategory: null,
-      isUsingMockData: result.isMock,
+  @override
+  Future<void> refresh() async {
+    if (state.query.isNotEmpty || state.hasActiveFilters) {
+      await _refreshFilteredState();
+      return;
+    }
+
+    await super.refresh();
+  }
+
+  Future<void> _refreshFilteredState() async {
+    if (state.isInitialLoading || state.isRefreshing) {
+      return;
+    }
+
+    final previous = state;
+    state = state.copyWithPagination(
+      isRefreshing: true,
+      isLoadingMore: false,
+      error: null,
     );
+
+    if (previous.query.isNotEmpty) {
+      final result =
+          await ref.read(beachRepositoryProvider).searchBeaches(previous.query);
+      state = _mapListResult(
+        result,
+        previous: previous,
+        query: previous.query,
+        filters: previous.filters,
+        activeCategory: previous.activeCategory,
+        isRefreshing: false,
+      );
+      return;
+    }
+
+    final result =
+        await ref.read(beachRepositoryProvider).filterBeaches(previous.filters);
+    state = _mapListResult(
+      result,
+      previous: previous,
+      filters: previous.filters,
+      activeCategory: previous.activeCategory,
+      isRefreshing: false,
+    );
+  }
+
+  BeachListState _mapListResult(
+    Result<List<Beach>> result, {
+    required BeachListState previous,
+    String? query,
+    BeachFilter? filters,
+    String? activeCategory,
+    bool clearActiveCategory = false,
+    bool isInitialLoading = false,
+    bool isRefreshing = false,
+  }) {
+    return switch (result) {
+      Success<List<Beach>>(data: final beaches) => previous
+          .copyWith(
+            query: query ?? previous.query,
+            filters: filters ?? previous.filters,
+            activeCategory: activeCategory,
+            clearActiveCategory: clearActiveCategory,
+          )
+          .copyWithPagination(
+            items: List<Beach>.unmodifiable(beaches),
+            currentPage: beaches.isEmpty ? 0 : 1,
+            totalCount: beaches.length,
+            hasMore: false,
+            isInitialLoading: isInitialLoading,
+            isRefreshing: isRefreshing,
+            isLoadingMore: false,
+            error: null,
+          ),
+      FailureResult<List<Beach>>(failure: final failure) => previous
+          .copyWith(
+            query: query ?? previous.query,
+            filters: filters ?? previous.filters,
+            activeCategory: activeCategory,
+            clearActiveCategory: clearActiveCategory,
+          )
+          .copyWithPagination(
+            isInitialLoading: false,
+            isRefreshing: false,
+            isLoadingMore: false,
+            error: failure,
+          ),
+    };
   }
 }
 
-class BeachListState {
+class BeachListState extends PaginatedState<Beach, BeachListState> {
   const BeachListState({
-    required this.beaches,
+    required super.items,
+    required super.isInitialLoading,
+    required super.isLoadingMore,
+    required super.isRefreshing,
+    required super.hasMore,
+    required super.currentPage,
+    required super.pageSize,
+    required super.totalCount,
+    required super.error,
     required this.query,
     required this.filters,
     required this.activeCategory,
-    required this.isUsingMockData,
   });
 
   static const BeachFilter defaultFilter = BeachFilter(sortBy: 'rating');
 
-  factory BeachListState.initial() {
-    return const BeachListState(
-      beaches: [],
+  factory BeachListState.initial({int pageSize = 10}) {
+    return BeachListState(
+      items: const <Beach>[],
+      isInitialLoading: false,
+      isLoadingMore: false,
+      isRefreshing: false,
+      hasMore: true,
+      currentPage: 0,
+      pageSize: pageSize,
+      totalCount: 0,
+      error: null,
       query: '',
       filters: defaultFilter,
       activeCategory: null,
-      isUsingMockData: false,
     );
   }
 
-  final List<BeachDto> beaches;
   final String query;
   final BeachFilter filters;
   final String? activeCategory;
-  final bool isUsingMockData;
 
   bool get hasActiveFilters =>
+      filters.hasWifi == true ||
       filters.minRating != null ||
       filters.hasBar == true ||
       filters.hasWaterSports == true ||
@@ -159,6 +291,7 @@ class BeachListState {
 
   int get activeFilterCount {
     var count = 0;
+    if (filters.hasWifi == true) count++;
     if (filters.minRating != null) count++;
     if (filters.hasBar == true) count++;
     if (filters.hasWaterSports == true) count++;
@@ -168,21 +301,61 @@ class BeachListState {
     return count;
   }
 
+  bool get isPaginatedMode => query.isEmpty && !hasActiveFilters;
+
   BeachListState copyWith({
-    List<BeachDto>? beaches,
     String? query,
     BeachFilter? filters,
     String? activeCategory,
     bool clearActiveCategory = false,
-    bool? isUsingMockData,
   }) {
     return BeachListState(
-      beaches: beaches ?? this.beaches,
+      items: items,
+      isInitialLoading: isInitialLoading,
+      isLoadingMore: isLoadingMore,
+      isRefreshing: isRefreshing,
+      hasMore: hasMore,
+      currentPage: currentPage,
+      pageSize: pageSize,
+      totalCount: totalCount,
+      error: error,
       query: query ?? this.query,
       filters: filters ?? this.filters,
       activeCategory:
           clearActiveCategory ? null : (activeCategory ?? this.activeCategory),
-      isUsingMockData: isUsingMockData ?? this.isUsingMockData,
+    );
+  }
+
+  @override
+  BeachListState copyWithPagination({
+    List<Beach>? items,
+    bool? isInitialLoading,
+    bool? isLoadingMore,
+    bool? isRefreshing,
+    bool? hasMore,
+    int? currentPage,
+    int? pageSize,
+    int? totalCount,
+    Object? error = paginationNoFailure,
+    bool clearError = false,
+  }) {
+    return BeachListState(
+      items: items ?? this.items,
+      isInitialLoading: isInitialLoading ?? this.isInitialLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      isRefreshing: isRefreshing ?? this.isRefreshing,
+      hasMore: hasMore ?? this.hasMore,
+      currentPage: currentPage ?? this.currentPage,
+      pageSize: pageSize ?? this.pageSize,
+      totalCount: totalCount ?? this.totalCount,
+      error: clearError
+          ? null
+          : identical(error, paginationNoFailure)
+              ? this.error
+              : error as Failure?,
+      query: query,
+      filters: filters,
+      activeCategory: activeCategory,
     );
   }
 }

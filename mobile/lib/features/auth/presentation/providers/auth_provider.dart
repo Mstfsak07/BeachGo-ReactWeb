@@ -1,26 +1,27 @@
-import 'dart:convert';
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:beachgo/core/models/models.dart';
-import 'package:beachgo/core/network/api_response.dart';
-import 'package:beachgo/core/network/dio_client.dart';
-import 'package:beachgo/core/storage/storage_service.dart';
+
+import 'package:beachgo/core/error/result.dart';
+import 'package:beachgo/features/auth/data/repositories/auth_repository.dart';
+import 'package:beachgo/features/auth/domain/entities/auth_session.dart';
+import 'package:beachgo/features/auth/domain/entities/app_user.dart';
 
 part 'auth_provider.g.dart';
 
-// ── Auth State ────────────────────────────────────────────────────────────────
-
 class AuthState {
+  const AuthState({this.user, this.loading = false});
+
   final AppUser? user;
   final bool loading;
-
-  const AuthState({this.user, this.loading = false});
 
   bool get isAuthenticated => user != null;
   bool get isBusiness => user?.isBusiness ?? false;
 
-  AuthState copyWith({AppUser? user, bool? loading, bool clearUser = false}) {
+  AuthState copyWith({
+    AppUser? user,
+    bool? loading,
+    bool clearUser = false,
+  }) {
     return AuthState(
       user: clearUser ? null : (user ?? this.user),
       loading: loading ?? this.loading,
@@ -28,60 +29,58 @@ class AuthState {
   }
 }
 
-// ── Auth Notifier ─────────────────────────────────────────────────────────────
-// Web'deki AuthContext + AuthProvider'ın Riverpod karşılığı.
-
 @riverpod
 class Auth extends _$Auth {
   @override
   Future<AuthState> build() async {
-    // Uygulama açılırken token refresh dene (web'deki initializeAuth)
     return _initializeAuth();
   }
 
   Future<AuthState> _initializeAuth() async {
-    final dio = ref.read(dioProvider);
-    try {
-      final accessToken = await StorageService.getAccessToken();
-      final refreshToken = await StorageService.getRefreshToken();
+    final authRepository = ref.read(authRepositoryProvider);
+    final refreshResult = await authRepository.refreshSession();
 
-      if (refreshToken == null) return const AuthState();
-
-      final response = await dio.post('/Auth/refresh', data: {
-        'accessToken': accessToken ?? '',
-        'refreshToken': refreshToken,
-      });
-
-      final auth = _parseAuthResponse(response);
-      if (auth?.accessToken != null) {
-        await _persistAuth(auth!);
-        return AuthState(user: auth.user);
-      }
-    } catch (_) {
-      await StorageService.clearAuthSession();
+    if (refreshResult case Success<AuthSession>(data: final session)) {
+      await authRepository.persistSession(session);
+      return AuthState(user: session.user);
     }
+
+    final storedUserResult = await authRepository.getStoredUser();
+    if (storedUserResult case Success<AppUser?>(data: final storedUser)) {
+      if (storedUser != null) {
+        return AuthState(user: storedUser);
+      }
+    }
+
+    await authRepository.clearSession();
     return const AuthState();
   }
 
   Future<void> login(String email, String password) async {
-    final dio = ref.read(dioProvider);
+    final authRepository = ref.read(authRepositoryProvider);
     state = const AsyncLoading();
 
     state = await AsyncValue.guard(() async {
-      final response = await dio.post('/Auth/login', data: {
-        'email': email,
-        'password': password,
-      });
-
-      final auth = _parseAuthResponse(response);
-      if (auth?.accessToken == null) {
-        throw const ApiException('Giriş bilgileri hatalı.');
-      }
-
-      await _persistAuth(auth!);
-      return AuthState(
-        user: auth.user ?? AppUser(email: email, role: auth.role),
-      );
+      final result = await authRepository.login(email: email, password: password);
+      return switch (result) {
+        Success<AuthSession>(data: final session) => () async {
+            await authRepository.persistSession(session);
+            return AuthState(
+              user: session.user ??
+                  AppUser(
+                    id: null,
+                    email: email,
+                    role: '',
+                    accountType: '',
+                    firstName: '',
+                    lastName: '',
+                    name: '',
+                    phone: '',
+                  ),
+            );
+          }(),
+        FailureResult<AuthSession>(failure: final failure) => throw failure,
+      };
     });
   }
 
@@ -90,71 +89,35 @@ class Auth extends _$Auth {
     required String email,
     required String password,
   }) async {
-    final dio = ref.read(dioProvider);
+    final authRepository = ref.read(authRepositoryProvider);
     state = const AsyncLoading();
 
     state = await AsyncValue.guard(() async {
-      await dio.post('/Auth/register', data: {
-        'name': name,
-        'email': email,
-        'password': password,
-      });
-      return const AuthState(); // Kayıt sonrası login gerekli
+      final result = await authRepository.register(
+        name: name,
+        email: email,
+        password: password,
+      );
+
+      return switch (result) {
+        Success<void>() => const AuthState(),
+        FailureResult<void>(failure: final failure) => throw failure,
+      };
     });
   }
 
   Future<void> logout() async {
-    await StorageService.clearAuthSession();
+    await ref.read(authRepositoryProvider).clearSession();
     state = const AsyncData(AuthState());
   }
 
   Future<void> updateUser(AppUser user) async {
-    await StorageService.setUser(jsonEncode(user.toJson()));
+    await ref.read(authRepositoryProvider).updateStoredUser(user);
     final current = state.valueOrNull ?? const AuthState();
     state = AsyncData(current.copyWith(user: user));
   }
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
-
-  AuthResponse? _parseAuthResponse(Response response) {
-    try {
-      final raw = response.data as Map<String, dynamic>?;
-      if (raw == null) return null;
-
-      final data = (raw['data'] as Map<String, dynamic>?) ?? raw;
-
-      return AuthResponse(
-        accessToken: data['accessToken'] as String? ??
-            data['token'] as String? ??
-            data['Token'] as String?,
-        refreshToken: data['refreshToken'] as String? ??
-            data['RefreshToken'] as String?,
-        role: data['role'] as String? ?? data['accountType'] as String?,
-        user: data['user'] != null
-            ? AppUser.fromJson(data['user'] as Map<String, dynamic>)
-            : data['User'] != null
-                ? AppUser.fromJson(data['User'] as Map<String, dynamic>)
-                : null,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<void> _persistAuth(AuthResponse auth) async {
-    if (auth.accessToken != null) {
-      await StorageService.setAccessToken(auth.accessToken!);
-    }
-    if (auth.refreshToken != null) {
-      await StorageService.setRefreshToken(auth.refreshToken!);
-    }
-    if (auth.user != null) {
-      await StorageService.setUser(jsonEncode(auth.user!.toJson()));
-    }
-  }
 }
 
-// Kolaylık provider'ları — ekranlarda doğrudan kullanılır
 @riverpod
 AppUser? currentUser(Ref ref) {
   return ref.watch(authProvider).valueOrNull?.user;

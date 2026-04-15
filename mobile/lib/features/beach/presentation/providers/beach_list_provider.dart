@@ -9,6 +9,8 @@ import 'package:beachgo/core/pagination/paginated_state.dart';
 import 'package:beachgo/features/beach/data/repository/beach_repository.dart';
 import 'package:beachgo/features/beach/domain/entities/beach.dart';
 import 'package:beachgo/features/beach/domain/entities/beach_filter.dart';
+import 'package:beachgo/features/beach/domain/entities/beach_review.dart';
+import 'package:beachgo/features/beach/domain/entities/weather.dart';
 
 final beachListControllerProvider =
     NotifierProvider<BeachListNotifier, BeachListState>(
@@ -17,6 +19,15 @@ final beachListControllerProvider =
 
 final beachDetailProvider = FutureProvider.family<Result<Beach>, int>((ref, id) {
   return ref.watch(beachRepositoryProvider).getBeachById(id);
+});
+
+final beachReviewsProvider =
+    FutureProvider.family<Result<List<BeachReview>>, int>((ref, id) {
+  return ref.watch(beachRepositoryProvider).getBeachReviews(id);
+});
+
+final beachWeatherProvider = FutureProvider.family<Result<Weather>, int>((ref, id) {
+  return ref.watch(beachRepositoryProvider).getBeachWeather(id);
 });
 
 class BeachListNotifier extends PaginatedNotifier<Beach, BeachListState> {

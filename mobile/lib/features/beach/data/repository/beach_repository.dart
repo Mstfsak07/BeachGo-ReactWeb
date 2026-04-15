@@ -10,9 +10,11 @@ import 'package:beachgo/core/network/dio_client.dart';
 import 'package:beachgo/core/network/paged_response.dart';
 import 'package:beachgo/features/beach/data/models/beach_dto.dart';
 import 'package:beachgo/features/beach/data/models/beach_filter_dto.dart';
+import 'package:beachgo/features/beach/data/models/beach_review_dto.dart';
 import 'package:beachgo/features/beach/data/models/weather_dto.dart';
 import 'package:beachgo/features/beach/domain/entities/beach.dart';
 import 'package:beachgo/features/beach/domain/entities/beach_filter.dart';
+import 'package:beachgo/features/beach/domain/entities/beach_review.dart';
 import 'package:beachgo/features/beach/domain/entities/weather.dart';
 
 final beachRepositoryProvider = Provider<BeachRepository>((ref) {
@@ -32,6 +34,22 @@ abstract class BeachRepository {
   Future<Result<List<Beach>>> filterBeaches(BeachFilter filter);
 
   Future<Result<Weather>> getBeachWeather(int id);
+
+  Future<Result<List<BeachReview>>> getBeachReviews(int beachId);
+
+  Future<Result<void>> createReview({
+    required int beachId,
+    required String userName,
+    required String userPhone,
+    required int rating,
+    required String comment,
+  });
+
+  Future<Result<List<Beach>>> getFavoriteBeaches();
+
+  Future<Result<void>> addFavorite(int beachId);
+
+  Future<Result<void>> removeFavorite(int beachId);
 }
 
 class BeachRepositoryImpl implements BeachRepository {
@@ -92,6 +110,145 @@ class BeachRepositoryImpl implements BeachRepository {
       request: () => _dio.get('/Beaches/$id/weather'),
       parser: (raw) => WeatherDto.fromJson(_asMap(raw)).toDomain(),
     );
+  }
+
+  @override
+  Future<Result<List<BeachReview>>> getBeachReviews(int beachId) {
+    return _execute<List<BeachReview>>(
+      request: () => _dio.get('/Reviews/beach/$beachId'),
+      parser: (raw) {
+        if (raw is! List) {
+          return const <BeachReview>[];
+        }
+
+        return raw
+            .whereType<Map<String, dynamic>>()
+            .map((item) => BeachReviewDto.fromJson(item).toDomain())
+            .toList(growable: false);
+      },
+    );
+  }
+
+  @override
+  Future<Result<void>> createReview({
+    required int beachId,
+    required String userName,
+    required String userPhone,
+    required int rating,
+    required String comment,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/Reviews',
+        data: {
+          'beachId': beachId,
+          'userName': userName.trim(),
+          'userPhone': userPhone.trim(),
+          'rating': rating,
+          'comment': comment.trim(),
+        },
+      );
+
+      final responseData = response.data;
+      if (responseData is! Map<String, dynamic>) {
+        return const FailureResult<void>(
+          ServerFailure('Invalid response format.'),
+        );
+      }
+
+      final apiResponse =
+          ApiResponse<Object?>.fromJson(responseData, (raw) => raw);
+      if (!apiResponse.success) {
+        final message = apiResponse.message.isNotEmpty
+            ? apiResponse.message
+            : apiResponse.errors.join(', ');
+        return FailureResult<void>(
+          _mapStatusToFailure(
+            response.statusCode,
+            message.isNotEmpty ? message : 'Request failed on server.',
+          ),
+        );
+      }
+
+      return const Success<void>(null);
+    } on DioException catch (error) {
+      return FailureResult<void>(_mapDioException(error));
+    } catch (_) {
+      return const FailureResult<void>(UnknownFailure());
+    }
+  }
+
+  @override
+  Future<Result<List<Beach>>> getFavoriteBeaches() {
+    return _execute<List<Beach>>(
+      request: () => _dio.get('/Users/favorites'),
+      parser: (raw) => _parseBeachList(raw),
+    );
+  }
+
+  @override
+  Future<Result<void>> addFavorite(int beachId) async {
+    try {
+      final response = await _dio.post(
+        '/Users/favorites',
+        data: {'beachId': beachId},
+      );
+      final responseData = response.data;
+      if (responseData is! Map<String, dynamic>) {
+        return const FailureResult<void>(
+          ServerFailure('Invalid response format.'),
+        );
+      }
+      final apiResponse =
+          ApiResponse<Object?>.fromJson(responseData, (raw) => raw);
+      if (!apiResponse.success) {
+        final message = apiResponse.message.isNotEmpty
+            ? apiResponse.message
+            : apiResponse.errors.join(', ');
+        return FailureResult<void>(
+          _mapStatusToFailure(
+            response.statusCode,
+            message.isNotEmpty ? message : 'Request failed on server.',
+          ),
+        );
+      }
+      return const Success<void>(null);
+    } on DioException catch (error) {
+      return FailureResult<void>(_mapDioException(error));
+    } catch (_) {
+      return const FailureResult<void>(UnknownFailure());
+    }
+  }
+
+  @override
+  Future<Result<void>> removeFavorite(int beachId) async {
+    try {
+      final response = await _dio.delete('/Users/favorites/$beachId');
+      final responseData = response.data;
+      if (responseData is! Map<String, dynamic>) {
+        return const FailureResult<void>(
+          ServerFailure('Invalid response format.'),
+        );
+      }
+      final apiResponse =
+          ApiResponse<Object?>.fromJson(responseData, (raw) => raw);
+      if (!apiResponse.success) {
+        final message = apiResponse.message.isNotEmpty
+            ? apiResponse.message
+            : apiResponse.errors.join(', ');
+        return FailureResult<void>(
+          _mapStatusToFailure(
+            response.statusCode,
+            message.isNotEmpty ? message : 'Request failed on server.',
+          ),
+        );
+      }
+      return const Success<void>(null);
+    } on DioException catch (error) {
+      return FailureResult<void>(_mapDioException(error));
+    } catch (_) {
+      return const FailureResult<void>(UnknownFailure());
+    }
   }
 
   Future<Result<T>> _execute<T>({
@@ -175,6 +332,19 @@ class BeachRepositoryImpl implements BeachRepository {
         error.type == DioExceptionType.receiveTimeout ||
         error.type == DioExceptionType.sendTimeout ||
         error.type == DioExceptionType.connectionError;
+  }
+
+  Failure _mapStatusToFailure(int? statusCode, String message) {
+    if (statusCode == 401 || statusCode == 403) {
+      return UnauthorizedFailure(message);
+    }
+    if (statusCode == 404) {
+      return NotFoundFailure(message);
+    }
+    if (statusCode != null && statusCode >= 500) {
+      return ServerFailure(message);
+    }
+    return ServerFailure(message);
   }
 
   Failure _mapDioException(DioException error) {

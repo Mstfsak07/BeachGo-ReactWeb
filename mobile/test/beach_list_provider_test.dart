@@ -9,6 +9,7 @@ import 'package:beachgo/core/network/paged_response.dart';
 import 'package:beachgo/features/beach/data/repository/beach_repository.dart';
 import 'package:beachgo/features/beach/domain/entities/beach.dart';
 import 'package:beachgo/features/beach/domain/entities/beach_filter.dart';
+import 'package:beachgo/features/beach/domain/entities/beach_review.dart';
 import 'package:beachgo/features/beach/domain/entities/weather.dart';
 import 'package:beachgo/features/beach/presentation/providers/beach_list_provider.dart';
 
@@ -217,6 +218,37 @@ class _ControlledBeachRepository extends BeachRepository {
         waveHeight: null,
       ),
     );
+  }
+
+  @override
+  Future<Result<List<BeachReview>>> getBeachReviews(int beachId) async {
+    return const Success(<BeachReview>[]);
+  }
+
+  @override
+  Future<Result<void>> createReview({
+    required int beachId,
+    required String userName,
+    required String userPhone,
+    required int rating,
+    required String comment,
+  }) async {
+    return const Success<void>(null);
+  }
+
+  @override
+  Future<Result<List<Beach>>> getFavoriteBeaches() async {
+    return const Success(<Beach>[]);
+  }
+
+  @override
+  Future<Result<void>> addFavorite(int beachId) async {
+    return const Success<void>(null);
+  }
+
+  @override
+  Future<Result<void>> removeFavorite(int beachId) async {
+    return const Success<void>(null);
   }
 }
 

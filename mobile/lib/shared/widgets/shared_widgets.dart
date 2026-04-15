@@ -8,10 +8,18 @@ class AppLoadingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: CircularProgressIndicator(
-        color: AppColors.primary,
-        strokeWidth: 2.5,
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceRaised,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.panelBorder),
+        ),
+        child: const CircularProgressIndicator(
+          color: AppColors.primary,
+          strokeWidth: 2.6,
+        ),
       ),
     );
   }
@@ -23,7 +31,7 @@ class FullScreenLoader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      backgroundColor: AppColors.slate50,
+      backgroundColor: AppColors.surface,
       body: AppLoadingIndicator(),
     );
   }
@@ -42,37 +50,62 @@ class AppErrorWidget extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF2F2),
-                borderRadius: BorderRadius.circular(32),
-              ),
-              child: const Icon(Icons.error_outline,
-                  color: AppColors.error, size: 32),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceRaised,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.panelBorder, width: 0.8),
             ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.slate600,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(34),
+                  ),
+                  child: const Icon(
+                    Icons.waves_rounded,
+                    color: AppColors.error,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Bir seyler yolunda gitmedi',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.slate600,
+                    fontSize: 14,
+                    height: 1.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (onRetry != null) ...[
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: onRetry,
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: const Text('Tekrar Dene'),
+                    ),
+                  ),
+                ],
+              ],
             ),
-            if (onRetry != null) ...[
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: onRetry,
-                child: const Text('Tekrar Dene'),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -155,30 +188,30 @@ class _BeachCardSkeletonState extends State<BeachCardSkeleton>
         opacity: _animation.value,
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.slate200, width: 0.5),
+            color: AppColors.surfaceRaised,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.panelBorder, width: 0.8),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                height: 160,
+                height: 172,
                 decoration: const BoxDecoration(
-                  color: AppColors.slate100,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                  color: AppColors.surfaceAlt,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _shimmerBox(140, 14),
-                    const SizedBox(height: 8),
-                    _shimmerBox(100, 11),
-                    const SizedBox(height: 12),
-                    _shimmerBox(double.infinity, 36),
+                    _shimmerBox(160, 16),
+                    const SizedBox(height: 10),
+                    _shimmerBox(110, 12),
+                    const SizedBox(height: 14),
+                    _shimmerBox(double.infinity, 40),
                   ],
                 ),
               ),

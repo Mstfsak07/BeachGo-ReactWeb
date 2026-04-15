@@ -1,0 +1,33 @@
+[
+  {
+    "name": "Kalypso Beach Club",
+    "description": "Kalypso Beach Club, Antalya Konyaalti sahilinde konumlanan bohemian stil bir beach club. Zengin yiyecek, icecek ve hookah menusu; sunbed, S daybed, R daybed ve cabana secenekleri; mutfak, kokteyl bar ve deep house ritmiyle premium bir gun boyu deniz deneyimi sunuyor.",
+    "address": "Meltem Mah. Akdeniz Bulvari, 07030 Antalya",
+    "phone": "+90 530 783 71 20",
+    "website": "https://kalypsobeach.com.tr",
+    "instagram": "@kalypso.beachh",
+    "instagramUsername": "kalypso.beachh",
+    "socialContentSource": "official",
+    "openTime": "08:30",
+    "closeTime": "02:00",
+    "hasEntryFee": false,
+    "entryFee": 0,
+    "sunbedPrice": 0,
+    "latitude": 36.8748558,
+    "longitude": 30.6584123,
+    "capacity": 0,
+    "hasSunbeds": true,
+    "hasShower": false,
+    "hasParking": false,
+    "hasRestaurant": true,
+    "hasBar": true,
+    "hasAlcohol": true,
+    "isChildFriendly": true,
+    "hasWaterSports": false,
+    "hasWifi": false,
+    "hasPool": false,
+    "hasDJ": false,
+    "hasAccessibility": false,
+    "todaySpecial": "Sunbed, daybed ve cabana alanlarinda gun boyu beach club deneyimi"
+  }
+]

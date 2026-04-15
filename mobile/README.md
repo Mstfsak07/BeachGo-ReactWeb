@@ -22,15 +22,52 @@ dart run build_runner build --delete-conflicting-outputs
 ## Çalıştırma
 
 ```bash
-# Development (Android emülatör — localhost için 10.0.2.2)
+# Development (Android emülatör)
 flutter run
 
-# Development (iOS simülatör — app_config.dart'ta localhost'u aç)
+# Development (iOS / desktop)
 flutter run
+
+# Physical Android device (PC IP'sini ver)
+flutter run --dart-define=API_HOST=192.168.1.50
+
+# Gerekirse tam override
+flutter run --dart-define=API_BASE_URL=http://192.168.1.50:5143/api
 
 # Production
 flutter run --dart-define=ENV=production
 ```
+
+## Local API
+
+Backend local development icin stabil HTTP adresi:
+
+```bash
+http://localhost:5143/api
+```
+
+Android emülatör icinde ayni API:
+
+```bash
+http://10.0.2.2:5143/api
+```
+
+Fiziksel cihaz icin:
+
+```bash
+http://<LOCAL_PC_IP>:5143/api
+```
+
+Backend'i LAN'dan ulasilabilir sekilde acmak icin:
+
+```bash
+dotnet run --project ..\\BeachRehberi.API\\BeachRehberi.API\\BeachRehberi.API.csproj --launch-profile lan-http
+```
+
+Notlar:
+
+- Backend startup `BEACHGO_DB_CONN` veya `ConnectionStrings:DefaultConnection` ister; tanimli degilse API ayağa kalkmaz.
+- Fiziksel cihaz baglantisinda Windows firewall `5143` portunu engelliyorsa izin vermen gerekir.
 
 ## Proje Yapısı
 

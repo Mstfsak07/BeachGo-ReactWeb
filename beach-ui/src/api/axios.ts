@@ -7,7 +7,9 @@ import axios, {
 } from 'axios';
 import { getAccessToken, refreshAccessToken } from './token';
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const baseURL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? 'https://api.beachgo.net/api' : 'http://localhost:5143/api');
 
 type RetriableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;

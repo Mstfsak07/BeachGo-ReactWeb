@@ -2,7 +2,9 @@ import axios from 'axios';
 import storage from '../lib/storage';
 import type { AppUser } from '../types';
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const baseURL =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? 'https://api.beachgo.net/api' : 'http://localhost:5143/api');
 const ACCESS_TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 const USER_KEY = 'user';

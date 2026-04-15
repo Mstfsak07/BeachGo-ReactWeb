@@ -1,0 +1,14 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - beach-ui/Dockerfile
+      - -t
+      - europe-west1-docker.pkg.dev/project-db39a430-19a7-420b-afa/beachrehberi/beachgo-ui:latest
+      - --build-arg
+      - VITE_API_URL=https://api.beachgo.net/api
+      - beach-ui
+
+images:
+  - europe-west1-docker.pkg.dev/project-db39a430-19a7-420b-afa/beachrehberi/beachgo-ui:latest

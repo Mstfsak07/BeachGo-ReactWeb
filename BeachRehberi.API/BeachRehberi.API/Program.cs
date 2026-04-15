@@ -363,8 +363,8 @@ builder.Services.AddCors(options =>
         if (builder.Environment.IsProduction())
         {
             policy.WithOrigins(
-                    "https://beachgo.com",
-                    "https://www.beachgo.com")
+                    "https://beachgo.net",
+                    "https://www.beachgo.net")
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();

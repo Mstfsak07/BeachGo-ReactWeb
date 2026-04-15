@@ -31,6 +31,14 @@ abstract class AuthRepository {
     required String password,
   });
 
+  Future<Result<void>> businessRegister({
+    required String businessName,
+    required String contactName,
+    required String email,
+    required String password,
+    String phoneNumber,
+  });
+
   Future<Result<AuthSession>> refreshSession();
 
   Future<Result<AppUser?>> getStoredUser();
@@ -85,6 +93,55 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       final apiResponse = ApiResponse<Object?>.fromJson(responseData, (raw) => raw);
+      if (!apiResponse.success) {
+        final message = apiResponse.message.isNotEmpty
+            ? apiResponse.message
+            : apiResponse.errors.join(', ');
+        return FailureResult<void>(
+          _mapStatusToFailure(
+            response.statusCode,
+            message.isNotEmpty ? message : 'Request failed on server.',
+          ),
+        );
+      }
+
+      return const Success<void>(null);
+    } on DioException catch (error) {
+      return FailureResult<void>(_mapDioException(error));
+    } catch (_) {
+      return const FailureResult<void>(UnknownFailure());
+    }
+  }
+
+  @override
+  Future<Result<void>> businessRegister({
+    required String businessName,
+    required String contactName,
+    required String email,
+    required String password,
+    String phoneNumber = '',
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/Auth/business-register',
+        data: RegisterRequestDto(
+          email: email,
+          password: password,
+          businessName: businessName,
+          contactName: contactName,
+          phoneNumber: phoneNumber,
+        ).toJson(),
+      );
+
+      final responseData = response.data;
+      if (responseData is! Map<String, dynamic>) {
+        return const FailureResult<void>(
+          ServerFailure('Invalid response format.'),
+        );
+      }
+
+      final apiResponse =
+          ApiResponse<Object?>.fromJson(responseData, (raw) => raw);
       if (!apiResponse.success) {
         final message = apiResponse.message.isNotEmpty
             ? apiResponse.message

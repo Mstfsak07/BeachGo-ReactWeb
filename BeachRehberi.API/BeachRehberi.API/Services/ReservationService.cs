@@ -30,6 +30,9 @@ namespace BeachRehberi.API.Services
             if (!useReal)
                 return ServiceResult<ReservationResponseDto>.Failure("Şu an ödeme sistemi devre dışı olduğundan rezervasyon yapılamıyor.", 503);
 
+            if (string.IsNullOrWhiteSpace(dto.ReservationTime) || !TimeSpan.TryParse(dto.ReservationTime, out var parsedReservationTime))
+                return ServiceResult<ReservationResponseDto>.FailureResult("Geçerli bir rezervasyon saati seçin.");
+
             var user = await _context.BusinessUsers.FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted);
             if (user == null)
                 return ServiceResult<ReservationResponseDto>.Failure("Kullanıcı bulunamadı.", 404);
@@ -69,6 +72,7 @@ namespace BeachRehberi.API.Services
                 PersonCount = dto.PersonCount,
                 SunbedCount = dto.SunbedCount,
                 Notes = dto.Notes,
+                ReservationTime = parsedReservationTime,
                 TotalPrice = ReservationPricing.Calculate(beach, dto.PersonCount, dto.SunbedCount)
             };
 
@@ -79,6 +83,7 @@ namespace BeachRehberi.API.Services
             {
                 Id = reservation.Id,
                 ReservationDate = reservation.ReservationDate,
+                ReservationTime = reservation.ReservationTime?.ToString(@"hh\:mm") ?? string.Empty,
                 Status = reservation.Status.ToString(),
                 BeachId = reservation.BeachId,
                 BeachName = beach.Name

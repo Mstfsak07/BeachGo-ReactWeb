@@ -2,9 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:beachgo/features/app/presentation/screens/main_shell_screen.dart';
 import 'package:beachgo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:beachgo/features/auth/presentation/screens/login_screen.dart';
+import 'package:beachgo/features/auth/presentation/screens/register_screen.dart';
+import 'package:beachgo/features/beach/domain/entities/beach.dart';
 import 'package:beachgo/features/beach/presentation/screens/beach_detail_screen.dart';
 import 'package:beachgo/features/beach/presentation/screens/beach_list_screen.dart';
+import 'package:beachgo/features/favorites/presentation/screens/favorite_beaches_screen.dart';
+import 'package:beachgo/features/reservation/domain/entities/reservation_confirmation.dart';
+import 'package:beachgo/features/reservation/presentation/screens/reservation_list_screen.dart';
+import 'package:beachgo/features/reservation/presentation/screens/reservation_screen.dart';
+import 'package:beachgo/features/reservation/presentation/screens/reservation_success_screen.dart';
 import 'package:beachgo/features/stories/presentation/screens/story_admin_screen.dart';
 
 // Sayfa importları — ilerleyen aşamalarda eklenir
@@ -16,11 +25,14 @@ part 'app_router.g.dart';
 
 // Route isimleri — magic string yerine enum kullan
 enum AppRoute {
+  startup,
+  appShell,
   home,
   beaches,
   beachDetail,
   events,
   login,
+  businessLogin,
   register,
   businessRegister,
   profile,
@@ -49,18 +61,33 @@ GoRouter router(Ref ref) {
   final authState = ref.watch(authProvider);
 
   return GoRouter(
-    initialLocation: '/beaches',
+    initialLocation: '/',
     redirect: (context, state) {
-      final isLoading = authState.isLoading;
-      if (isLoading) return null; // Henüz bilinmiyor, bekle
+      final isBootstrapping =
+          authState.isLoading &&
+          !authState.hasValue &&
+          !authState.hasError;
+      final path = state.matchedLocation;
+      final redirectTarget = state.uri.queryParameters['redirect'];
+
+      if (isBootstrapping) {
+        return path == '/' ? null : '/';
+      }
 
       final isAuthenticated = authState.valueOrNull?.isAuthenticated ?? false;
       final isBusiness = authState.valueOrNull?.isBusiness ?? false;
 
-      final path = state.matchedLocation;
+      if (path == '/') {
+        return '/app/home';
+      }
 
       // Korumalı rotalar
-      final protectedRoutes = ['/profile', '/reservations', '/favorites'];
+      final protectedRoutes = [
+        '/profile',
+        '/reservations',
+        '/favorites',
+        '/reservation',
+      ];
       final businessRoutes = ['/dashboard', '/dashboard/stats',
           '/dashboard/reservations', '/beach-settings', '/admin'];
 
@@ -74,9 +101,17 @@ GoRouter router(Ref ref) {
       }
 
       // Login/Register sayfalarına auth'lu kullanıcı giremez
-      final guestOnlyRoutes = ['/login', '/register', '/business-register'];
+      final guestOnlyRoutes = [
+        '/login',
+        '/business-login',
+        '/register',
+        '/business-register',
+      ];
       if (guestOnlyRoutes.contains(path) && isAuthenticated) {
-        return isBusiness ? '/dashboard' : '/beaches';
+        if (redirectTarget != null && redirectTarget.isNotEmpty) {
+          return redirectTarget;
+        }
+        return isBusiness ? '/dashboard' : '/app/home';
       }
 
       return null;
@@ -84,7 +119,18 @@ GoRouter router(Ref ref) {
     routes: [
       GoRoute(
         path: '/',
-        redirect: (_, __) => '/beaches',
+        name: AppRoute.startup.name,
+        builder: (context, state) => const _StartupScreen(),
+      ),
+      GoRoute(
+        path: '/app/:tab',
+        name: AppRoute.appShell.name,
+        builder: (context, state) {
+          final tab = AppShellTab.fromSegment(
+            state.pathParameters['tab'] ?? AppShellTab.home.pathSegment,
+          );
+          return MainShellScreen(currentTab: tab);
+        },
       ),
       GoRoute(
         path: '/beaches',
@@ -113,14 +159,26 @@ GoRouter router(Ref ref) {
         path: '/reservation/:beachId',
         name: AppRoute.reservation.name,
         builder: (context, state) {
-          final beachId = state.pathParameters['beachId']!;
-          return _PlaceholderScreen('Rezervasyon: $beachId');
+          final beachId = int.tryParse(state.pathParameters['beachId'] ?? '');
+          if (beachId == null) {
+            return const _PlaceholderScreen('Gecersiz Rezervasyon');
+          }
+          return ReservationScreen(
+            beachId: beachId,
+            initialBeach: state.extra is Beach ? state.extra as Beach : null,
+          );
         },
       ),
       GoRoute(
         path: '/reservation-success',
         name: AppRoute.reservationSuccess.name,
-        builder: (context, state) => const _PlaceholderScreen('Rezervasyon Başarılı'),
+        builder: (context, state) {
+          final confirmation = state.extra;
+          if (confirmation is! ReservationConfirmation) {
+            return const _PlaceholderScreen('Rezervasyon Basarili');
+          }
+          return ReservationSuccessScreen(confirmation: confirmation);
+        },
       ),
       GoRoute(
         path: '/reservation-check',
@@ -130,17 +188,22 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: '/login',
         name: AppRoute.login.name,
-        builder: (context, state) => const _PlaceholderScreen('Giriş'),
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/business-login',
+        name: AppRoute.businessLogin.name,
+        builder: (context, state) => const LoginScreen(isBusinessMode: true),
       ),
       GoRoute(
         path: '/register',
         name: AppRoute.register.name,
-        builder: (context, state) => const _PlaceholderScreen('Kayıt'),
+        builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
         path: '/business-register',
         name: AppRoute.businessRegister.name,
-        builder: (context, state) => const _PlaceholderScreen('İşletme Kaydı'),
+        builder: (context, state) => const RegisterScreen(isBusiness: true),
       ),
       GoRoute(
         path: '/forgot-password',
@@ -155,12 +218,12 @@ GoRouter router(Ref ref) {
       GoRoute(
         path: '/reservations',
         name: AppRoute.reservations.name,
-        builder: (context, state) => const _PlaceholderScreen('Rezervasyonlarım'),
+        builder: (context, state) => const ReservationListScreen(),
       ),
       GoRoute(
         path: '/favorites',
         name: AppRoute.favorites.name,
-        builder: (context, state) => const _PlaceholderScreen('Favorilerim'),
+        builder: (context, state) => const FavoriteBeachesScreen(),
       ),
       GoRoute(
         path: '/dashboard',
@@ -209,6 +272,19 @@ class _PlaceholderScreen extends StatelessWidget {
       appBar: AppBar(title: Text(title)),
       body: Center(
         child: Text(title, style: Theme.of(context).textTheme.headlineMedium),
+      ),
+    );
+  }
+}
+
+class _StartupScreen extends StatelessWidget {
+  const _StartupScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
       ),
     );
   }

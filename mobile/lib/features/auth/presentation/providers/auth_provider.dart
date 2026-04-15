@@ -100,7 +100,39 @@ class Auth extends _$Auth {
       );
 
       return switch (result) {
-        Success<void>() => const AuthState(),
+        Success<void>() => () async {
+            await authRepository.clearSession();
+            return const AuthState();
+          }(),
+        FailureResult<void>(failure: final failure) => throw failure,
+      };
+    });
+  }
+
+  Future<void> businessRegister({
+    required String businessName,
+    required String contactName,
+    required String email,
+    required String password,
+    String phoneNumber = '',
+  }) async {
+    final authRepository = ref.read(authRepositoryProvider);
+    state = const AsyncLoading();
+
+    state = await AsyncValue.guard(() async {
+      final result = await authRepository.businessRegister(
+        businessName: businessName,
+        contactName: contactName,
+        email: email,
+        password: password,
+        phoneNumber: phoneNumber,
+      );
+
+      return switch (result) {
+        Success<void>() => () async {
+            await authRepository.clearSession();
+            return const AuthState();
+          }(),
         FailureResult<void>(failure: final failure) => throw failure,
       };
     });

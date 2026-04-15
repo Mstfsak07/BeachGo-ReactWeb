@@ -9,11 +9,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:beachgo/core/error/failures.dart';
 import 'package:beachgo/core/error/result.dart';
 import 'package:beachgo/core/network/paged_response.dart';
+import 'package:beachgo/features/app/presentation/screens/main_shell_screen.dart';
+import 'package:beachgo/features/auth/data/repositories/auth_repository.dart';
+import 'package:beachgo/features/auth/domain/entities/app_user.dart';
+import 'package:beachgo/features/auth/domain/entities/auth_session.dart';
 import 'package:beachgo/features/beach/data/repository/beach_repository.dart';
 import 'package:beachgo/features/beach/domain/entities/beach.dart';
 import 'package:beachgo/features/beach/domain/entities/beach_filter.dart';
+import 'package:beachgo/features/beach/domain/entities/beach_review.dart';
 import 'package:beachgo/features/beach/domain/entities/weather.dart';
 import 'package:beachgo/features/stories/data/repositories/story_repository.dart';
 import 'package:beachgo/features/stories/domain/entities/story.dart';
@@ -24,6 +30,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          authRepositoryProvider.overrideWithValue(_FakeAuthRepository()),
           beachRepositoryProvider.overrideWithValue(_FakeBeachRepository()),
           storyRepositoryProvider.overrideWithValue(_FakeStoryRepository()),
         ],
@@ -31,11 +38,93 @@ void main() {
       ),
     );
 
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.byType(MaterialApp), findsOneWidget);
     expect(find.text('Plajlari Kesfet'), findsOneWidget);
+    expect(find.text('Kesfet'), findsOneWidget);
   });
+
+  testWidgets('main shell renders bottom navigation', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: MaterialApp(
+          home: MainShellScreen(currentTab: AppShellTab.favorites),
+        ),
+      ),
+    );
+
+    expect(find.text('Favoriler'), findsWidgets);
+    expect(find.text('Kesfet'), findsOneWidget);
+    expect(find.text('Profil'), findsOneWidget);
+  });
+}
+
+class _FakeAuthRepository extends AuthRepository {
+  @override
+  Future<void> clearSession() async {}
+
+  @override
+  Future<Result<AppUser?>> getStoredUser() async {
+    return const Success<AppUser?>(null);
+  }
+
+  @override
+  Future<Result<AuthSession>> login({
+    required String email,
+    required String password,
+  }) async {
+    return Success(
+      AuthSession(
+        accessToken: 'token',
+        refreshToken: 'refresh',
+        user: AppUser(
+          id: 1,
+          email: email,
+          role: 'User',
+          accountType: 'User',
+          firstName: 'Test',
+          lastName: 'User',
+          name: 'Test User',
+          phone: '',
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<void> persistSession(AuthSession session) async {}
+
+  @override
+  Future<Result<AuthSession>> refreshSession() async {
+    return const FailureResult<AuthSession>(
+      UnauthorizedFailure('No session'),
+    );
+  }
+
+  @override
+  Future<Result<void>> register({
+    required String name,
+    required String email,
+    required String password,
+  }) async {
+    return const Success<void>(null);
+  }
+
+  @override
+  Future<Result<void>> businessRegister({
+    required String businessName,
+    required String contactName,
+    required String email,
+    required String password,
+    String phoneNumber = '',
+  }) async {
+    return const Success<void>(null);
+  }
+
+  @override
+  Future<void> updateStoredUser(AppUser user) async {}
 }
 
 class _FakeStoryRepository extends StoryRepository {
@@ -186,5 +275,36 @@ class _FakeBeachRepository extends BeachRepository {
         waveHeight: null,
       ),
     );
+  }
+
+  @override
+  Future<Result<List<BeachReview>>> getBeachReviews(int beachId) async {
+    return const Success(<BeachReview>[]);
+  }
+
+  @override
+  Future<Result<void>> createReview({
+    required int beachId,
+    required String userName,
+    required String userPhone,
+    required int rating,
+    required String comment,
+  }) async {
+    return const Success<void>(null);
+  }
+
+  @override
+  Future<Result<List<Beach>>> getFavoriteBeaches() async {
+    return const Success(<Beach>[]);
+  }
+
+  @override
+  Future<Result<void>> addFavorite(int beachId) async {
+    return const Success<void>(null);
+  }
+
+  @override
+  Future<Result<void>> removeFavorite(int beachId) async {
+    return const Success<void>(null);
   }
 }

@@ -31,6 +31,7 @@ public class ReservationServiceTests
         {
             BeachId = db.Beaches.Select(x => x.Id).Single(),
             ReservationDate = DateTime.UtcNow.Date.AddDays(1),
+            ReservationTime = "10:00",
             PersonCount = 2,
             SunbedCount = 1
         }, userId);
@@ -69,6 +70,7 @@ public class ReservationServiceTests
         {
             BeachId = db.Beaches.Select(x => x.Id).Single(),
             ReservationDate = DateTime.UtcNow.Date.AddDays(1),
+            ReservationTime = "10:00",
             PersonCount = 2,
             SunbedCount = 1,
             TotalPrice = 1
@@ -107,6 +109,7 @@ public class ReservationServiceTests
         {
             BeachId = db.Beaches.Select(x => x.Id).Single(),
             ReservationDate = DateTime.UtcNow.Date.AddDays(1),
+            ReservationTime = "10:00",
             PersonCount = 2,
             SunbedCount = 1,
             TotalPrice = 1

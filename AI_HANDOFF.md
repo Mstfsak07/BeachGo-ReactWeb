@@ -61,9 +61,9 @@ Her ajanin oturum sonunda bu bolumu guncellemesi beklenir:
 
 - Last updated: `2026-04-16`
 - Updated by: `codex`
-- In progress: `web publishing is paused; current focus is filling real beach content before launch`
-- Last completed item: `prepared and inserted the first real beach record (Kalypso Beach Club) into the local PostgreSQL dataset, and added reusable beach import assets/scripts under ops/`
-- Next concrete step: `continue with the next real beach records, then handle business assignment and a safe gallery/story import flow`
+- In progress: `frontend is deployed to Cloud Run; final public cutover is waiting on DNS switch from the old Squarespace/Cloudflare target to Cloud Run`
+- Last completed item: `deployed beachgo-ui and updated beachrehberi-api on Cloud Run, then created Cloud Run domain mappings for beachgo.net and www.beachgo.net`
+- Next concrete step: `update public DNS for beachgo.net and www.beachgo.net to the Cloud Run records, wait for certificate provisioning, then smoke test the live domain`
 - Verification:
   - `mobile: flutter analyze`
   - `mobile: flutter test`
@@ -114,6 +114,20 @@ Her ajanin oturum sonunda bu bolumu guncellemesi beklenir:
   - 2026-04-16 itibariyla web launch hazirligi icin mevcut `api/Admin/beaches/import` endpoint'i etrafinda pratik bir import hatti eklendi: `ops/data/beaches.template.json`, `ops/scripts/import-beaches.ps1`, `ops/beach-data-import.md`.
   - `ops/data/kalypso-beach.json` ve `ops/data/kalypso-assets.md` ile ilk gercek beach kaydi hazirlandi; Kalypso Beach Club local PostgreSQL'e dogrudan insert edildi ve `GET /api/Beaches/7` 200 ile dogrulandi.
   - Mevcut backend entity-serialization davranisinda `Photos` relation'i eklendiginde `Beach -> Photos -> Beach` dongusu yuzunden detail endpoint 500 verebiliyor; bu nedenle Kalypso icin simdilik sadece `CoverImageUrl` yazildi, `Photos` tablosundaki kayitlar geri alindi.
+  - Cloud Run servisleri guncel: `beachrehberi-api` revision `00022-mg2`, `beachgo-ui` revision `00001-fhg`.
+  - `https://beachgo-ui-837681809323.europe-west1.run.app` canli ve `200` donuyor; `https://beachgo-ui-837681809323.europe-west1.run.app/beaches` da `200`.
+  - `api.beachgo.net` mapping'i `Ready=True` durumda; `https://api.beachgo.net/api/Beaches?page=1&pageSize=5` `200` donuyor.
+  - `beachgo.net` ve `www.beachgo.net` icin Cloud Run domain mapping'leri olusturuldu ancak sertifika durumu `CertificatePending`; public DNS hala eski Cloudflare/Squarespace kayitlarinda.
+  - Gerekli DNS kayitlari:
+    - `@ A 216.239.32.21`
+    - `@ A 216.239.34.21`
+    - `@ A 216.239.36.21`
+    - `@ A 216.239.38.21`
+    - `@ AAAA 2001:4860:4802:32::15`
+    - `@ AAAA 2001:4860:4802:34::15`
+    - `@ AAAA 2001:4860:4802:36::15`
+    - `@ AAAA 2001:4860:4802:38::15`
+    - `www CNAME ghs.googlehosted.com.`
 
 ## Update Discipline
 

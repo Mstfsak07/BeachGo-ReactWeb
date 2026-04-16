@@ -7,6 +7,8 @@ import {
   MapPin,
   Calendar,
   Users,
+  Minus,
+  Plus,
   ChevronRight,
   Palmtree,
   Waves,
@@ -16,12 +18,16 @@ import {
   TrendingUp,
   ShieldCheck,
   Star,
+  Thermometer,
+  Droplets,
+  Umbrella,
 } from 'lucide-react';
-import { getBeaches } from '../services/api';
+import { getActiveStories, getBeachWeather, getBeaches, type WeatherResponse } from '../services/api';
 import BeachCard from '../components/BeachCard';
+import BeachStoryBar from '../components/beach/BeachStoryBar';
 import { BeachCardSkeleton } from '../components/ui/Skeleton';
 import { useAuth } from '../context/AuthContext';
-import type { BeachDto } from '../types';
+import type { BeachDto, SocialContentItem, StoryDto } from '../types';
 
 type CategoryItem = {
   name: string;
@@ -30,18 +36,45 @@ type CategoryItem = {
   bg: string;
 };
 
+type WeatherMetricGroup = {
+  temperature?: number | string;
+  temp?: number | string;
+  description?: string;
+  condition?: string;
+  windSpeed?: number | string;
+  seaTemperature?: number | string;
+  waveHeight?: number | string;
+  [key: string]: unknown;
+};
+
 const Home = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const [featuredBeaches, setFeaturedBeaches] = useState<BeachDto[]>([]);
+  const [activeStories, setActiveStories] = useState<SocialContentItem[]>([]);
+  const [homeWeather, setHomeWeather] = useState<WeatherResponse | null>(null);
+  const [homeWeatherBeachName, setHomeWeatherBeachName] = useState<string>('');
+  const [weatherLoading, setWeatherLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [visitDate, setVisitDate] = useState('');
+  const [guestCount, setGuestCount] = useState(2);
 
   useEffect(() => {
     const fetchBeaches = async () => {
       try {
         const data = await getBeaches();
-        setFeaturedBeaches(data.slice(0, 3));
+        const preferredOrder = ['kalypso', 'la bohem', 'dubai'];
+        const normalized = (value: string | undefined | null) => (value ?? '').toLocaleLowerCase('tr-TR');
+
+        const prioritized = preferredOrder
+          .map((keyword) => data.find((beach) => normalized(beach.name).includes(keyword)))
+          .filter((beach): beach is BeachDto => Boolean(beach));
+
+        const selectedIds = new Set(prioritized.map((beach) => beach.id));
+        const fallback = data.filter((beach) => !selectedIds.has(beach.id)).slice(0, 3 - prioritized.length);
+
+        setFeaturedBeaches([...prioritized, ...fallback].slice(0, 3));
       } catch {
         // Fetch failed
       } finally {
@@ -50,6 +83,80 @@ const Home = () => {
     };
     fetchBeaches();
   }, []);
+
+  useEffect(() => {
+    const mapStoriesToStoryBarItems = (stories: StoryDto[]) => {
+      const groupedStories = new Map<string, SocialContentItem>();
+
+      stories.forEach((story) => {
+        const mediaUrl = typeof story.mediaUrl === 'string' ? story.mediaUrl : '';
+        if (!mediaUrl) {
+          return;
+        }
+
+        const groupKey =
+          typeof story.beachId === 'number'
+            ? `beach-${story.beachId}`
+            : `${story.beachName || 'Beach Story'}`;
+
+        const existingStory = groupedStories.get(groupKey);
+        const mediaItem = {
+          url: mediaUrl,
+          duration: 5,
+          caption: story.caption,
+        };
+
+        if (existingStory) {
+          const existingMedia = Array.isArray(existingStory.media) ? existingStory.media : [];
+          groupedStories.set(groupKey, {
+            ...existingStory,
+            media: [...existingMedia, mediaItem],
+          });
+          return;
+        }
+
+        groupedStories.set(groupKey, {
+          id: story.beachId ?? story.id ?? mediaUrl,
+          title: story.beachName || 'Beach Story',
+          coverImage: mediaUrl,
+          caption: story.caption,
+          media: [mediaItem],
+        });
+      });
+
+      return Array.from(groupedStories.values());
+    };
+
+    getActiveStories()
+      .then((stories) => {
+        setActiveStories(mapStoriesToStoryBarItems(stories));
+      })
+      .catch(() => {
+        setActiveStories([]);
+      });
+  }, []);
+
+  useEffect(() => {
+    const featuredBeach = featuredBeaches[0];
+    if (!featuredBeach?.id) {
+      setHomeWeather(null);
+      setHomeWeatherBeachName('');
+      return;
+    }
+
+    setHomeWeatherBeachName(featuredBeach.name || 'Seçili Plaj');
+    setWeatherLoading(true);
+    getBeachWeather(featuredBeach.id)
+      .then((weather) => {
+        setHomeWeather(weather);
+      })
+      .catch(() => {
+        setHomeWeather(null);
+      })
+      .finally(() => {
+        setWeatherLoading(false);
+      });
+  }, [featuredBeaches]);
 
   const categories: CategoryItem[] = [
     { name: 'Popüler', icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-50' },
@@ -74,6 +181,30 @@ const Home = () => {
     visible: { opacity: 1, y: 0 },
   };
 
+  const handleHeroSearch = () => {
+    const nextSearchParams = new URLSearchParams();
+
+    if (searchQuery.trim()) {
+      nextSearchParams.set('q', searchQuery.trim());
+    }
+
+    if (visitDate) {
+      nextSearchParams.set('date', visitDate);
+    }
+
+    nextSearchParams.set('guests', String(guestCount));
+    navigate(`/beaches?${nextSearchParams.toString()}`);
+  };
+
+  const weatherInfo = (homeWeather?.weather ?? {}) as WeatherMetricGroup;
+  const seaInfo = (homeWeather?.sea ?? {}) as WeatherMetricGroup;
+  const weatherHasAnyMetric =
+    (weatherInfo.temperature ?? weatherInfo.temp) != null ||
+    Boolean(weatherInfo.description || weatherInfo.condition) ||
+    weatherInfo.windSpeed != null ||
+    (seaInfo.seaTemperature ?? seaInfo.temperature) != null ||
+    seaInfo.waveHeight != null;
+
   return (
     <motion.div
       initial="hidden"
@@ -85,11 +216,12 @@ const Home = () => {
       <section className="relative min-h-[85vh] md:min-h-[90vh] flex items-center justify-center overflow-hidden bg-slate-900 pt-20">
         <div className="absolute inset-0 z-0">
           <img
-            src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80"
+            src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=2200&q=90"
             alt="Hero Beach"
-            className="w-full h-full object-cover animate-slow-zoom opacity-60"
+            className="w-full h-full object-cover animate-slow-zoom opacity-80"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,12,24,0.36)_0%,rgba(4,18,30,0.12)_30%,rgba(2,10,18,0.5)_100%)]"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(125,211,252,0.18),transparent_24%),radial-gradient(circle_at_20%_80%,rgba(251,191,36,0.1),transparent_22%)]"></div>
         </div>
 
         <div className="container mx-auto px-4 sm:px-6 relative z-10 text-center space-y-8 md:space-y-10">
@@ -134,20 +266,42 @@ const Home = () => {
                 <Calendar className="text-blue-600 shrink-0" size={24} />
                 <div className="text-left flex-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ne Zaman?</p>
-                  <p className="text-sm sm:text-base text-slate-800 font-bold">Tarih Ekle</p>
+                  <input
+                    type="date"
+                    min={new Date().toISOString().split('T')[0]}
+                    value={visitDate}
+                    onChange={(event) => setVisitDate(event.target.value)}
+                    className="w-full bg-transparent border-none outline-none text-sm sm:text-base text-slate-800 font-bold"
+                  />
                 </div>
               </div>
               <div className="min-w-0 flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 md:py-3 xl:py-2 group-hover:bg-slate-50 transition-colors rounded-[1.5rem] sm:rounded-[2rem]">
                 <Users className="text-blue-600 shrink-0" size={24} />
                 <div className="text-left flex-1">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kaç Kişi?</p>
-                  <p className="text-sm sm:text-base text-slate-800 font-bold">Misafir Ekle</p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setGuestCount((current) => Math.max(1, current - 1))}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+                    >
+                      <Minus size={14} />
+                    </button>
+                    <p className="min-w-14 text-center text-sm sm:text-base text-slate-800 font-bold">{guestCount} Misafir</p>
+                    <button
+                      type="button"
+                      onClick={() => setGuestCount((current) => Math.min(12, current + 1))}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition hover:bg-slate-200"
+                    >
+                      <Plus size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
               <motion.button
                 whileHover={{ scale: 1.05, boxShadow: '0 0 25px rgba(37, 99, 235, 0.5)' }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => navigate(`/beaches?q=${searchQuery}`)}
+                onClick={handleHeroSearch}
                 className="w-full xl:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-5 md:px-6 md:py-6 rounded-[1.5rem] sm:rounded-[2rem] shadow-xl shadow-blue-500/40 transition-all flex items-center justify-center gap-3 md:col-span-2 xl:col-span-1"
               >
                 <Search size={24} strokeWidth={3} />
@@ -163,8 +317,100 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="py-20 container mx-auto px-6">
-        <div className="flex flex-wrap justify-center gap-4 md:gap-8">
+      <section className="py-10 md:py-14">
+        <div className="container relative mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 p-6 md:p-8 shadow-2xl shadow-blue-900/20 text-white overflow-hidden relative"
+          >
+            <div className="absolute -top-14 -right-14 h-44 w-44 rounded-full bg-white/10 blur-2xl" />
+            <div className="absolute -bottom-12 -left-8 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
+            <div className="relative z-10">
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-white/70">Canli Hava</p>
+                  <h2 className="mt-2 text-2xl md:text-3xl font-black tracking-tight">Bugun Hava ve Deniz</h2>
+                  {homeWeatherBeachName && (
+                    <p className="mt-1 text-sm font-semibold text-cyan-100">{homeWeatherBeachName}</p>
+                  )}
+                </div>
+              </div>
+
+              {weatherLoading ? (
+                <p className="text-sm font-semibold text-white/85">Hava verisi yukleniyor...</p>
+              ) : weatherHasAnyMetric ? (
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+                  {(weatherInfo.temperature ?? weatherInfo.temp) != null && (
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-xl bg-white/20 p-2.5 backdrop-blur-sm">
+                        <Thermometer size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/65">Sicaklik</p>
+                        <p className="text-xl font-black">{weatherInfo.temperature ?? weatherInfo.temp}°C</p>
+                      </div>
+                    </div>
+                  )}
+                  {(weatherInfo.description || weatherInfo.condition) && (
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-xl bg-white/20 p-2.5 backdrop-blur-sm">
+                        <Umbrella size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/65">Durum</p>
+                        <p className="text-sm font-black leading-tight">{weatherInfo.description || weatherInfo.condition}</p>
+                      </div>
+                    </div>
+                  )}
+                  {weatherInfo.windSpeed != null && (
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-xl bg-white/20 p-2.5 backdrop-blur-sm">
+                        <Wind size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/65">Ruzgar</p>
+                        <p className="text-xl font-black">{weatherInfo.windSpeed} km/s</p>
+                      </div>
+                    </div>
+                  )}
+                  {(seaInfo.seaTemperature ?? seaInfo.temperature) != null && (
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-xl bg-white/20 p-2.5 backdrop-blur-sm">
+                        <Droplets size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/65">Deniz</p>
+                        <p className="text-xl font-black">{seaInfo.seaTemperature ?? seaInfo.temperature}°C</p>
+                      </div>
+                    </div>
+                  )}
+                  {seaInfo.waveHeight != null && (
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-xl bg-white/20 p-2.5 backdrop-blur-sm">
+                        <Waves size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/65">Dalga</p>
+                        <p className="text-xl font-black">{seaInfo.waveHeight} m</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm font-semibold text-white/85">
+                  Su anda hava verisi alinmiyor. Lutfen birazdan tekrar kontrol et.
+                </p>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      <section className="py-20">
+        <div className="container relative mx-auto px-6">
+          <div className="flex flex-wrap justify-center gap-4 md:gap-8">
           {categories.map((cat, i) => {
             const Icon = cat.icon;
             return (
@@ -187,10 +433,17 @@ const Home = () => {
             );
           })}
         </div>
+        </div>
       </section>
 
-      <section className="py-24 bg-slate-50/50">
-        <div className="container mx-auto px-6">
+      <section className="py-24">
+        <div className="container relative mx-auto px-6">
+          <BeachStoryBar
+            stories={activeStories}
+            eyebrow="Live Stories"
+            title="Bugunun Story Akisi"
+            description="Tum beach storylerini tek yerde ac ve tam ekranda izle."
+          />
           <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
             <div className="space-y-4">
               <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest">
@@ -203,7 +456,7 @@ const Home = () => {
             <motion.div whileHover={{ x: 5 }}>
               <Link
                 to="/beaches"
-                className="group flex items-center gap-4 bg-white px-8 py-5 rounded-[2rem] shadow-xl shadow-slate-200/50 text-slate-900 font-bold hover:bg-blue-600 hover:text-white transition-all duration-500 border border-slate-100"
+                className="group flex items-center gap-4 bg-white/90 px-8 py-5 rounded-[2rem] shadow-xl shadow-slate-300/40 text-slate-900 font-bold hover:bg-blue-600 hover:text-white transition-all duration-500 border border-white/70 backdrop-blur-xl"
               >
                 Tüm Plajları Gör
                 <div className="bg-slate-100 group-hover:bg-white/20 p-1 rounded-full transition-colors">
@@ -283,7 +536,8 @@ const Home = () => {
         </div>
       </section>
 
-      <section className="py-24 container mx-auto px-6">
+      <section className="py-24">
+        <div className="container relative mx-auto px-6">
         <motion.div
           whileHover={{ scale: 1.01 }}
           className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[3rem] p-12 md:p-24 relative overflow-hidden shadow-3xl shadow-blue-500/20"
@@ -325,6 +579,7 @@ const Home = () => {
             </div>
           </div>
         </motion.div>
+        </div>
       </section>
     </motion.div>
   );

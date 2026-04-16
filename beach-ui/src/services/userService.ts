@@ -4,6 +4,7 @@ import type { ApiResult } from '../types';
 type ProfilePayload = {
   contactName?: string;
   businessName?: string;
+  phoneNumber?: string;
   email?: string;
   role?: string;
   [key: string]: unknown;

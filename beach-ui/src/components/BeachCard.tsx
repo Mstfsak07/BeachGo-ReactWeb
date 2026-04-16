@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { BeachDto } from '../types';
+import { getPreferredBeachImage } from '../lib/beachVisuals';
 
 type BeachCardProps = {
   beach: BeachDto;
@@ -55,7 +56,7 @@ const FACILITY_LIST: FacilityItem[] = [
 
 const BeachCard = memo(({ beach }: BeachCardProps) => {
   const navigate = useNavigate();
-  const beachImage = beach.imageUrl;
+  const beachImage = getPreferredBeachImage(beach);
   const occupancy = beach.occupancyPercent ?? 0;
   const rating = beach.rating ?? 0;
   const address = beach.address || '';

@@ -72,6 +72,28 @@ const Beaches = () => {
   const [filters, setFilters] = useState<BeachFilters>({ ...defaultFilters });
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
+  const filterBeachesLocally = useCallback((list: BeachDto[], rawQuery: string) => {
+    const normalizedQuery = rawQuery.trim().toLocaleLowerCase('tr-TR');
+    if (!normalizedQuery) {
+      return list;
+    }
+
+    return list.filter((beach) => {
+      const haystacks = [
+        beach.name,
+        beach.address,
+        beach.description,
+        beach.location,
+        beach.website,
+        beach.instagram,
+      ]
+        .filter(Boolean)
+        .map((value) => `${value}`.toLocaleLowerCase('tr-TR'));
+
+      return haystacks.some((value) => value.includes(normalizedQuery));
+    });
+  }, []);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -95,10 +117,22 @@ const Beaches = () => {
       setLoading(true);
       setError('');
       searchBeaches(qParam)
-        .then((list) => setBeaches(list))
+        .then(async (list) => {
+          if (list.length > 0) {
+            setBeaches(list);
+            return;
+          }
+
+          const fullList = await getBeaches();
+          setBeaches(filterBeachesLocally(fullList, qParam));
+        })
         .catch(() => {
-          setError('Arama yapılırken bir hata oluştu');
-          setBeaches([]);
+          getBeaches()
+            .then((fullList) => setBeaches(filterBeachesLocally(fullList, qParam)))
+            .catch(() => {
+              setError('Arama yapılırken bir hata oluştu');
+              setBeaches([]);
+            });
         })
         .finally(() => setLoading(false));
       return;
@@ -122,7 +156,7 @@ const Beaches = () => {
     }
 
     void fetchData();
-  }, [fetchData, searchParams]);
+  }, [fetchData, filterBeachesLocally, searchParams]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -146,10 +180,20 @@ const Beaches = () => {
     setError('');
     try {
       const searchList = await searchBeaches(query);
-      setBeaches(searchList);
+      if (searchList.length > 0) {
+        setBeaches(searchList);
+      } else {
+        const fullList = await getBeaches();
+        setBeaches(filterBeachesLocally(fullList, query));
+      }
     } catch {
-      setError('Arama yapılırken bir hata oluştu');
-      setBeaches([]);
+      try {
+        const fullList = await getBeaches();
+        setBeaches(filterBeachesLocally(fullList, query));
+      } catch {
+        setError('Arama yapılırken bir hata oluştu');
+        setBeaches([]);
+      }
     } finally {
       setLoading(false);
     }

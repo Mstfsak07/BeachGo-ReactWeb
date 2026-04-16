@@ -3,6 +3,8 @@ import { toast } from 'react-hot-toast';
 import { User, Phone, Mail, ChevronLeft, MessageSquare } from 'lucide-react';
 import type { GuestReservationStepProps } from './types';
 
+const RESERVATION_OPTIONS = ['Sezlong', 'Loca', 'Restaurant Masası'] as const;
+
 type StepPersonalInfoProps = GuestReservationStepProps & {
   onNext: (email: string) => Promise<void> | void;
   onBack: () => void;
@@ -61,6 +63,31 @@ const StepPersonalInfo = ({ formData, updateForm, onNext, onBack, loading }: Ste
             required
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition text-slate-800 font-bold"
           />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-2 block">
+          Rezervasyon Tipi
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {RESERVATION_OPTIONS.map((option) => {
+            const isSelected = formData.reservationType === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => updateForm({ reservationType: option })}
+                className={`rounded-xl border px-4 py-3 text-sm font-black transition ${
+                  isSelected
+                    ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-200/50'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50'
+                }`}
+              >
+                {option}
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -20,14 +20,34 @@ import {
   Waves,
   Droplets,
 } from 'lucide-react';
-import { getBeachById, getBeachWeather, type WeatherResponse } from '../services/api';
+import { getBeachById, getBeachStories, getBeachWeather, type WeatherResponse } from '../services/api';
 import { addFavorite, getFavorites, removeFavorite } from '../services/favoriteService';
 import { useAuth } from '../context/AuthContext';
 import { BeachDetailSkeleton } from '../components/ui/Skeleton';
 import ReviewSection from '../components/ReviewSection';
 import BeachStoryBar from '../components/beach/BeachStoryBar';
 import BeachGallery from '../components/beach/BeachGallery';
-import type { BeachDto, SocialContentItem } from '../types';
+import GoogleReviewsSection from '../components/GoogleReviewsSection';
+import type { BeachDto, SocialContentItem, StoryDto } from '../types';
+import { getCuratedGalleryForBeach, getPreferredBeachImage } from '../lib/beachVisuals';
+
+const RESERVATION_OPTIONS = [
+  { value: 'Sezlong', label: 'Sezlong' },
+  { value: 'Loca', label: 'Loca' },
+  { value: 'Restaurant Masası', label: 'Restaurant Masası' },
+] as const;
+
+const getReservationCountLabel = (type: string) => {
+  if (type === 'Loca') {
+    return 'Loca';
+  }
+
+  if (type === 'Restaurant Masası') {
+    return 'Masa';
+  }
+
+  return 'Sezlong';
+};
 
 type SocialContent = {
   stories: SocialContentItem[];
@@ -50,6 +70,27 @@ const EMPTY_SOCIAL_CONTENT: SocialContent = {
   gallery: [],
 };
 
+const mapStoryDtoToStoryBarItem = (story: StoryDto, beach: BeachDto | null) => {
+  const mediaUrl = typeof story.mediaUrl === 'string' ? story.mediaUrl : '';
+  if (!mediaUrl) {
+    return null;
+  }
+
+  return {
+    id: story.id ?? mediaUrl,
+    title: story.beachName || beach?.name || 'Beach Story',
+    coverImage: story.beachImageUrl || beach?.imageUrl || mediaUrl,
+    caption: story.caption,
+    media: [
+      {
+        url: mediaUrl,
+        duration: 5,
+        caption: story.caption,
+      },
+    ],
+  };
+};
+
 const BeachDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -63,8 +104,10 @@ const BeachDetail = () => {
   const [resDate, setResDate] = useState(new Date().toISOString().split('T')[0]);
   const [personCount, setPersonCount] = useState(1);
   const [sunbedCount, setSunbedCount] = useState(0);
+  const [reservationType, setReservationType] = useState<string>(RESERVATION_OPTIONS[0].value);
   const [isFavorite, setIsFavorite] = useState(false);
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
+  const [socialContent, setSocialContent] = useState<SocialContent>(EMPTY_SOCIAL_CONTENT);
 
   const fetchBeach = useCallback(async () => {
     if (!id) {
@@ -124,6 +167,31 @@ const BeachDetail = () => {
       });
   }, [id]);
 
+  useEffect(() => {
+    if (!id) {
+      setSocialContent(EMPTY_SOCIAL_CONTENT);
+      return;
+    }
+
+    getBeachStories(id)
+      .then((stories) => {
+        const curatedGallery = getCuratedGalleryForBeach(beach);
+        setSocialContent({
+          stories: stories
+            .map((story) => mapStoryDtoToStoryBarItem(story, beach))
+            .filter(Boolean) as SocialContentItem[],
+          gallery: curatedGallery,
+        });
+      })
+      .catch((fetchError) => {
+        console.error('Beach stories fetch failed', fetchError);
+        setSocialContent({
+          ...EMPTY_SOCIAL_CONTENT,
+          gallery: getCuratedGalleryForBeach(beach),
+        });
+      });
+  }, [id, beach]);
+
   const toggleFavorite = async () => {
     if (!auth.isAuthenticated) {
       navigate('/login', { state: { from: location } });
@@ -161,6 +229,7 @@ const BeachDetail = () => {
         reservationDate: resDate,
         personCount,
         sunbedCount,
+        reservationType,
       },
     });
   };
@@ -195,7 +264,7 @@ const BeachDetail = () => {
     );
   }
 
-  const heroImage = beach.imageUrl;
+  const heroImage = getPreferredBeachImage(beach);
   const rating = beach.rating ?? 0;
   const reviewCount = beach.reviewCount ?? 0;
   const occupancy = beach.occupancyPercent ?? 0;
@@ -204,6 +273,7 @@ const BeachDetail = () => {
   const closeTime = beach.closeTime ?? '';
   const weatherInfo = (weather?.weather ?? {}) as WeatherMetricGroup;
   const seaInfo = (weather?.sea ?? {}) as WeatherMetricGroup;
+  const reservationCountLabel = getReservationCountLabel(reservationType);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }} className="min-h-screen bg-white pb-10 lg:pb-20 font-sans">
@@ -259,7 +329,7 @@ const BeachDetail = () => {
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-12 -mt-10 relative z-40">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16">
           <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="lg:col-span-8 space-y-12 order-1">
-            <BeachStoryBar stories={EMPTY_SOCIAL_CONTENT.stories} />
+            <BeachStoryBar stories={socialContent.stories} />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               {[
                 { icon: Users, label: 'Kapasite', val: (beach.capacity ?? 0) > 0 ? beach.capacity : '-', bg: 'bg-blue-50', c: 'text-blue-600' },
@@ -374,7 +444,7 @@ const BeachDetail = () => {
               </div>
             )}
 
-            <BeachGallery images={EMPTY_SOCIAL_CONTENT.gallery} />
+            <BeachGallery images={socialContent.gallery} />
 
             {(beach.hasEntryFee || (beach.sunbedPrice ?? 0) > 0) && (
               <div className="space-y-4 pb-12">
@@ -423,6 +493,7 @@ const BeachDetail = () => {
               </div>
             )}
 
+            <GoogleReviewsSection beachId={beach.id} />
             <ReviewSection beachId={beach.id} beachName={beach.name} />
           </motion.div>
 
@@ -468,7 +539,7 @@ const BeachDetail = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Sezlong</label>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">{reservationCountLabel}</label>
                         <input
                           type="number"
                           min="0"
@@ -477,6 +548,28 @@ const BeachDetail = () => {
                           disabled={resLoading}
                           className="w-full px-4 py-4 rounded-2xl border-2 border-slate-100 bg-white/50 focus:bg-white focus:border-blue-500 outline-none transition-all text-slate-800 font-bold text-center"
                         />
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Rezervasyon Tipi</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {RESERVATION_OPTIONS.map((option) => {
+                          const isActive = reservationType === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              onClick={() => setReservationType(option.value)}
+                              className={`rounded-2xl border-2 px-4 py-4 text-sm font-black transition-all ${
+                                isActive
+                                  ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-200/60'
+                                  : 'border-slate-100 bg-white/70 text-slate-700 hover:border-blue-200 hover:bg-blue-50'
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3">

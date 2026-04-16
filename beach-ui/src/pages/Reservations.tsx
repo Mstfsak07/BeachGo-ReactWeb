@@ -24,6 +24,18 @@ type ReservationWithCompat = ReservationDto & {
   beachId?: number;
 };
 
+const getReservationCountLabel = (type?: string) => {
+  if (type === 'Loca') {
+    return 'Loca';
+  }
+
+  if (type === 'Restaurant Masası') {
+    return 'Masa';
+  }
+
+  return 'Şezlong';
+};
+
 const Reservations = () => {
   const { confirm } = useConfirmDialog();
   const [reservations, setReservations] = useState<ReservationWithCompat[]>([]);
@@ -199,10 +211,16 @@ const Reservations = () => {
                               <Users size={16} className="text-emerald-500" />
                               {reservationItem.personCount ?? 0} Kişi
                             </div>
+                            {reservationItem.reservationType && (
+                              <div className="flex items-center gap-2">
+                                <CreditCard size={16} className="text-violet-500" />
+                                {reservationItem.reservationType}
+                              </div>
+                            )}
                             {(reservationItem.sunbedCount ?? 0) > 0 && (
                               <div className="flex items-center gap-2">
                                 <CreditCard size={16} className="text-amber-500" />
-                                {reservationItem.sunbedCount} Şezlong
+                                {reservationItem.sunbedCount} {getReservationCountLabel(reservationItem.reservationType)}
                               </div>
                             )}
                             <div className="flex items-center gap-2">

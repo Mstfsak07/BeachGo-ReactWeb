@@ -1,12 +1,13 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
-import { User, Mail, Lock, Save, Loader2, Briefcase } from 'lucide-react';
+import { User, Mail, Lock, Save, Loader2, Briefcase, Phone } from 'lucide-react';
 import userService from '../services/userService';
 
 type ProfileState = {
   contactName: string;
   businessName: string;
+  phoneNumber: string;
   email: string;
   role: string;
 };
@@ -23,6 +24,7 @@ const Profile = () => {
   const [profile, setProfile] = useState<ProfileState>({
     contactName: '',
     businessName: '',
+    phoneNumber: '',
     email: '',
     role: '',
   });
@@ -42,6 +44,7 @@ const Profile = () => {
         setProfile({
           contactName: data.contactName || '',
           businessName: data.businessName || '',
+          phoneNumber: data.phoneNumber || '',
           email: data.email || '',
           role: data.role || '',
         });
@@ -74,6 +77,7 @@ const Profile = () => {
       await userService.updateProfile({
         contactName: profile.contactName,
         businessName: profile.businessName,
+        phoneNumber: profile.phoneNumber,
       });
       toast.success('Profil güncellendi.');
     } catch {
@@ -158,6 +162,20 @@ const Profile = () => {
                     value={profile.contactName}
                     onChange={handleProfileChange('contactName')}
                     placeholder="Adınız Soyadınız"
+                    className="w-full pl-12 pr-6 py-4 rounded-2xl border-2 border-slate-100 bg-white focus:border-blue-500 transition-all text-slate-800 font-bold outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-2">Telefon Numarası</label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <input
+                    type="tel"
+                    value={profile.phoneNumber}
+                    onChange={handleProfileChange('phoneNumber')}
+                    placeholder="+90 5XX XXX XX XX"
                     className="w-full pl-12 pr-6 py-4 rounded-2xl border-2 border-slate-100 bg-white focus:border-blue-500 transition-all text-slate-800 font-bold outline-none"
                   />
                 </div>

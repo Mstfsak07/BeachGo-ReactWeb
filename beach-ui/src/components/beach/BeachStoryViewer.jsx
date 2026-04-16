@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import useBodyScrollLock from '../../hooks/useBodyScrollLock';
 import useModalHistory from '../../hooks/useModalHistory';
@@ -91,15 +92,19 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
     return () => clearInterval(timer);
   }, [currentMedia, isPaused, isLoaded, handleNext]);
 
-  return (
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal((
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center sm:p-4"
+      className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center"
     >
       <div 
-        className="relative w-full h-full sm:max-w-md sm:h-[85vh] sm:rounded-[2rem] overflow-hidden bg-black shadow-2xl flex flex-col"
+        className="group relative w-full h-full overflow-hidden bg-black shadow-2xl flex flex-col"
         onPointerDown={(e) => {
             if(e.target.closest('button')) return;
             setIsPaused(true);
@@ -109,7 +114,7 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
         onPointerLeave={() => setIsPaused(false)}
       >
         {/* Progress Bars */}
-        <div className="absolute top-0 inset-x-0 p-4 pt-6 z-50 flex gap-1.5 bg-gradient-to-b from-black/60 to-transparent">
+        <div className="absolute top-0 inset-x-0 p-4 pt-6 z-50 flex gap-1.5 bg-gradient-to-b from-black/80 via-black/30 to-transparent">
           {currentStory.media.map((_, idx) => (
             <div key={idx} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden backdrop-blur-sm">
               <div 
@@ -138,7 +143,9 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
         </div>
 
         {/* Media Content */}
-        <div className="relative flex-1 bg-slate-900 w-full h-full flex items-center justify-center">
+        <div className="relative flex-1 bg-slate-950 w-full h-full flex items-center justify-center">
+          <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/60 via-black/20 to-transparent z-10 pointer-events-none" />
+          <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/80 via-black/30 to-transparent z-10 pointer-events-none" />
           {!isLoaded && <div className="absolute inset-0 flex items-center justify-center"><div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin"></div></div>}
           <AnimatePresence mode="wait">
             <motion.img
@@ -150,7 +157,7 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
               src={currentMedia.url}
               alt="Story"
               onLoad={() => setIsLoaded(true)}
-              className={`w-full h-full object-contain sm:object-cover ${!isLoaded ? 'opacity-0' : 'opacity-100'}`}
+              className={`w-full h-full object-cover ${!isLoaded ? 'opacity-0' : 'opacity-100'}`}
               drag="y"
               dragConstraints={{ top: 0, bottom: 0 }}
               onDragEnd={(e, info) => {
@@ -158,6 +165,16 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
               }}
             />
           </AnimatePresence>
+
+          {currentMedia?.caption || currentStory?.caption ? (
+            <div className="absolute inset-x-0 bottom-0 z-20 px-5 pb-8 sm:px-8 sm:pb-10 pointer-events-none">
+              <div className="max-w-3xl">
+                <p className="text-white text-base sm:text-lg font-semibold leading-relaxed drop-shadow-2xl">
+                  {currentMedia.caption || currentStory.caption}
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Navigation Zones */}
@@ -179,7 +196,7 @@ const BeachStoryViewer = ({ stories, initialStoryIndex, onClose }) => {
         </div>
       </div>
     </motion.div>
-  );
+  ), document.body);
 };
 
 export default BeachStoryViewer;

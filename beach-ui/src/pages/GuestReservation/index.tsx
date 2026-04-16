@@ -17,6 +17,7 @@ const STEP_LABELS = ['Bilgiler', 'Doğrulama', 'Onay'];
 type ReservationLocationState = {
   reservationDate?: string;
   personCount?: number;
+  reservationType?: string;
 };
 
 type GuestReservationResult = ReservationDto & {
@@ -40,7 +41,7 @@ const GuestReservation = () => {
   const [formData, setFormData] = useState<GuestReservationFormData>({
     reservationDate: reservationState.reservationDate || new Date().toISOString().split('T')[0],
     reservationTime: '10:00',
-    reservationType: 'Standart',
+    reservationType: reservationState.reservationType || 'Sezlong',
     personCount: reservationState.personCount || 1,
     note: '',
     firstName: '',

@@ -47,11 +47,11 @@ const Footer = () => {
             <ul className="space-y-6">
               <li className="flex items-start gap-4">
                 <MapPin className="text-blue-500" size={20} />
-                <p className="text-slate-400 text-sm font-medium">Lara, Muratpaşa, Antalya</p>
+                <p className="text-slate-400 text-sm font-medium">Antalya, Konyaaltı</p>
               </li>
               <li className="flex items-start gap-4">
                 <Mail className="text-blue-500" size={20} />
-                <p className="text-slate-400 text-sm font-medium">hello@beachgo.com</p>
+                <p className="text-slate-400 text-sm font-medium">mustafa@beachgo.net</p>
               </li>
             </ul>
           </div>

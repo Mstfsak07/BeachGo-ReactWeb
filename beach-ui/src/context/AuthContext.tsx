@@ -30,6 +30,21 @@ type AuthProviderProps = {
   children: ReactNode;
 };
 
+const AUTH_BOOTSTRAP_PATH_PREFIXES = [
+  '/profile',
+  '/reservations',
+  '/favorites',
+  '/dashboard',
+  '/admin',
+  '/beach-settings',
+  '/login',
+  '/register',
+  '/business-register',
+];
+
+const shouldBootstrapAuth = (pathname: string): boolean =>
+  AUTH_BOOTSTRAP_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +70,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   useEffect(() => {
+    const pathname = window.location.pathname || '/';
+    if (!shouldBootstrapAuth(pathname)) {
+      setLoading(false);
+      return;
+    }
+
     const initializeAuth = async () => {
       try {
         const authData = await refreshAccessToken({ redirectOnFailure: false });

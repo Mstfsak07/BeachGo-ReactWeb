@@ -96,6 +96,19 @@ export type SocialContentItem = {
   [key: string]: unknown;
 };
 
+export type StoryDto = {
+  id?: number | string;
+  beachId?: number;
+  beachName?: string;
+  beachImageUrl?: string;
+  mediaUrl?: string;
+  mediaType?: string;
+  caption?: string;
+  createdAt?: string;
+  expiresAt?: string;
+  [key: string]: unknown;
+};
+
 export type SendOtpResponse = {
   verificationId?: string;
   [key: string]: unknown;
@@ -136,6 +149,30 @@ export type BeachReviewDto = {
   createdAt?: string;
   rating?: number;
   comment?: string;
+  [key: string]: unknown;
+};
+
+export type GoogleReviewDto = {
+  authorName?: string;
+  authorUri?: string;
+  authorPhotoUri?: string;
+  rating?: number;
+  relativePublishTimeDescription?: string;
+  publishTime?: string;
+  text?: string;
+  originalText?: string;
+  [key: string]: unknown;
+};
+
+export type GoogleReviewsDto = {
+  isConfigured?: boolean;
+  hasPlaceMatch?: boolean;
+  placeId?: string;
+  placeName?: string;
+  googleMapsUri?: string;
+  rating?: number;
+  userRatingCount?: number;
+  reviews?: GoogleReviewDto[];
   [key: string]: unknown;
 };
 

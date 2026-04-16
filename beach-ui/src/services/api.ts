@@ -7,6 +7,8 @@ import {
   type BusinessStatsDto,
   type CreateReviewRequest,
   type EventDto,
+  type GoogleReviewsDto,
+  type StoryDto,
 } from '../types';
 
 export type WeatherResponse = {
@@ -58,6 +60,21 @@ export const createReview = async (data: CreateReviewRequest): Promise<BeachRevi
 export const getBeachWeather = async (beachId: string | number): Promise<WeatherResponse | null> => {
   const response = await api.get(`/Beaches/${beachId}/weather`);
   return unwrapResponse<WeatherResponse>(response.data);
+};
+
+export const getBeachGoogleReviews = async (beachId: string | number): Promise<GoogleReviewsDto | null> => {
+  const response = await api.get(`/Beaches/${beachId}/google-reviews`);
+  return unwrapResponse<GoogleReviewsDto>(response.data);
+};
+
+export const getBeachStories = async (beachId: string | number): Promise<StoryDto[]> => {
+  const response = await api.get(`/Stories/beach/${beachId}`);
+  return unwrapArrayResponse<StoryDto>(response.data);
+};
+
+export const getActiveStories = async (): Promise<StoryDto[]> => {
+  const response = await api.get('/Stories');
+  return unwrapArrayResponse<StoryDto>(response.data);
 };
 
 export const getBusinessDashboard = async (): Promise<BusinessStatsDto | null> => {

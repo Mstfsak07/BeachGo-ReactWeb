@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -33,6 +33,7 @@ const Favorites = lazy(() => import("./pages/Favorites"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const PremiumPreview = lazy(() => import("./pages/PremiumPreview"));
 
 const GuestOnlyRoute = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -49,6 +50,16 @@ const Spinner = () => (
     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
   </div>
 );
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
+
+  return null;
+};
 
 const AppShell = () => {
   const location = useLocation();
@@ -67,6 +78,7 @@ const AppShell = () => {
             <Route path="/beaches" element={<Beaches />} />
             <Route path="/beaches/:id" element={<BeachDetail />} />
             <Route path="/events" element={<Events />} />
+            <Route path="/premium-preview" element={<PremiumPreview />} />
             <Route path="/reservation-check" element={<ReservationCheck />} />
             <Route path="/reservation/:beachId" element={<GuestReservation />} />
             <Route path="/reservation-success" element={<ReservationSuccess />} />
@@ -115,6 +127,7 @@ const AppContent = () => {
 
   return (
     <Router>
+      <ScrollToTop />
       <Toaster position="top-right" reverseOrder={false} />
       <AppShell />
     </Router>

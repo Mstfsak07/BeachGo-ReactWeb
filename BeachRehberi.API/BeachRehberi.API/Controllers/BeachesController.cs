@@ -15,12 +15,18 @@ public class BeachesController : ControllerBase
 {
     private readonly IBeachService _beachService;
     private readonly IWeatherService _weatherService;
+    private readonly IGooglePlaceReviewsService _googlePlaceReviewsService;
     private readonly IMediator _mediator;
 
-    public BeachesController(IBeachService beachService, IWeatherService weatherService, IMediator mediator)
+    public BeachesController(
+        IBeachService beachService,
+        IWeatherService weatherService,
+        IGooglePlaceReviewsService googlePlaceReviewsService,
+        IMediator mediator)
     {
         _beachService = beachService;
         _weatherService = weatherService;
+        _googlePlaceReviewsService = googlePlaceReviewsService;
         _mediator = mediator;
     }
 
@@ -55,6 +61,16 @@ public class BeachesController : ControllerBase
         var sea = await _weatherService.GetSeaDataAsync(beach.Latitude, beach.Longitude);
 
         return new { weather, sea }.ToOkApiResponse();
+    }
+
+    [AllowAnonymous]
+    [HttpGet("{id}/google-reviews")]
+    public async Task<IActionResult> GetGoogleReviews(int id, CancellationToken cancellationToken)
+    {
+        var reviews = await _googlePlaceReviewsService.GetBeachReviewsAsync(id, cancellationToken)
+            ?? throw new NotFoundException("Plaj bulunamadı.");
+
+        return reviews.ToOkApiResponse();
     }
 
     [AllowAnonymous]

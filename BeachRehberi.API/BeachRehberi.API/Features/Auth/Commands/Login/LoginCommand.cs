@@ -33,8 +33,8 @@ public class LoginHandler : IRequestHandler<LoginCommand, AuthResult>
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return new AuthResult { Success = false, Message = "Geçersiz kullanıcı bilgileri." };
 
-        if (string.Equals(user.Role, UserRoles.Business, StringComparison.OrdinalIgnoreCase) && !user.IsEmailVerified)
-            return new AuthResult { Success = false, Message = "İşletme hesabı için e-posta doğrulaması zorunludur." };
+        if (!user.IsEmailVerified)
+            return new AuthResult { Success = false, Message = "Giriş yapmadan önce e-posta adresinizi doğrulamanız gerekiyor." };
 
         await InvalidateAllSessionsAsync(user.Id, "new_login", cancellationToken);
 

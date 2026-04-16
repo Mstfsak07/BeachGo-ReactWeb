@@ -83,7 +83,7 @@ namespace BeachRehberi.API.Controllers
 
             if (!result.Success)
             {
-                if (string.Equals(result.Message, "İşletme hesabı için e-posta doğrulaması zorunludur.", StringComparison.Ordinal))
+                if (string.Equals(result.Message, "Giriş yapmadan önce e-posta adresinizi doğrulamanız gerekiyor.", StringComparison.Ordinal))
                     throw new DomainException(result.Message, 403);
 
                 throw new DomainException(result.Message);

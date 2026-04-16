@@ -149,6 +149,7 @@ builder.Services.AddScoped<IEventService, EventService>();
 builder.Services.AddScoped<IStoryService, StoryService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IWeatherService, WeatherService>();
+builder.Services.AddHttpClient<IGooglePlaceReviewsService, GooglePlaceReviewsService>();
 builder.Services.AddScoped<IRevokedTokenCleanupJob, RevokedTokenCleanupJob>();
 builder.Services.AddSingleton<CloudSchedulerRequestValidator>();
 builder.Services.AddSingleton<IDatabaseInitializationState, DatabaseInitializationState>();
@@ -363,6 +364,7 @@ builder.Services.AddCors(options =>
         if (builder.Environment.IsProduction())
         {
             policy.WithOrigins(
+                    "https://beachgo-ui-837681809323.europe-west1.run.app",
                     "https://beachgo.net",
                     "https://www.beachgo.net")
                 .AllowAnyHeader()

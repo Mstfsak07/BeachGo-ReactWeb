@@ -34,6 +34,7 @@ public class UsersController : ControllerBase
                 u.Email,
                 u.ContactName,
                 u.BusinessName,
+                u.PhoneNumber,
                 u.Role,
                 u.CreatedAt
             })
@@ -56,6 +57,10 @@ public class UsersController : ControllerBase
         if (user == null) return NotFound("Kullanıcı bulunamadı.");
 
         user.UpdateProfile(request.ContactName, request.BusinessName);
+        user.UpdatePersonalInfo(
+            user.FirstName ?? string.Empty,
+            user.LastName ?? string.Empty,
+            request.PhoneNumber?.Trim() ?? string.Empty);
         
         await _db.SaveChangesAsync();
 
@@ -185,6 +190,7 @@ public class UpdateProfileRequest
 {
     public string? ContactName { get; set; }
     public string? BusinessName { get; set; }
+    public string? PhoneNumber { get; set; }
 }
 
 public class ChangePasswordRequest

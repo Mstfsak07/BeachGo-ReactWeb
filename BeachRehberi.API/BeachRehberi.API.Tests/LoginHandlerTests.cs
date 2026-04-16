@@ -29,11 +29,11 @@ public class LoginHandlerTests
             CancellationToken.None);
 
         Assert.False(result.Success);
-        Assert.Equal("İşletme hesabı için e-posta doğrulaması zorunludur.", result.Message);
+        Assert.Equal("Giriş yapmadan önce e-posta adresinizi doğrulamanız gerekiyor.", result.Message);
     }
 
     [Fact]
-    public async Task Handle_allows_unverified_regular_user_login()
+    public async Task Handle_blocks_unverified_regular_user_login()
     {
         await using var db = CreateDbContext();
         db.BusinessUsers.Add(new BusinessUser(
@@ -52,10 +52,8 @@ public class LoginHandlerTests
             }),
             CancellationToken.None);
 
-        Assert.True(result.Success);
-        Assert.Equal(UserRoles.User, result.User?.Role);
-        Assert.Equal(UserRoles.User, result.User?.AccountType);
-        Assert.False(result.User?.IsEmailVerified);
+        Assert.False(result.Success);
+        Assert.Equal("Giriş yapmadan önce e-posta adresinizi doğrulamanız gerekiyor.", result.Message);
     }
 
     [Fact]

@@ -44,17 +44,27 @@ namespace BeachRehberi.API.Services
                     403);
             }
 
-            if (dto.ReservationDate.Date < DateTime.UtcNow.Date)
+            var reservationDay = DateTime.SpecifyKind(dto.ReservationDate.Date, DateTimeKind.Utc);
+            var nextReservationDay = reservationDay.AddDays(1);
+
+            if (reservationDay < DateTime.UtcNow.Date)
                 return ServiceResult<ReservationResponseDto>.FailureResult("Geçmiş bir tarih için rezervasyon yapılamaz.");
 
             var beach = await _context.Beaches.FirstOrDefaultAsync(b => b.Id == dto.BeachId && !b.IsDeleted);
             if (beach == null)
                 return ServiceResult<ReservationResponseDto>.FailureResult("Plaj bulunamadı.");
 
+            var selectedSeats = ReservationSeatSelection.Normalize(dto.SelectedSeats);
+            if (ReservationSeatSelection.RequiresSeatSelection(dto.ReservationType) && selectedSeats.Count == 0)
+            {
+                return ServiceResult<ReservationResponseDto>.FailureResult($"{dto.ReservationType} için oturma düzeninden en az bir yer seçin.");
+            }
+
             var exists = await _context.Reservations.AnyAsync(r =>
                 r.UserId == userId &&
                 r.BeachId == dto.BeachId &&
-                r.ReservationDate.Date == dto.ReservationDate.Date &&
+                r.ReservationDate >= reservationDay &&
+                r.ReservationDate < nextReservationDay &&
                 !r.IsDeleted &&
                 r.Status != ReservationStatus.Cancelled &&
                 r.Status != ReservationStatus.Rejected);
@@ -62,17 +72,40 @@ namespace BeachRehberi.API.Services
             if (exists)
                 return ServiceResult<ReservationResponseDto>.FailureResult("Bu plaj için bu tarihte zaten aktif bir rezervasyonunuz bulunmaktadır.");
 
+            if (selectedSeats.Count > 0)
+            {
+                var existingSelections = await _context.Reservations
+                    .Where(r =>
+                        r.BeachId == dto.BeachId &&
+                        r.ReservationDate >= reservationDay &&
+                        r.ReservationDate < nextReservationDay &&
+                        r.ReservationType == dto.ReservationType &&
+                        r.Status != ReservationStatus.Cancelled &&
+                        r.Status != ReservationStatus.Rejected &&
+                        r.SelectedSeats != null)
+                    .Select(r => r.SelectedSeats)
+                    .ToListAsync();
+
+                var conflicts = ReservationSeatSelection.FindConflicts(existingSelections, selectedSeats);
+                if (conflicts.Count > 0)
+                {
+                    return ServiceResult<ReservationResponseDto>.FailureResult($"Seçtiğiniz yerlerden bazıları dolu: {string.Join(", ", conflicts)}");
+                }
+            }
+
             var reservation = new Reservation
             {
                 UserId = userId,
                 BeachId = dto.BeachId,
-                ReservationDate = dto.ReservationDate.Date,
+                ReservationDate = reservationDay,
                 CreatedAt = DateTime.UtcNow,
                 Status = ReservationStatus.Pending,
                 PersonCount = dto.PersonCount,
                 SunbedCount = dto.SunbedCount,
                 Notes = dto.Notes,
                 ReservationTime = parsedReservationTime,
+                ReservationType = dto.ReservationType,
+                SelectedSeats = ReservationSeatSelection.Serialize(selectedSeats),
                 TotalPrice = ReservationPricing.Calculate(beach, dto.PersonCount, dto.SunbedCount)
             };
 
@@ -86,7 +119,8 @@ namespace BeachRehberi.API.Services
                 ReservationTime = reservation.ReservationTime?.ToString(@"hh\:mm") ?? string.Empty,
                 Status = reservation.Status.ToString(),
                 BeachId = reservation.BeachId,
-                BeachName = beach.Name
+                BeachName = beach.Name,
+                SelectedSeats = selectedSeats
             };
 
             return ServiceResult<ReservationResponseDto>.SuccessResult(responseDto, "Rezervasyon başarıyla oluşturuldu.");
@@ -108,6 +142,7 @@ namespace BeachRehberi.API.Services
                     CreatedAt = r.CreatedAt,
                     PersonCount = r.PersonCount,
                     SunbedCount = r.SunbedCount,
+                    SelectedSeats = r.SelectedSeats ?? "",
                     Status = r.Status
                 })
                 .ToListAsync();
@@ -150,8 +185,36 @@ namespace BeachRehberi.API.Services
                 Status = r.Status.ToString(),
                 PaymentStatus = r.PaymentStatus.ToString(),
                 GuestPhone = r.GuestPhone ?? "",
-                GuestEmail = r.GuestEmail ?? ""
+                GuestEmail = r.GuestEmail ?? "",
+                ReservationType = r.ReservationType ?? "",
+                ReservationTime = r.ReservationTime.HasValue ? r.ReservationTime.Value.ToString(@"hh\:mm") : "",
+                TotalPrice = r.TotalPrice,
+                SelectedSeats = r.SelectedSeats ?? ""
             };
+        }
+
+        public async Task<List<string>> GetReservedSeatsAsync(int beachId, DateTime reservationDate, string reservationType)
+        {
+            var reservationDay = DateTime.SpecifyKind(reservationDate.Date, DateTimeKind.Utc);
+            var nextReservationDay = reservationDay.AddDays(1);
+
+            var existingSelections = await _context.Reservations
+                .Where(r =>
+                    r.BeachId == beachId &&
+                    r.ReservationDate >= reservationDay &&
+                    r.ReservationDate < nextReservationDay &&
+                    r.ReservationType == reservationType &&
+                    r.Status != ReservationStatus.Cancelled &&
+                    r.Status != ReservationStatus.Rejected &&
+                    r.SelectedSeats != null)
+                .Select(r => r.SelectedSeats)
+                .ToListAsync();
+
+            return existingSelections
+                .SelectMany(ReservationSeatSelection.Deserialize)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(seat => seat)
+                .ToList();
         }
 
     }

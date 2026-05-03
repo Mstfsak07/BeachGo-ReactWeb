@@ -54,6 +54,24 @@ Bu dosya repo icindeki ortak ajan hafizasidir. Hesap degistiginde veya farkli bi
   - `build`
 - Sonraki ajan, yaptigi degisiklik hangi alani etkiliyorsa en az ilgili dogrulamayi yeniden kosmali.
 - Yeni bir dogrulama kosuldugunda sonucunu asagidaki bolume ekle.
+- 2026-04-21:
+  - `frontend: npm run build` (pass; favicon.svg ve manifest/index ikon baglantisi sonrasi)
+  - `ops: gcloud builds submit --project=project-db39a430-19a7-420b-afa --config cloudbuild.frontend.yaml .` (pass)
+  - `ops: gcloud run deploy beachgo-ui` -> `latestReadyRevisionName=beachgo-ui-00028-zsb`
+  - `ops: GET https://beachgo.net/favicon.svg` -> `200`
+  - `ops: GET https://beachgo.net` -> `200`, favicon link ve `BeachGo` title visible
+  - `backend: dotnet build BeachRehberi.API/BeachRehberi.API/BeachRehberi.API.csproj /p:UseSharedCompilation=false` (pass)
+  - `backend: dotnet test BeachRehberi.API/BeachRehberi.API.Tests/BeachRehberi.API.Tests.csproj --filter "GuestReservationServiceTests|ReservationServiceTests"` (pass)
+  - `frontend: npm run typecheck` (pass)
+  - `frontend: npm run lint` (pass)
+  - `frontend: npm run build` (pass)
+  - `ops: gcloud builds submit --project=project-db39a430-19a7-420b-afa --config cloudbuild.yaml .` (pass)
+  - `ops: gcloud run deploy beachrehberi-api` -> `latestReadyRevisionName=beachrehberi-api-00030-4lx`
+  - `ops: GET https://api.beachgo.net/api/Reservations/seats?beachId=1&reservationDate=2026-04-22&reservationType=Sezlong` -> `200`
+  - `ops: gcloud builds submit --project=project-db39a430-19a7-420b-afa --config cloudbuild.frontend.yaml .` (pass)
+  - `ops: gcloud run deploy beachgo-ui` -> `latestReadyRevisionName=beachgo-ui-00029-7xb`
+  - `ops: Playwright smoke https://beachgo.net/reservation/1` -> Sezlong seat map visible, A1 selectable, browser errors `none`
+  - `ops: Playwright mobile smoke https://beachgo.net/reservation/1` -> Loca layout visible, L1 selectable, browser errors `none`
 - 2026-04-16:
   - `backend: dotnet build BeachRehberi.API/BeachRehberi.API/BeachRehberi.API.csproj`
   - `backend: dotnet test BeachRehberi.API/BeachRehberi.API.Tests/BeachRehberi.API.Tests.csproj --filter LoginHandlerTests`
@@ -93,12 +111,29 @@ Bu dosya repo icindeki ortak ajan hafizasidir. Hesap degistiginde veya farkli bi
 
 Her ajanin oturum sonunda bu bolumu guncellemesi beklenir:
 
-- Last updated: `2026-04-16`
+- Last updated: `2026-04-21`
 - Updated by: `codex`
 - In progress: `Kullanicidan yeni web hata/fix hedefi bekleniyor`
-- Last completed item: `PremiumPreview lint hatalari temizlendi ve public route'larda gereksiz auth bootstrap refresh cagrisi atlandi; beachgo-ui deploy edilip beachgo.net smoke testlerinde /api/Auth/refresh 400 browser error temizlendi`
-- Next concrete step: `Auth bootstrap davranisini protected/guest route gecislerinde izleyip gerekirse route-aware refresh stratejisini ilerlet`
+- Last completed item: `Sezlong/Loca rezervasyonlarina sinema koltugu benzeri oturma duzeni eklendi; secilen yerler backend SelectedSeats alaninda saklaniyor, dolu yer endpoint'i ve cakisma kontrolu eklendi; API 00030-4lx ve UI 00029-7xb production'a deploy edildi`
+- Next concrete step: `Kullanicidan yeni web hata/fix hedefi bekle`
 - Verification:
+  - `backend: dotnet build BeachRehberi.API/BeachRehberi.API/BeachRehberi.API.csproj /p:UseSharedCompilation=false`
+  - `backend: dotnet test BeachRehberi.API/BeachRehberi.API.Tests/BeachRehberi.API.Tests.csproj --filter "GuestReservationServiceTests|ReservationServiceTests"`
+  - `frontend: npm run typecheck`
+  - `frontend: npm run lint`
+  - `frontend: npm run build`
+  - `ops: gcloud builds submit --project=project-db39a430-19a7-420b-afa --config cloudbuild.yaml .`
+  - `ops: gcloud run deploy beachrehberi-api --project=project-db39a430-19a7-420b-afa --region=europe-west1`
+  - `ops: GET https://api.beachgo.net/api/Reservations/seats?beachId=1&reservationDate=2026-04-22&reservationType=Sezlong -> 200`
+  - `ops: gcloud builds submit --project=project-db39a430-19a7-420b-afa --config cloudbuild.frontend.yaml .`
+  - `ops: gcloud run deploy beachgo-ui --project=project-db39a430-19a7-420b-afa --region=europe-west1`
+  - `ops: Playwright smoke https://beachgo.net/reservation/1 -> Sezlong A1 selectable`
+  - `ops: Playwright mobile smoke https://beachgo.net/reservation/1 -> Loca L1 selectable`
+  - `frontend: npm run build`
+  - `ops: gcloud builds submit --project=project-db39a430-19a7-420b-afa --config cloudbuild.frontend.yaml .`
+  - `ops: gcloud run deploy beachgo-ui --project=project-db39a430-19a7-420b-afa --region=europe-west1`
+  - `ops: GET https://beachgo.net/favicon.svg -> 200`
+  - `ops: GET https://beachgo.net -> favicon link + BeachGo title`
   - `mobile: flutter analyze`
   - `mobile: flutter test`
   - `backend: dotnet build BeachRehberi.API/BeachRehberi.API/BeachRehberi.API.csproj`

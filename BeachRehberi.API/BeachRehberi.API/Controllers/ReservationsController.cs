@@ -44,6 +44,19 @@ public class ReservationsController : ControllerBase
         return Ok(new { success = true, data = reservations });
     }
 
+    [AllowAnonymous]
+    [HttpGet("seats")]
+    public async Task<IActionResult> GetReservedSeats([FromQuery] int beachId, [FromQuery] DateTime reservationDate, [FromQuery] string reservationType)
+    {
+        if (beachId <= 0 || string.IsNullOrWhiteSpace(reservationType))
+        {
+            return BadRequest(new { success = false, message = "Plaj, tarih ve rezervasyon tipi gereklidir." });
+        }
+
+        var seats = await _reservationService.GetReservedSeatsAsync(beachId, reservationDate, reservationType);
+        return Ok(new { success = true, data = new ReservationSeatAvailabilityDto { ReservedSeats = seats } });
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {

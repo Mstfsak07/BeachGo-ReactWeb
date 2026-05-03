@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using BeachRehberi.API.Data;
 using BeachRehberi.API.DTOs.Reservation;
@@ -45,7 +46,10 @@ public class GuestReservationService : IGuestReservationService
             return ServiceResult<GuestReservationResponseDto>.FailureResult("Plaj bulunamadı.");
 
         // 3. Tarih kontrolü
-        if (dto.ReservationDate.Date < DateTime.UtcNow.Date)
+        var reservationDay = DateTime.SpecifyKind(dto.ReservationDate.Date, DateTimeKind.Utc);
+        var nextReservationDay = reservationDay.AddDays(1);
+
+        if (reservationDay < DateTime.UtcNow.Date)
             return ServiceResult<GuestReservationResponseDto>.FailureResult("Geçmiş bir tarihe rezervasyon yapılamaz.");
 
         // 4. Fiyat hesapla
@@ -59,12 +63,39 @@ public class GuestReservationService : IGuestReservationService
         if (TimeSpan.TryParse(dto.ReservationTime, out var parsed))
             resTime = parsed;
 
+        var selectedSeats = ReservationSeatSelection.Normalize(dto.SelectedSeats);
+        if (ReservationSeatSelection.RequiresSeatSelection(dto.ReservationType) && selectedSeats.Count == 0)
+        {
+            return ServiceResult<GuestReservationResponseDto>.FailureResult($"{dto.ReservationType} için oturma düzeninden en az bir yer seçin.");
+        }
+
+        if (selectedSeats.Count > 0)
+        {
+            var existingSelections = await _db.Reservations
+                .Where(r =>
+                    r.BeachId == dto.BeachId &&
+                    r.ReservationDate >= reservationDay &&
+                    r.ReservationDate < nextReservationDay &&
+                    r.ReservationType == dto.ReservationType &&
+                    r.Status != ReservationStatus.Cancelled &&
+                    r.Status != ReservationStatus.Rejected &&
+                    r.SelectedSeats != null)
+                .Select(r => r.SelectedSeats)
+                .ToListAsync();
+
+            var conflicts = ReservationSeatSelection.FindConflicts(existingSelections, selectedSeats);
+            if (conflicts.Count > 0)
+            {
+                return ServiceResult<GuestReservationResponseDto>.FailureResult($"Seçtiğiniz yerlerden bazıları dolu: {string.Join(", ", conflicts)}");
+            }
+        }
+
         // 7. Reservation oluştur
         var reservation = new Reservation
         {
             BeachId = dto.BeachId,
             UserId = dto.LoggedInUserId ?? beach.OwnerId,
-            ReservationDate = dto.ReservationDate,
+            ReservationDate = reservationDay,
             PersonCount = dto.PersonCount,
             SunbedCount = 0,
             Notes = dto.Note,
@@ -77,6 +108,7 @@ public class GuestReservationService : IGuestReservationService
             GuestEmail = dto.Email,
             ConfirmationCode = confirmationCode,
             ReservationType = dto.ReservationType,
+            SelectedSeats = ReservationSeatSelection.Serialize(selectedSeats),
             ReservationTime = resTime,
             PaymentStatus = PaymentStatus.Pending
         };
@@ -90,7 +122,8 @@ public class GuestReservationService : IGuestReservationService
             ConfirmationCode = confirmationCode,
             Status = reservation.Status.ToString(),
             TotalPrice = price,
-            PaymentStatus = reservation.PaymentStatus.ToString()
+            PaymentStatus = reservation.PaymentStatus.ToString(),
+            SelectedSeats = selectedSeats
         }, "Rezervasyon başarıyla oluşturuldu.");
     }
 
@@ -112,6 +145,7 @@ public class GuestReservationService : IGuestReservationService
             ReservationTime = reservation.ReservationTime?.ToString(@"hh\:mm") ?? "Belirtilmemiş",
             PersonCount = reservation.PersonCount,
             ReservationType = reservation.ReservationType ?? "Bilinmiyor",
+            SelectedSeats = ReservationSeatSelection.Deserialize(reservation.SelectedSeats),
             Status = reservation.Status.ToString()
         });
     }

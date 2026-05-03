@@ -83,6 +83,7 @@ export type ReservationDto = {
   customerName?: string;
   reservationTime?: string;
   reservationType?: string;
+  selectedSeats?: string[] | string;
   pax?: number;
   [key: string]: unknown;
 };

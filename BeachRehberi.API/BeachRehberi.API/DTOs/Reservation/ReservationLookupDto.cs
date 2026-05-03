@@ -13,4 +13,8 @@ public class ReservationLookupDto
     public string PaymentStatus { get; set; } = string.Empty;
     public string GuestPhone { get; set; } = string.Empty;
     public string GuestEmail { get; set; } = string.Empty;
+    public string ReservationType { get; set; } = string.Empty;
+    public string ReservationTime { get; set; } = string.Empty;
+    public decimal TotalPrice { get; set; }
+    public string SelectedSeats { get; set; } = string.Empty;
 }

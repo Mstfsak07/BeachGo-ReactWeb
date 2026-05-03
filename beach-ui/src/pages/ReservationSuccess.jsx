@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CheckCircle, Copy, Search, Home, Calendar, Users, MapPin } from 'lucide-react';
+import { CheckCircle, Copy, Search, Home, Calendar, Users, MapPin, Armchair } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getReservationByCode } from '../services/reservationService';
 
@@ -30,6 +30,7 @@ const ReservationSuccess = () => {
             reservationTime: reservation.reservationTime,
             personCount: reservation.pax,
             reservationType: reservation.reservationType,
+            selectedSeats: reservation.selectedSeats,
             paymentStatus:
               paymentResult === 'success'
                 ? 'Paid'
@@ -50,6 +51,11 @@ const ReservationSuccess = () => {
   }
 
   const { confirmationCode, beachName, reservationDate, reservationTime, personCount, reservationType, totalPrice } = resState;
+  const selectedSeats = Array.isArray(resState.selectedSeats)
+    ? resState.selectedSeats
+    : typeof resState.selectedSeats === 'string' && resState.selectedSeats.trim()
+      ? resState.selectedSeats.split(',').map((seat) => seat.trim()).filter(Boolean)
+      : [];
 
   const handleCopy = async () => {
     try {
@@ -118,6 +124,12 @@ const ReservationSuccess = () => {
                 <span className="font-black text-slate-900">{totalPrice} TL</span>
               )}
             </div>
+            {selectedSeats.length > 0 && (
+              <div className="flex items-center gap-3 text-sm">
+                <Armchair size={16} className="text-blue-500" />
+                <span className="font-bold text-slate-700">Yer: {selectedSeats.join(', ')}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">

@@ -12,6 +12,7 @@ type GuestReservationDetail = {
   guestName?: string;
   personCount?: number;
   reservationDate?: string;
+  selectedSeats?: string[] | string;
   status?: ReservationStatus;
 };
 
@@ -133,6 +134,11 @@ const ReservationCheck = () => {
     reservation?.reservationDate != null && reservation.reservationDate !== ''
       ? new Date(reservation.reservationDate).toLocaleDateString('tr-TR')
       : '—';
+  const selectedSeats = Array.isArray(reservation?.selectedSeats)
+    ? reservation.selectedSeats
+    : typeof reservation?.selectedSeats === 'string' && reservation.selectedSeats.trim()
+      ? reservation.selectedSeats.split(',').map((seat) => seat.trim()).filter(Boolean)
+      : [];
 
   return (
     <div className="min-h-screen pt-24 pb-20 px-6 bg-slate-50">
@@ -212,6 +218,12 @@ const ReservationCheck = () => {
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tarih</span>
                     <span className="font-bold text-slate-700">{dateLabel}</span>
                   </div>
+                  {selectedSeats.length > 0 && (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Yer</span>
+                      <span className="font-bold text-slate-700">{selectedSeats.join(', ')}</span>
+                    </div>
+                  )}
                 </div>
 
                 {(reservation.status === 'Pending' ||

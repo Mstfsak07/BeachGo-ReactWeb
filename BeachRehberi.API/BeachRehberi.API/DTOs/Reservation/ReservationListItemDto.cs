@@ -11,5 +11,6 @@ public class ReservationListItemDto
     public DateTime CreatedAt { get; set; }
     public int PersonCount { get; set; }
     public int SunbedCount { get; set; }
+    public string SelectedSeats { get; set; } = string.Empty;
     public ReservationStatus Status { get; set; }
 }

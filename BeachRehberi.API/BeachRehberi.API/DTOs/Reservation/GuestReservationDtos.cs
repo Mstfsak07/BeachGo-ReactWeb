@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace BeachRehberi.API.DTOs.Reservation;
@@ -24,6 +25,8 @@ public class CreateGuestReservationDto
 
     [MaxLength(500)]
     public string? Note { get; set; }
+
+    public List<string> SelectedSeats { get; set; } = new();
 
     [Required]
     [MaxLength(100)]
@@ -55,6 +58,7 @@ public class GuestReservationResponseDto
     public string PaymentStatus { get; set; } = string.Empty;
     public string? PaymentUrl { get; set; }
     public string? TransactionId { get; set; }
+    public List<string> SelectedSeats { get; set; } = new();
 }
 
 public class SendOtpDto
@@ -95,6 +99,7 @@ public class GuestReservationDetailDto
     public string ReservationTime { get; set; } = string.Empty;
     public int PersonCount { get; set; }
     public string ReservationType { get; set; } = string.Empty;
+    public List<string> SelectedSeats { get; set; } = new();
     public string Status { get; set; } = string.Empty;
 }
 

@@ -163,7 +163,12 @@ const ReservationTable = ({
                   )}
                 </td>
                 <td className="px-8 py-5 font-semibold text-slate-700">
-                  {formatReservationDate(reservation.reservationDate)}
+                  <div className="flex flex-col gap-1">
+                    <span>{formatReservationDate(reservation.reservationDate)}</span>
+                    {reservation.selectedSeats && (
+                      <span className="text-xs font-bold text-blue-600">Yer: {reservation.selectedSeats}</span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-8 py-5">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusBadgeClassName(reservation.status)}`}>

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using BeachRehberi.API.Models;
@@ -11,4 +12,5 @@ public interface IReservationService
     Task<List<ReservationListItemDto>> GetByUserAsync(int userId);
     Task<ServiceResult<bool>> CancelAsync(int id, int userId);
     Task<ReservationLookupDto?> GetByCodeAsync(string code);
+    Task<List<string>> GetReservedSeatsAsync(int beachId, DateTime reservationDate, string reservationType);
 }

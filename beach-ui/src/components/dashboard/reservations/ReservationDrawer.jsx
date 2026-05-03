@@ -52,6 +52,7 @@ const ReservationDrawer = ({ reservation, actionLoadingId, onClose, onStatusChan
       `Tarih: ${formatReservationDate(reservation.reservationDate)}`,
       `Durum: ${getStatusLabel(reservation.status)}`,
       `Kişi Sayısı: ${reservation.personCount ?? reservation.sunbedCount ?? '-'}`,
+      `Yer: ${reservation.selectedSeats || '-'}`,
     ].join('\n');
 
     await handleCopy(summary, setCopiedSummary);
@@ -144,6 +145,12 @@ const ReservationDrawer = ({ reservation, actionLoadingId, onClose, onStatusChan
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Rezervasyon Tipi</p>
                   <p className="text-sm font-bold text-slate-800">{reservation.reservationType || 'Standart'}</p>
                 </div>
+                {reservation.selectedSeats && (
+                  <div className="bg-slate-50 p-4 rounded-2xl">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Yer</p>
+                    <p className="text-sm font-bold text-slate-800">{reservation.selectedSeats}</p>
+                  </div>
+                )}
                 <div className="bg-slate-50 p-4 rounded-2xl">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Durum</p>
                   <span className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusBadgeClassName(reservation.status)}`}>

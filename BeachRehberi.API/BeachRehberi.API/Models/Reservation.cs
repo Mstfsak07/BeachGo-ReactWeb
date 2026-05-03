@@ -63,6 +63,9 @@ public class Reservation
     [MaxLength(50)]
     public string? ReservationType { get; set; }
 
+    [MaxLength(300)]
+    public string? SelectedSeats { get; set; }
+
     public TimeSpan? ReservationTime { get; set; }
 
     public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;

@@ -47,6 +47,7 @@ public class AdminReservationListItemDto
     public TimeSpan? ReservationTime { get; set; }
     public int PersonCount { get; set; }
     public string ReservationType { get; set; } = string.Empty;
+    public string SelectedSeats { get; set; } = string.Empty;
     public ReservationStatus Status { get; set; }
     public bool IsGuest { get; set; }
     public string? ConfirmationCode { get; set; }

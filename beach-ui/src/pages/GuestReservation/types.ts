@@ -4,6 +4,7 @@ export type GuestReservationFormData = {
   reservationDate: string;
   reservationTime: string;
   reservationType: string;
+  selectedSeats: string[];
   personCount: number;
   note: string;
   firstName: string;

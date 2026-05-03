@@ -49,6 +49,18 @@ export const createGuestReservation = async (dto: ReservationPayload): Promise<R
   return unwrapResponse<ReservationDto>(response.data);
 };
 
+export const getReservedSeats = async (
+  beachId: string | number,
+  reservationDate: string,
+  reservationType: string
+): Promise<string[]> => {
+  const response = await api.get('/Reservations/seats', {
+    params: { beachId, reservationDate, reservationType },
+  });
+  const data = unwrapResponse<{ reservedSeats?: string[] }>(response.data);
+  return data?.reservedSeats ?? [];
+};
+
 export const getMyReservations = getUserReservations;
 export const cancel = cancelReservation;
 export const create = createReservation;
@@ -78,6 +90,7 @@ const reservationService = {
   cancelGuestReservation,
   payGuestReservation,
   createGuestReservation,
+  getReservedSeats,
   getMyReservations,
   cancel,
   create,

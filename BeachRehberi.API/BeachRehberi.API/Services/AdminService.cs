@@ -96,6 +96,7 @@ public class AdminService : IAdminService
                 ReservationTime = r.ReservationTime,
                 PersonCount = r.PersonCount,
                 ReservationType = r.ReservationType ?? "Standart",
+                SelectedSeats = r.SelectedSeats ?? "",
                 Status = r.Status,
                 IsGuest = r.IsGuest,
                 ConfirmationCode = r.ConfirmationCode,

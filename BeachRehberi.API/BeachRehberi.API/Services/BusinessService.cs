@@ -185,6 +185,7 @@ public class BusinessService : IBusinessService
 
                 BeachName = r.Beach != null ? r.Beach.Name : "",
                 TotalPrice = r.TotalPrice,
+                SelectedSeats = r.SelectedSeats ?? "",
                 
                 EmailSent = r.IsGuest && _db.VerificationCodes.Any(v => v.Email == r.GuestEmail),
                 EmailVerified = r.IsGuest && _db.VerificationCodes.Any(v => v.Email == r.GuestEmail && v.IsUsed),

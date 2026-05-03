@@ -24,6 +24,7 @@ public class BusinessReservationDto
     // Detay ekranı için yeni eklenen alanlar
     public string BeachName { get; set; } = string.Empty;
     public decimal TotalPrice { get; set; }
+    public string SelectedSeats { get; set; } = string.Empty;
     
     // SMS / Verification
     public bool EmailSent { get; set; }

@@ -18,6 +18,7 @@ type ReservationLocationState = {
   reservationDate?: string;
   personCount?: number;
   reservationType?: string;
+  selectedSeats?: string[];
 };
 
 type GuestReservationResult = ReservationDto & {
@@ -42,6 +43,7 @@ const GuestReservation = () => {
     reservationDate: reservationState.reservationDate || new Date().toISOString().split('T')[0],
     reservationTime: '10:00',
     reservationType: reservationState.reservationType || 'Sezlong',
+    selectedSeats: reservationState.selectedSeats || [],
     personCount: reservationState.personCount || 1,
     note: '',
     firstName: '',
@@ -131,6 +133,7 @@ const GuestReservation = () => {
         reservationDate: formData.reservationDate,
         reservationTime: formData.reservationTime,
         reservationType: formData.reservationType,
+        selectedSeats: formData.selectedSeats,
         personCount: formData.personCount,
         note: formData.note || undefined,
         firstName: formData.firstName,
@@ -148,6 +151,7 @@ const GuestReservation = () => {
           reservationTime: formData.reservationTime,
           personCount: formData.personCount,
           reservationType: formData.reservationType,
+          selectedSeats: formData.selectedSeats,
           paymentStatus: result?.paymentStatus,
           totalPrice: result?.totalPrice,
         },
@@ -219,6 +223,7 @@ const GuestReservation = () => {
                   onNext={handlePersonalInfoNext}
                   onBack={() => navigate(-1)}
                   loading={loading}
+                  beachId={beachId}
                 />
               )}
               {step === 2 && (
@@ -280,6 +285,13 @@ const GuestReservation = () => {
                     {formData.reservationType && (
                       <div className="flex items-center gap-2 text-sm">
                         <span className="font-bold text-slate-700">{formData.reservationType}</span>
+                      </div>
+                    )}
+                    {formData.selectedSeats.length > 0 && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="font-bold text-slate-700">
+                          Yer: {formData.selectedSeats.join(', ')}
+                        </span>
                       </div>
                     )}
                     {formData.personCount > 0 && (
